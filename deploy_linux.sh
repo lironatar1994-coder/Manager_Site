@@ -134,6 +134,15 @@ echo "[INFO] Reloading Nginx..."
 systemctl reload nginx
 
 echo "[INFO] Verifying local app..."
-curl -fsS "http://127.0.0.1:${APP_PORT}${ROUTE_BASE}/login" >/dev/null
+for attempt in {1..15}; do
+  if curl -fsS "http://127.0.0.1:${APP_PORT}${ROUTE_BASE}/login" >/dev/null; then
+    break
+  fi
+  if [ "${attempt}" -eq 15 ]; then
+    echo "[ERROR] Local app health check failed after ${attempt} attempts" >&2
+    exit 1
+  fi
+  sleep 1
+done
 
 echo "[SUCCESS] ${APP_NAME} deployment complete: https://vee-app.co.il${ROUTE_BASE}/login"
