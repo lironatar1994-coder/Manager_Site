@@ -928,13 +928,112 @@ select:disabled {
   background: rgba(168, 101, 26, 0.12);
 }
 
+.review-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -4px 0 14px;
+}
+
+.review-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 10px;
+  color: var(--muted);
+  background: rgba(255, 253, 248, 0.72);
+  border: 1px solid var(--line);
+}
+
+.review-filter strong {
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  color: var(--ink);
+  font-size: 0.78rem;
+  background: rgba(17, 17, 17, 0.06);
+}
+
+.review-filter.active {
+  color: #fffaf1;
+  background: var(--black);
+  border-color: var(--black);
+}
+
+.review-filter.active strong {
+  color: var(--black);
+  background: var(--gold);
+}
+
 .review-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(128px, 0.32fr) minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
 }
 
 .review-row strong {
   display: block;
+}
+
+.review-thumbs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  min-width: 0;
+}
+
+.review-thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  overflow: hidden;
+  color: var(--muted);
+  background: rgba(246, 241, 232, 0.9);
+  border: 1px solid rgba(222, 213, 198, 0.9);
+}
+
+.review-thumb.primary {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+
+.review-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.review-thumb.more {
+  color: var(--black);
+  font-weight: 900;
+  background: rgba(184, 135, 70, 0.18);
+}
+
+.review-copy {
+  min-width: 0;
+}
+
+.review-copy span,
+.review-copy small {
+  display: block;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-copy small {
+  margin-top: 4px;
+  font-size: 0.78rem;
+}
+
+.review-state {
+  display: grid;
+  justify-items: end;
 }
 
 .review-actions {
@@ -2623,6 +2722,32 @@ svg.lucide {
   }
 
   .user-actions {
+    justify-items: stretch;
+  }
+
+  .review-filter-bar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .review-filter {
+    justify-content: space-between;
+  }
+
+  .review-row {
+    grid-template-columns: 1fr;
+  }
+
+  .review-thumbs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .review-thumb.primary {
+    grid-column: span 1;
+    grid-row: span 1;
+  }
+
+  .review-state {
     justify-items: stretch;
   }
 

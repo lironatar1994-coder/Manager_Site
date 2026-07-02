@@ -37,6 +37,7 @@ const state = {
   clientAssets: null,
   clientUsername: "",
   previewMode: "desktop",
+  adminReviewFilter: "all",
   lastProof: null,
   livePreviewVersion: Date.now(),
 };
@@ -194,6 +195,9 @@ function renderAdmin() {
   const activeUsers = clientUsers.filter((user) => user.active).length;
   const reviewSites = state.sites.filter((site) => site.status === "waiting_review").length;
   const totalImages = state.sites.reduce((sum, site) => sum + site.images.length, 0);
+  const reviewFilter = state.adminReviewFilter || "all";
+  const filteredReviewSites = reviewFilter === "all" ? state.sites : state.sites.filter((site) => site.status === reviewFilter);
+  const reviewFilterCounts = reviewCountsByStatus(state.sites);
   app.innerHTML = `
     ${shell("admin")}
     <main class="workspace admin-workspace" dir="rtl" lang="he">
@@ -232,10 +236,17 @@ function renderAdmin() {
         <article class="admin-panel review-panel">
           <div class="panel-title">
             <h2>תור בדיקה</h2>
-            <span class="quiet">${reviewSites} ממתינים</span>
+            <span class="quiet">${filteredReviewSites.length} מוצגים · ${reviewSites} ממתינים</span>
+          </div>
+          <div class="review-filter-bar" role="tablist" aria-label="סינון תור בדיקה">
+            ${reviewFilterButton("all", "הכל", reviewFilterCounts.all, reviewFilter)}
+            ${reviewFilterButton("waiting_review", HEBREW_STATUS_META.waiting_review.label, reviewFilterCounts.waiting_review, reviewFilter)}
+            ${reviewFilterButton("needs_attention", HEBREW_STATUS_META.needs_attention.label, reviewFilterCounts.needs_attention, reviewFilter)}
+            ${reviewFilterButton("published", HEBREW_STATUS_META.published.label, reviewFilterCounts.published, reviewFilter)}
+            ${reviewFilterButton("draft", HEBREW_STATUS_META.draft.label, reviewFilterCounts.draft, reviewFilter)}
           </div>
           <div class="review-list">
-            ${state.sites.map(reviewRow).join("") || `<p class="empty">עדיין אין אתרים.</p>`}
+            ${filteredReviewSites.map(reviewRow).join("") || `<p class="empty">אין אתרים בסינון הזה.</p>`}
           </div>
         </article>
 
@@ -272,6 +283,12 @@ function renderAdmin() {
   });
   document.querySelectorAll("[data-admin-status]").forEach((button) => {
     button.addEventListener("click", () => updateSiteStatus(button.dataset.siteId, button.dataset.adminStatus));
+  });
+  document.querySelectorAll("[data-review-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.adminReviewFilter = button.dataset.reviewFilter;
+      renderAdmin();
+    });
   });
   interceptInternalLinks();
   icons();
@@ -530,15 +547,59 @@ function credentialLine(label, value) {
   `;
 }
 
+function reviewCountsByStatus(sites = []) {
+  return sites.reduce(
+    (counts, site) => {
+      const status = site.status || "draft";
+      counts.all += 1;
+      counts[status] = (counts[status] || 0) + 1;
+      return counts;
+    },
+    { all: 0, draft: 0, waiting_review: 0, published: 0, needs_attention: 0 }
+  );
+}
+
+function reviewFilterButton(id, label, count, active) {
+  return `
+    <button class="review-filter ${active === id ? "active" : ""}" type="button" data-review-filter="${id}" role="tab" aria-selected="${active === id}">
+      <span>${escapeHtml(label)}</span>
+      <strong>${count || 0}</strong>
+    </button>
+  `;
+}
+
 function reviewRow(site) {
+  const images = site.images || [];
+  const previewImages = images.slice(0, 4);
+  const extraImages = Math.max(0, images.length - previewImages.length);
+  const owner = state.users.find((user) => user.username === site.ownerUsername);
   return `
     <div class="review-row">
-      <div>
-        <strong>${escapeHtml(site.name)}</strong>
-        <span><bdi>${escapeHtml(site.ownerUsername)}</bdi> · ${site.images.length} תמונות</span>
+      <div class="review-thumbs" aria-label="תמונות אחרונות">
+        ${
+          previewImages.length
+            ? previewImages
+                .map(
+                  (image, index) => `
+                    <span class="review-thumb ${index === 0 ? "primary" : ""}">
+                      <img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" />
+                    </span>`
+                )
+                .join("")
+            : `<span class="review-thumb empty"><i data-lucide="image"></i></span>`
+        }
+        ${extraImages ? `<span class="review-thumb more">+${extraImages}</span>` : ""}
       </div>
-      ${statusPill(site.status, "he")}
+      <div class="review-copy">
+        <strong>${escapeHtml(site.name)}</strong>
+        <span><bdi>${escapeHtml(site.ownerUsername)}</bdi> · ${images.length} תמונות</span>
+        <small>${escapeHtml(owner?.displayName || "לקוח")} · ${escapeHtml(site.websiteUrl || "לא הוגדר קישור")}</small>
+      </div>
+      <div class="review-state">
+        ${statusPill(site.status, "he")}
+      </div>
       <div class="review-actions">
+        <a class="ghost-button small" href="${href(`/client/${site.ownerUsername}`)}"><i data-lucide="eye"></i>תצוגה</a>
         <button class="ghost-button small" type="button" data-admin-status="published" data-site-id="${site.id}">פרסום</button>
         <button class="ghost-button small" type="button" data-admin-status="needs_attention" data-site-id="${site.id}">דורש תיקון</button>
       </div>
