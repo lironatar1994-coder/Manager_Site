@@ -172,6 +172,7 @@ router.patch("/api/admin/users/:userId", requireAdmin, async (req, res) => {
 
   store.audit.push(audit(req.user, "user.updated", { username: user.username }));
   await writeStore(store);
+  if (site) await syncClientWorkspaceMetadata(user, site);
   res.json({ user: publicUser(user), site });
 });
 
@@ -545,6 +546,44 @@ async function ensureClientWorkspace(user, site) {
       `${JSON.stringify(defaultClientConfig(user, site), null, 2)}\n`
     );
   }
+  await syncClientWorkspaceMetadata(user, site);
+}
+
+async function syncClientWorkspaceMetadata(user, site) {
+  const clientDir = path.join(CLIENTS_DATA_DIR, safeSegment(user.username));
+  await fsp.mkdir(clientDir, { recursive: true });
+  const summaryPath = path.join(clientDir, "CLIENT_SUMMARY.md");
+  const configPath = path.join(clientDir, "client.config.json");
+  await fsp.writeFile(
+    summaryPath,
+    [
+      `# ${user.displayName} Current Client Summary`,
+      "",
+      "This file is updated by Manager Site when admin client details change.",
+      "",
+      `- Username: \`${user.username}\``,
+      `- Display name: ${user.displayName}`,
+      `- Website name: ${site.name}`,
+      `- Manager route: \`/client/${user.username}\``,
+      `- Public URL: ${site.websiteUrl}`,
+      `- Updated: ${new Date().toISOString()}`,
+      "",
+    ].join("\n")
+  );
+
+  let config = defaultClientConfig(user, site);
+  if (fs.existsSync(configPath)) {
+    try {
+      config = { ...config, ...JSON.parse(await fsp.readFile(configPath, "utf8")) };
+    } catch {
+      config = defaultClientConfig(user, site);
+    }
+  }
+  config.username = user.username;
+  config.displayName = user.displayName;
+  config.websiteName = site.name;
+  config.publicUrl = site.websiteUrl;
+  await fsp.writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`);
 }
 
 function defaultClientConfig(user, site) {

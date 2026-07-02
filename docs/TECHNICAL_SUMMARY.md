@@ -23,8 +23,10 @@ Local:
 - `scripts/hash-password.js`
 - `data/` for local development data
 - `clients/_template`
-- `clients/<username>/AGENTS.md`
-- `clients/<username>/client.config.json`
+- `data/clients/<username>/AGENTS.md`
+- `data/clients/<username>/CLIENT_SUMMARY.md`
+- `data/clients/<username>/client.config.json`
+- optional repo fallback: `clients/<username>/client.config.json`
 
 Production:
 
@@ -128,7 +130,7 @@ If a config exists but the production `siteRoot` does not exist yet, uploads rem
 
 The client desktop/mobile preview uses an iframe pointed at the configured public website URL. The frontend adds a `manager_preview` cache-busting query parameter and resizes the preview shell for desktop/mobile modes.
 
-Do not add Playwright, Chromium, or server-side screenshot generation for this preview. If a client website blocks framing, fix the website response headers when we control that website, or document the limitation in `clients/<username>/AGENTS.md`.
+Do not add Playwright, Chromium, or server-side screenshot generation for this preview. If a client website blocks framing, fix the website response headers when we control that website, or document the limitation in `data/clients/<username>/AGENTS.md`.
 
 ## Frontend Routing
 

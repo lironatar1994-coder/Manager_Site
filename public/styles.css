@@ -2292,6 +2292,51 @@ select:disabled {
   margin: 14px 0;
 }
 
+.admin-edit-modal {
+  width: min(720px, 100%);
+}
+
+.admin-edit-modal .panel-title {
+  align-items: flex-start;
+}
+
+.admin-edit-modal .panel-title h2 {
+  margin-top: 2px;
+}
+
+.admin-edit-modal .panel-title strong {
+  flex: 0 1 auto;
+  max-width: 240px;
+  overflow: hidden;
+  padding: 8px 10px;
+  color: var(--blue);
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: rgba(37, 93, 115, 0.08);
+  border: 1px solid rgba(37, 93, 115, 0.14);
+}
+
+.admin-edit-form {
+  display: grid;
+  gap: 12px;
+}
+
+.edit-permission-band {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+  background: rgba(246, 241, 232, 0.72);
+  border: 1px solid var(--line);
+}
+
+.edit-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .credential-preview {
   display: grid;
   grid-template-columns: 86px minmax(0, 1fr);
@@ -2571,6 +2616,10 @@ svg.lucide {
   .perm input {
     width: 18px;
     height: 18px;
+  }
+
+  .edit-permission-band {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .user-actions {

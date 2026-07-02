@@ -258,6 +258,9 @@ function renderAdmin() {
   document.querySelectorAll("[data-reset-password]").forEach((button) => {
     button.addEventListener("click", () => resetUserPassword(button.dataset.resetPassword));
   });
+  document.querySelectorAll("[data-edit-user]").forEach((button) => {
+    button.addEventListener("click", () => showEditUserModal(button.dataset.editUser));
+  });
   document.querySelectorAll("[data-share-toggle]").forEach((button) => {
     button.addEventListener("click", () => toggleShareMenu(button.dataset.shareToggle));
   });
@@ -488,6 +491,7 @@ function userCard(user) {
         ${statusPill(site.status || "draft", "he")}
         <span class="status ${user.active ? "live" : "paused"}">${user.active ? "פעיל" : "מושהה"}</span>
         ${shareCluster(user)}
+        <button class="ghost-button small" type="button" data-edit-user="${user.id}"><i data-lucide="settings-2"></i>עריכה</button>
         <button class="ghost-button small" type="button" data-toggle-user="${user.id}" data-active="${user.active}">${user.active ? "השהיה" : "הפעלה"}</button>
       </div>
     </div>
@@ -976,6 +980,78 @@ async function toggleUser(userId, active) {
   if (response?.error) return toast(formatApiError(response.error), "error");
   await loadAdmin();
   renderAdmin();
+}
+
+function showEditUserModal(userId) {
+  const user = state.users.find((item) => item.id === userId);
+  if (!user) return;
+  const site = state.sites.find((item) => item.id === user.siteId) || {};
+  const modal = document.createElement("div");
+  modal.className = "modal-backdrop";
+  modal.innerHTML = `
+    <div class="confirm-modal admin-edit-modal" role="dialog" aria-modal="true" aria-label="עריכת לקוח" dir="rtl" lang="he">
+      <button class="icon-action modal-close" type="button" aria-label="סגירה"><i data-lucide="x"></i></button>
+      <div class="panel-title">
+        <span>
+          <p class="eyebrow">עריכת לקוח</p>
+          <h2>${escapeHtml(user.displayName)}</h2>
+        </span>
+        <strong dir="ltr">/client/${escapeHtml(user.username)}</strong>
+      </div>
+      <form id="editUserForm" class="admin-edit-form">
+        <div class="two-col">
+          <label>שם תצוגה<input name="displayName" value="${escapeAttr(user.displayName)}" required /></label>
+          <label>שם האתר<input name="siteName" value="${escapeAttr(site.name || "")}" required /></label>
+        </div>
+        <label>קישור לאתר<input name="websiteUrl" value="${escapeAttr(site.websiteUrl || "")}" dir="ltr" required /></label>
+        <div class="edit-permission-band">
+          ${permissionBox("canUpload", "העלאה", Boolean(user.permissions?.canUpload))}
+          ${permissionBox("canDelete", "מחיקה", Boolean(user.permissions?.canDelete))}
+          ${permissionBox("canEditLinks", "עריכת קישור", Boolean(user.permissions?.canEditLinks))}
+          ${permissionBox("canPublish", "פרסום", Boolean(user.permissions?.canPublish))}
+        </div>
+        <p class="edit-note">שינויים כאן משפיעים על הפרטים שהלקוח רואה ועל ההרשאות שלו במערכת.</p>
+        <div class="modal-actions">
+          <button class="ghost-button" type="button" data-cancel>ביטול</button>
+          <button class="primary-button" type="submit"><i data-lucide="save"></i>שמירת שינויים</button>
+        </div>
+      </form>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  icons();
+  const close = () => modal.remove();
+  modal.querySelector(".modal-close").addEventListener("click", close);
+  modal.querySelector("[data-cancel]").addEventListener("click", close);
+  modal.querySelector("#editUserForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const saved = await saveUserProfile(userId, new FormData(event.currentTarget));
+    if (saved) close();
+  });
+  modal.querySelector("input[name='displayName']").focus();
+}
+
+async function saveUserProfile(userId, form) {
+  const body = {
+    displayName: form.get("displayName"),
+    siteName: form.get("siteName"),
+    websiteUrl: form.get("websiteUrl"),
+    permissions: {
+      canUpload: form.has("canUpload"),
+      canDelete: form.has("canDelete"),
+      canEditLinks: form.has("canEditLinks"),
+      canPublish: form.has("canPublish"),
+    },
+  };
+  const response = await api(`/api/admin/users/${userId}`, { method: "PATCH", body });
+  if (response?.error) {
+    toast(formatApiError(response.error), "error");
+    return false;
+  }
+  toast("פרטי הלקוח נשמרו", "success");
+  await loadAdmin();
+  renderAdmin();
+  return true;
 }
 
 async function resetUserPassword(userId) {

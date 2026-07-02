@@ -12,11 +12,11 @@ New Manager Site client:
 
 Your job:
 1. Inspect the live website and production files.
-2. Create or update `clients/<username>/AGENTS.md`.
-3. Create or update `clients/<username>/client.config.json` with every editable image slot.
+2. Create or update `data/clients/<username>/AGENTS.md`.
+3. Create or update `data/clients/<username>/client.config.json` with every editable image slot.
 4. Use clear Hebrew labels for client-visible image areas.
 5. Verify the live public website can load inside the Manager Site desktop/mobile iframe preview. Do not install Playwright or Chromium for this.
-6. Sync the runtime production config if working on the live server.
+6. If you also need a committed fallback/template, mirror the config under `clients/<username>/client.config.json`.
 7. Verify through the Manager Site API that all slots appear and existing files are detected.
 8. Verify the client UI route, including that the first section is client-safe and the live desktop/mobile preview loads.
 9. Commit, push, and deploy only when the setup is verified.

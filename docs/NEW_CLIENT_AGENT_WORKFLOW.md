@@ -14,6 +14,7 @@ Ask only for missing information that cannot be discovered safely.
 - Client display name, for example `Liron Cohen`
 - Live website URL, for example `https://vee-app.co.il/Liron/`
 - Whether the client already exists in Manager Site admin
+- If the client exists, check `data/clients/<username>/CLIENT_SUMMARY.md` first for the latest admin-managed display name, website name, route, and public URL.
 
 If the user only gives a URL and a username, infer the rest carefully from the website and confirm only if uncertain.
 
@@ -21,11 +22,13 @@ If the user only gives a URL and a username, infer the rest carefully from the w
 
 For each new client, create or update:
 
-- `clients/<username>/AGENTS.md`
-- `clients/<username>/client.config.json`
-- Production copy at `/root/Manager_Site/data/clients/<username>/client.config.json` when deploying live
+- runtime files under `data/clients/<username>/`
+- optional repo fallback files under `clients/<username>/` when you want the config committed
+- production runtime files under `/root/Manager_Site/data/clients/<username>/`
 
 The `client.config.json` file is the machine-readable allowlist. Manager Site can only view, replace, remove, or reorder images that are listed there.
+
+Manager Site reads runtime config first from `data/clients/<username>/client.config.json`, then falls back to repo config at `clients/<username>/client.config.json`.
 
 The client-facing desktop/mobile preview is a live iframe pointed at the configured public website URL. Do not install Playwright, Chromium, or static screenshot generation just to power Manager Site previews.
 
@@ -92,7 +95,7 @@ The client-facing desktop/mobile preview is a live iframe pointed at the configu
 
 5. Write the client agent file.
 
-   `clients/<username>/AGENTS.md` should explain:
+   `data/clients/<username>/AGENTS.md` should explain:
 
    - client identity
    - public URL
@@ -114,7 +117,7 @@ The client-facing desktop/mobile preview is a live iframe pointed at the configu
    - desktop and mobile preview buttons resize the Manager Site frame
    - the refresh preview button reloads the iframe
 
-   If the live website cannot be framed, do not install Playwright or Chromium as a workaround. Leave a short note in `clients/<username>/AGENTS.md` explaining the framing block and fix the website headers if that site is under our control.
+   If the live website cannot be framed, do not install Playwright or Chromium as a workaround. Leave a short note in `data/clients/<username>/AGENTS.md` explaining the framing block and fix the website headers if that site is under our control.
 
 7. Sync production config.
 
@@ -210,7 +213,8 @@ Avoid:
 
 The setup is complete only when:
 
-- client files exist in `clients/<username>/`
+- runtime client files exist in `data/clients/<username>/`
+- optional committed fallback files exist in `clients/<username>/` when needed
 - runtime production config is synced when live
 - Manager Site API returns the expected slots
 - live UI shows those slots and the live desktop/mobile iframe preview
