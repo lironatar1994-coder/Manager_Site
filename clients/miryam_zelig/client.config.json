@@ -1,45 +1,45 @@
 {
-  "username": "miriam_zelig",
-  "displayName": "Miriam Zelig",
-  "websiteName": "Miriam Zelig Website",
+  "username": "miryam_zelig",
+  "displayName": "Miryam Zelig",
+  "websiteName": "Miryam Zelig Website",
   "productionServer": "vee-app.co.il",
-  "siteRoot": "/root/client-sites/miriam_zelig",
-  "publicUrl": "https://example.com/miriam-zelig",
-  "notes": "Production allowlist with starter SVG assets. Replace these files with Miriam's real website images when ready.",
+  "siteRoot": "/root/client-sites/miryam_zelig",
+  "publicUrl": "https://example.com/miryam-zelig",
+  "notes": "Production allowlist with starter SVG assets. Replace these files with Miryam's real website images when ready.",
   "imageSlots": [
     {
       "id": "hero",
       "labelHe": "תמונת פתיחה",
       "required": true,
-      "currentPath": "/root/client-sites/miriam_zelig/public/images/hero.svg",
+      "currentPath": "/root/client-sites/miryam_zelig/public/images/hero.svg",
       "publicPath": "/images/hero.svg"
     },
     {
       "id": "logo",
       "labelHe": "לוגו",
       "required": true,
-      "currentPath": "/root/client-sites/miriam_zelig/public/images/logo.svg",
+      "currentPath": "/root/client-sites/miryam_zelig/public/images/logo.svg",
       "publicPath": "/images/logo.svg"
     },
     {
       "id": "about",
       "labelHe": "אזור אודות",
       "required": false,
-      "currentPath": "/root/client-sites/miriam_zelig/public/images/about.svg",
+      "currentPath": "/root/client-sites/miryam_zelig/public/images/about.svg",
       "publicPath": "/images/about.svg"
     },
     {
       "id": "service",
       "labelHe": "תמונת שירות",
       "required": false,
-      "currentPath": "/root/client-sites/miriam_zelig/public/images/service.svg",
+      "currentPath": "/root/client-sites/miryam_zelig/public/images/service.svg",
       "publicPath": "/images/service.svg"
     },
     {
       "id": "gallery",
       "labelHe": "גלריה",
       "required": false,
-      "currentPath": "/root/client-sites/miriam_zelig/public/images/gallery.svg",
+      "currentPath": "/root/client-sites/miryam_zelig/public/images/gallery.svg",
       "publicPath": "/images/gallery.svg"
     }
   ]
