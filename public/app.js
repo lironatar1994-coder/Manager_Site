@@ -766,11 +766,11 @@ async function reorderDraggedImage({ imageId, slotId, source, targetSlotId, targ
   const response = productionMove
     ? await api(`/api/sites/${state.clientSite.id}/assets/reorder`, { method: "POST", body: { sourceSlotId: slotId, targetSlotId } })
     : await api(`/api/sites/${state.clientSite.id}/images/${imageId}/placement`, { method: "PATCH", body: { targetSlotId, targetImageId } });
-  if (response?.error) return toast(response.error);
+  if (response?.error) return toast(response.error, "error");
   state.clientSite = response.site || state.clientSite;
   if (response.assets) state.clientAssets = { ...(state.clientAssets || {}), assets: response.assets };
   else await loadClientAssets();
-  toast("סדר התמונות עודכן");
+  toast("סדר התמונות עודכן", "success");
   renderClient();
 }
 
@@ -825,15 +825,15 @@ async function onCreateUser(event) {
     },
   };
   const response = await api("/api/admin/users", { method: "POST", body });
-  if (response?.error) return toast(response.error);
-  toast(`Created /client/${response.user.username}`);
+  if (response?.error) return toast(response.error, "error");
+  toast(`Created /client/${response.user.username}`, "success");
   await loadAdmin();
   renderAdmin();
 }
 
 async function toggleUser(userId, active) {
   const response = await api(`/api/admin/users/${userId}`, { method: "PATCH", body: { active } });
-  if (response?.error) return toast(response.error);
+  if (response?.error) return toast(response.error, "error");
   await loadAdmin();
   renderAdmin();
 }
@@ -847,7 +847,7 @@ async function resetUserPassword(userId) {
     confirmText: "Reset password",
     onConfirm: async () => {
       const response = await api(`/api/admin/users/${userId}/reset-password`, { method: "POST" });
-      if (response?.error) return toast(response.error);
+      if (response?.error) return toast(response.error, "error");
       showTemporaryPassword(user, response.temporaryPassword);
       await loadAdmin();
       renderAdmin();
@@ -873,9 +873,9 @@ async function onUpdateSite(event) {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
   const response = await api(`/api/sites/${state.clientSite.id}`, { method: "PATCH", body: { websiteUrl: form.get("websiteUrl") } });
-  if (response?.error) return toast(response.error);
+  if (response?.error) return toast(response.error, "error");
   state.clientSite = response.site;
-  toast("קישור האתר נשמר");
+  toast("קישור האתר נשמר", "success");
   renderClient();
 }
 
@@ -884,10 +884,10 @@ async function onUploadImage(event) {
   const form = new FormData(event.currentTarget);
   const selectedSlot = form.get("slotId") || "gallery";
   const response = await api(`/api/sites/${state.clientSite.id}/images`, { method: "POST", form });
-  if (response?.error) return toast(response.error);
+  if (response?.error) return toast(response.error, "error");
   state.clientSite = response.site;
   await loadClientAssets();
-  toast(`${slotLabel(state.clientSite, selectedSlot)} עודכן`);
+  toast(`${slotLabel(state.clientSite, selectedSlot)} עודכן`, "success");
   renderClient();
 }
 
@@ -898,30 +898,30 @@ async function uploadImageToSlot(slotId, file, name = "") {
   if (name) form.set("name", name);
   const response = await api(`/api/sites/${state.clientSite.id}/images`, { method: "POST", form });
   if (response?.error) {
-    toast(response.error);
+    toast(response.error, "error");
     return false;
   }
   state.clientSite = response.site;
   await loadClientAssets();
-  toast(`${slotLabel(state.clientSite, slotId)} עודכן`);
+  toast(`${slotLabel(state.clientSite, slotId)} עודכן`, "success");
   renderClient();
   return true;
 }
 
 async function deleteImage(imageId) {
   const response = await api(`/api/sites/${state.clientSite.id}/images/${imageId}`, { method: "DELETE" });
-  if (response?.error) return toast(response.error);
+  if (response?.error) return toast(response.error, "error");
   state.clientSite = response.site;
-  toast("התמונה הוסרה");
+  toast("התמונה הוסרה", "success");
   renderClient();
 }
 
 async function deleteAsset(slotId) {
   const response = await api(`/api/sites/${state.clientSite.id}/assets/${slotId}`, { method: "DELETE" });
-  if (response?.error) return toast(response.error);
+  if (response?.error) return toast(response.error, "error");
   state.clientSite = response.site || state.clientSite;
   state.clientAssets = { ...(state.clientAssets || {}), assets: response.assets || [] };
-  toast("התמונה הוסרה מקובץ האתר");
+  toast("התמונה הוסרה מקובץ האתר", "success");
   renderClient();
 }
 
@@ -1076,7 +1076,7 @@ function showCropToolModal(slot, image) {
       modal.remove();
       await uploadImageToSlot(slot.id, blob, `${slot.id}-crop.jpg`);
     } catch (error) {
-      toast("לא ניתן לחתוך את התמונה הזו כרגע");
+      toast("לא ניתן לחתוך את התמונה הזו כרגע", "error");
     }
   });
 }
@@ -1127,9 +1127,9 @@ function cropImageToBlob(imageNode, options) {
 
 async function updateSiteStatus(siteId, status) {
   const response = await api(`/api/sites/${siteId}/status`, { method: "POST", body: { status } });
-  if (response?.error) return toast(response.error);
+  if (response?.error) return toast(response.error, "error");
   if (state.clientSite?.id === siteId) state.clientSite = response.site;
-  toast(isClientRoute() ? HEBREW_STATUS_META[status]?.label || "הסטטוס עודכן" : STATUS_META[status]?.label || "Status updated");
+  toast(isClientRoute() ? HEBREW_STATUS_META[status]?.label || "הסטטוס עודכן" : STATUS_META[status]?.label || "Status updated", "success");
   if (stripBase(location.pathname) === "/admin") {
     await loadAdmin();
     renderAdmin();
@@ -1287,7 +1287,7 @@ function showCredentialShareModal(user, channel) {
   modal.querySelector("[data-confirm-share]").addEventListener("click", () => {
     const password = modal.querySelector("input[name='sharePassword']").value.trim();
     if (!password) {
-      toast("Password is required");
+      toast("Password is required", "error");
       return;
     }
     const confirmed = window.confirm(`Open ${channelLabel} with login details for ${user.username}?`);
@@ -1371,9 +1371,9 @@ function clearLoginPrefillFromUrl(prefill) {
 async function copyText(value, label = "Value") {
   try {
     await navigator.clipboard.writeText(value);
-    toast(`${label} copied`);
+    toast(`${label} copied`, "success");
   } catch (error) {
-    toast("Copy failed");
+    toast("Copy failed", "error");
   }
 }
 
@@ -1451,17 +1451,28 @@ function getBasePath() {
   return scriptPath.replace(/\/app\.js$/, "");
 }
 
-function toast(message) {
+function toast(message, type = "info") {
   let node = document.querySelector(".toast");
   if (!node) {
     node = document.createElement("div");
     node.className = "toast";
+    node.innerHTML = `
+      <span class="toast-icon" aria-hidden="true"></span>
+      <span class="toast-message"></span>
+    `;
     document.body.appendChild(node);
   }
-  node.textContent = message;
+  const normalizedType = ["success", "error", "info"].includes(type) ? type : "info";
+  const icon = normalizedType === "success" ? "check" : normalizedType === "error" ? "triangle-alert" : "info";
+  node.dataset.type = normalizedType;
+  node.setAttribute("role", normalizedType === "error" ? "alert" : "status");
+  node.setAttribute("aria-live", normalizedType === "error" ? "assertive" : "polite");
+  node.querySelector(".toast-icon").innerHTML = `<i data-lucide="${icon}"></i>`;
+  node.querySelector(".toast-message").textContent = message;
   node.classList.add("show");
+  icons();
   clearTimeout(toast.timeout);
-  toast.timeout = setTimeout(() => node.classList.remove("show"), 2200);
+  toast.timeout = setTimeout(() => node.classList.remove("show"), normalizedType === "error" ? 4200 : 3400);
 }
 
 function icons() {
