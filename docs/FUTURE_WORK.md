@@ -27,11 +27,8 @@ The first safe integration layer now exists through `client.config.json`: Manage
 
 Useful additions:
 
-- image dimensions display
-- crop/position controls
-- recommended size per slot
+- manual focal-position controls
 - compression or conversion
-- preview before upload
 - replace history
 
 ### 4. Stronger Client Review Flow

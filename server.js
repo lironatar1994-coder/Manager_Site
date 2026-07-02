@@ -371,6 +371,8 @@ router.post(
       originalName: req.file.originalname,
       size: req.file.size,
       mimeType: req.file.mimetype,
+      width: positiveInteger(req.body.width),
+      height: positiveInteger(req.body.height),
       status: "waiting_review",
       changedAt: new Date().toISOString(),
       changedBy: req.user.username,
@@ -1017,14 +1019,21 @@ function normalizeSite(site) {
   site.images = Array.isArray(site.images) ? site.images : [];
   site.slots = Array.isArray(site.slots) && site.slots.length ? site.slots : IMAGE_SLOTS;
   site.status = SITE_STATUSES.includes(site.status) ? site.status : "draft";
-  site.images = site.images.map((image) => ({
-    slotId: "gallery",
-    status: "waiting_review",
-    reviewNote: "",
-    reviewNoteUpdatedAt: null,
-    reviewNoteBy: null,
-    ...image,
-  }));
+  site.images = site.images.map((image) => {
+    const normalizedImage = {
+      slotId: "gallery",
+      status: "waiting_review",
+      width: null,
+      height: null,
+      reviewNote: "",
+      reviewNoteUpdatedAt: null,
+      reviewNoteBy: null,
+      ...image,
+    };
+    normalizedImage.width = positiveInteger(normalizedImage.width);
+    normalizedImage.height = positiveInteger(normalizedImage.height);
+    return normalizedImage;
+  });
   return site;
 }
 
@@ -1045,6 +1054,11 @@ function moveImageBefore(images, imageId, beforeImageId, slotId) {
   const firstInSlot = images.findIndex((item) => (item.slotId || "gallery") === slotId);
   if (firstInSlot >= 0) images.splice(firstInSlot, 0, image);
   else images.unshift(image);
+}
+
+function positiveInteger(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : null;
 }
 
 function normalizeSlotId(slotId) {

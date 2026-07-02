@@ -593,6 +593,8 @@ function reviewRow(site) {
   const previewImages = images.slice(0, 4);
   const extraImages = Math.max(0, images.length - previewImages.length);
   const owner = state.users.find((user) => user.username === site.ownerUsername);
+  const primaryImage = previewImages[0];
+  const primarySlot = primaryImage ? displaySlots(site).find((slot) => slot.id === (primaryImage.slotId || "gallery")) || { id: primaryImage.slotId || "gallery", ratio: "free" } : null;
   return `
     <div class="review-row">
       <div class="review-thumbs" aria-label="תמונות אחרונות">
@@ -615,6 +617,7 @@ function reviewRow(site) {
         <strong>${escapeHtml(site.name)}</strong>
         <span><bdi>${escapeHtml(site.ownerUsername)}</bdi> · ${images.length} תמונות</span>
         <small>${escapeHtml(owner?.displayName || "לקוח")} · ${escapeHtml(site.websiteUrl || "לא הוגדר קישור")}</small>
+        ${primaryImage ? imageQualityChips(primaryImage, primarySlot) : ""}
       </div>
       <div class="review-state">
         ${statusPill(site.status, "he")}
@@ -642,6 +645,7 @@ function assetRailItem(site, slot) {
       <span class="asset-queue-copy">
         <strong>${escapeHtml(slotDisplayLabel(slot))}</strong>
         <small>${escapeHtml(sourceLabel)} · ${escapeHtml(slotRatioLabel(slot.ratio))}</small>
+        ${primary ? imageQualityChips(primary, slot) : `<span class="image-meta-chips"><small><i data-lucide="scan"></i>מומלץ ${escapeHtml(recommendedSizeText(slot))}</small></span>`}
       </span>
       <i data-lucide="${primary ? "replace" : "plus"}"></i>
     </button>
@@ -669,6 +673,7 @@ function slotCard(site, slot) {
         <span>
           <strong>${escapeHtml(slotDisplayLabel(slot))}</strong>
           <small>${slot.required ? "חובה" : "לא חובה"} · ${escapeHtml(slotRatioLabel(slot.ratio))}</small>
+          ${imageQualityChips(primary, slot)}
           <em class="slot-state">${primary ? "תמונה קיימת - אפשר להחליף או להסיר" : "אין תמונה - אפשר להוסיף"}</em>
         </span>
         <button class="ghost-button small" type="button" data-image-action-slot="${slot.id}" ${can("canUpload") ? "" : "disabled"}>
@@ -1294,6 +1299,7 @@ async function onUploadImage(event) {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
   const selectedSlot = form.get("slotId") || "gallery";
+  await appendImageMetadata(form, form.get("image"));
   const response = await api(`/api/sites/${state.clientSite.id}/images`, { method: "POST", form });
   if (response?.error) return toast(formatApiError(response.error), "error");
   state.clientSite = response.site;
@@ -1315,6 +1321,7 @@ async function uploadImageToSlot(slotId, file, name = "") {
   form.set("slotId", slotId);
   form.set("image", file, name || file.name || `${slotId}.jpg`);
   if (name) form.set("name", name);
+  await appendImageMetadata(form, file);
   const response = await api(`/api/sites/${state.clientSite.id}/images`, { method: "POST", form });
   if (response?.error) {
     toast(formatApiError(response.error), "error");
@@ -1393,6 +1400,7 @@ function showImageActionModal(slotId) {
         <p class="eyebrow">אזור תמונה</p>
         <h2>${escapeHtml(slotDisplayLabel(slot))}</h2>
         <p data-action-message>${image ? escapeHtml(image.name) : "אין עדיין תמונה באזור הזה."}</p>
+        ${image ? imageQualityChips(image, slot) : `<span class="image-meta-chips"><small><i data-lucide="scan"></i>מומלץ ${escapeHtml(recommendedSizeText(slot))}</small></span>`}
         ${renderBackupStatus(image)}
       </div>
       <div class="quality-panel" data-quality-panel hidden></div>
@@ -1620,12 +1628,47 @@ function readImageMetadata(src) {
   });
 }
 
+async function appendImageMetadata(form, file) {
+  if (!(file instanceof Blob) || form.has("width") || form.has("height")) return;
+  const src = URL.createObjectURL(file);
+  try {
+    const metadata = await readImageMetadata(src);
+    form.set("width", String(metadata.width));
+    form.set("height", String(metadata.height));
+  } catch (error) {
+    // Metadata is helpful but should not block an upload.
+  } finally {
+    URL.revokeObjectURL(src);
+  }
+}
+
 function recommendedImageSize(slot) {
   const aspect = ratioToAspect(slot.ratio);
   if (slot.ratio === "free") return { width: 1200, height: 800, free: true };
   if (Math.abs(aspect - 1) < 0.05) return { width: 900, height: 900 };
   const width = aspect > 1 ? 1400 : 900;
   return { width, height: Math.round(width / aspect) };
+}
+
+function recommendedSizeText(slot) {
+  const recommended = recommendedImageSize(slot || {});
+  return recommended.free ? `${recommended.width}+` : `${recommended.width}×${recommended.height}+`;
+}
+
+function imageDimensionText(image) {
+  const width = Number(image?.width || 0);
+  const height = Number(image?.height || 0);
+  return width > 0 && height > 0 ? `${width}×${height}` : "";
+}
+
+function imageQualityChips(image, slot) {
+  const dimension = imageDimensionText(image);
+  return `
+    <span class="image-meta-chips">
+      ${dimension ? `<small><i data-lucide="ruler"></i>${escapeHtml(dimension)}</small>` : ""}
+      <small><i data-lucide="scan"></i>מומלץ ${escapeHtml(recommendedSizeText(slot))}</small>
+    </span>
+  `;
 }
 
 function renderQualityReport(slot, file, metadata) {

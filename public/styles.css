@@ -2034,6 +2034,39 @@ button.review-thumb:hover {
   font-size: 0.78rem;
 }
 
+.image-meta-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.image-meta-chips small {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px 7px;
+  color: var(--blue);
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+  background: rgba(37, 93, 115, 0.08);
+  border: 1px solid rgba(37, 93, 115, 0.13);
+}
+
+.image-meta-chips i {
+  width: 13px;
+  height: 13px;
+}
+
+.client-control-panel .image-meta-chips small {
+  color: #fffaf1;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
 .client-control-panel .status-timeline span {
   color: rgba(255, 250, 241, 0.66);
   background: rgba(255, 255, 255, 0.07);
