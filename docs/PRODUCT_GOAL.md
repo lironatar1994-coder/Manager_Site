@@ -1,0 +1,65 @@
+# Product Goal
+
+Manager Site is a private control system for managing client website assets.
+
+The business need is simple: a production server hosts or manages many different client websites. Each client should be able to log in to a clean, professional workspace and update the images and link for their own website without seeing other clients or needing admin access.
+
+## Primary Users
+
+### Admin
+
+The admin is responsible for:
+
+- creating client users
+- giving each client credentials
+- assigning each client to a website
+- controlling permissions
+- previewing what the client sees
+- reviewing client updates
+- marking a site as published or needing attention
+
+### Client
+
+The client is responsible for:
+
+- logging in with credentials from the admin
+- seeing only their own website workspace
+- changing the website link if permitted
+- uploading, replacing, or removing images if permitted
+- sending the website for review
+
+## Core Product Rules
+
+- No public registration.
+- Admin creates every user.
+- Every client account maps to one specific website workspace.
+- Client users must not access other clients' routes or assets.
+- Image areas are structured, not generic file dumping.
+- Client-facing UI should feel premium, minimal, fast, and simple.
+- Login and client-facing screens are Hebrew and RTL.
+- Backend routes remain stable English routes, especially `/client/:username`.
+
+## Current Client Image Slots
+
+- Hero image
+- Logo
+- About section
+- Service image
+- Gallery
+
+The Hebrew UI maps these to client-friendly Hebrew labels.
+
+## Current Site Status Flow
+
+- Draft
+- Waiting review
+- Published
+- Needs attention
+
+The client UI shows these statuses in Hebrew.
+
+## Current Production URL
+
+`https://vee-app.co.il/Manager_Site/login`
+
+Use this as the canonical public URL unless the user explicitly changes the deployment target.

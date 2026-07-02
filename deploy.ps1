@@ -57,7 +57,7 @@ if ($status -or -not $hasCommit) {
     }
 
     Write-Host "Staging and committing changes..." -ForegroundColor Gray
-    git add server.js package.json package-lock.json public scripts README.md deploy.ps1 deploy_linux.sh .gitignore
+    git add server.js package.json package-lock.json public scripts README.md AGENTS.md docs deploy.ps1 deploy_linux.sh .gitignore
     git commit -m "$Message"
 }
 else {

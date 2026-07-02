@@ -2,6 +2,17 @@
 
 Protected website manager for admin-created client accounts. There is no public registration.
 
+## Agent Documentation
+
+Future agents should start with:
+
+- [AGENTS.md](AGENTS.md) - read-first handoff guide.
+- [docs/PRODUCT_GOAL.md](docs/PRODUCT_GOAL.md) - product purpose and user roles.
+- [docs/TECHNICAL_SUMMARY.md](docs/TECHNICAL_SUMMARY.md) - architecture, routing, APIs, and data model.
+- [docs/UI_UX_GUIDE.md](docs/UI_UX_GUIDE.md) - Hebrew/RTL, mobile, and visual rules.
+- [docs/DEPLOYMENT_AND_OPERATIONS.md](docs/DEPLOYMENT_AND_OPERATIONS.md) - production deploy and verification.
+- [docs/FUTURE_WORK.md](docs/FUTURE_WORK.md) - next improvements and things not to do without approval.
+
 ## What Is Built
 
 - `/login` - secured login screen.
