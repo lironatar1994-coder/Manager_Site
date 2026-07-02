@@ -85,6 +85,35 @@ h3 {
   padding: 24px;
 }
 
+.login-rtl .login-shell,
+.login-rtl .login-panel,
+.login-rtl .login-copy,
+.login-rtl .login-form,
+.login-rtl .login-art {
+  direction: rtl;
+  text-align: right;
+}
+
+.login-rtl .brand-row {
+  direction: rtl;
+}
+
+.login-rtl .login-form input,
+.login-rtl .client-card strong {
+  direction: ltr;
+  text-align: left;
+}
+
+.login-rtl .client-card {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.login-rtl .admin-chip {
+  right: auto;
+  left: 26px;
+}
+
 .login-panel,
 .login-art,
 .admin-panel,

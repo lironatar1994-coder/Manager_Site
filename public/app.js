@@ -82,39 +82,40 @@ async function route() {
 }
 
 function renderLogin(error = "") {
-  app.className = "login-view";
+  setDocumentLocale("he", "rtl");
+  app.className = "login-view login-rtl";
   app.innerHTML = `
-    <main class="login-shell">
+    <main class="login-shell" dir="rtl" lang="he">
       <section class="login-panel">
         <div class="brand-row">
           <span class="mark">MS</span>
           <span>
-            <strong>Manager Site</strong>
-            <small>Private website workspace</small>
+            <strong>ניהול אתרים</strong>
+            <small>מערכת ניהול אתרים פרטית</small>
           </span>
         </div>
         <div class="login-copy">
-          <p class="eyebrow">Secured access</p>
-          <h1>One polished route for every client website.</h1>
-          <p>Admin-created users enter a focused workspace for their own website images, review status, and live link.</p>
+          <p class="eyebrow">כניסה מאובטחת</p>
+          <h1>מרכז שקט לניהול תמונות האתר.</h1>
+          <p>הלקוחות נכנסים לאזור האישי שהוגדר להם, מעדכנים תמונות, בודקים סטטוס ומנהלים את הקישור לאתר.</p>
         </div>
         <form class="login-form" id="loginForm">
-          <label>Username<input name="username" autocomplete="username" placeholder="miryam_zelig" required /></label>
-          <label>Password<input name="password" type="password" autocomplete="current-password" required /></label>
+          <label>שם משתמש<input name="username" autocomplete="username" placeholder="miryam_zelig" dir="ltr" required /></label>
+          <label>סיסמה<input name="password" type="password" autocomplete="current-password" dir="ltr" required /></label>
           ${error ? `<div class="form-error">${escapeHtml(error)}</div>` : ""}
-          <button class="primary-button" type="submit"><i data-lucide="log-in"></i>Sign in</button>
+          <button class="primary-button" type="submit"><i data-lucide="log-in"></i>כניסה למערכת</button>
         </form>
       </section>
-      <aside class="login-art" aria-label="Route preview">
+      <aside class="login-art" aria-label="תצוגת אזור לקוח">
         <div class="art-window">
           <div class="window-bar"><span></span><span></span><span></span></div>
           <div class="client-card lifted">
-            <small>Client route</small>
-            <strong>/client/miryam_zelig</strong>
-            <p>Structured image slots, website preview, and review status.</p>
+            <small>אזור לקוח</small>
+            <strong dir="ltr">/client/miryam_zelig</strong>
+            <p>אזורי תמונה מסודרים, תצוגת אתר וסטטוס בדיקה במקום אחד.</p>
           </div>
           <div class="image-rack"><span></span><span></span><span></span></div>
-          <div class="admin-chip">Admin controls users, routes, and permissions</div>
+          <div class="admin-chip">המנהל שולט במשתמשים, הרשאות וגישה</div>
         </div>
       </aside>
     </main>
@@ -124,6 +125,7 @@ function renderLogin(error = "") {
 }
 
 function renderAdmin() {
+  setDocumentLocale("en", "ltr");
   app.className = "app-view admin-mode";
   const clientUsers = state.users.filter((user) => user.role === "client");
   const activeUsers = clientUsers.filter((user) => user.active).length;
@@ -198,6 +200,7 @@ function renderAdmin() {
 }
 
 function renderClient() {
+  setDocumentLocale("he", "rtl");
   const site = state.clientSite;
   if (!site) return renderForbidden();
   const slots = site.slots?.length ? site.slots : DEFAULT_SLOTS;
@@ -671,6 +674,11 @@ function interceptInternalLinks() {
 
 function can(permission) {
   return state.me?.role === "admin" || state.me?.permissions?.[permission];
+}
+
+function setDocumentLocale(lang, dir) {
+  document.documentElement.lang = lang;
+  document.documentElement.dir = dir;
 }
 
 function slotLabel(site, slotId) {
