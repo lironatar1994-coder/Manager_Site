@@ -43,6 +43,18 @@ There is no public registration.
 - `clients/<username>/AGENTS.md` - human notes for a specific client website.
 - `clients/<username>/client.config.json` - machine-readable allowlist for real production image paths.
 
+## New Client Setup
+
+When the user creates a new client and gives only a username plus a live website URL, read this first:
+
+- `docs/NEW_CLIENT_AGENT_WORKFLOW.md`
+
+If the user wants a short reusable instruction to send to another AI agent, use:
+
+- `docs/NEW_CLIENT_AGENT_PROMPT.md`
+
+Do not ask the user to repeat the whole product context. The workflow file explains how to inspect the live website, find production image files, create the client agent file, create the image allowlist, sync production config, and verify through the Manager Site API.
+
 ## Safe Verification
 
 Run this after JS or server changes:
@@ -93,4 +105,6 @@ curl.exe -I https://vee-app.co.il/Manager_Site/login
 - `docs/TECHNICAL_SUMMARY.md`
 - `docs/UI_UX_GUIDE.md`
 - `docs/DEPLOYMENT_AND_OPERATIONS.md`
+- `docs/NEW_CLIENT_AGENT_WORKFLOW.md`
+- `docs/NEW_CLIENT_AGENT_PROMPT.md`
 - `docs/FUTURE_WORK.md`

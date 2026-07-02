@@ -41,6 +41,20 @@
       "required": false,
       "currentPath": "/root/client-sites/replace_username/public/images/gallery.jpg",
       "publicPath": "/images/gallery.jpg"
+    },
+    {
+      "id": "before_after_before",
+      "labelHe": "לפני - לפני ואחרי",
+      "required": false,
+      "currentPath": "/root/client-sites/replace_username/public/images/before.jpg",
+      "publicPath": "/images/before.jpg"
+    },
+    {
+      "id": "before_after_after",
+      "labelHe": "אחרי - לפני ואחרי",
+      "required": false,
+      "currentPath": "/root/client-sites/replace_username/public/images/after.jpg",
+      "publicPath": "/images/after.jpg"
     }
   ]
 }
