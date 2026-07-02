@@ -1079,6 +1079,7 @@ function showImageActionModal(slotId) {
         <p class="eyebrow">אזור תמונה</p>
         <h2>${escapeHtml(slotDisplayLabel(slot))}</h2>
         <p data-action-message>${image ? escapeHtml(image.name) : "אין עדיין תמונה באזור הזה."}</p>
+        ${renderBackupStatus(image)}
       </div>
       <div class="quality-panel" data-quality-panel hidden></div>
       <input class="modal-file-input" type="file" accept="image/*" data-modal-file ${can("canUpload") ? "" : "disabled"} />
@@ -1205,6 +1206,27 @@ function showImageActionModal(slotId) {
   });
 }
 
+function renderBackupStatus(image) {
+  if (!image || image.source !== "production") return "";
+  const backupCount = Number(image.backupCount || 0);
+  if (backupCount > 0) {
+    const latest = formatHebrewDateTime(image.latestBackupAt);
+    return `
+      <div class="backup-status ready">
+        <i data-lucide="rotate-ccw"></i>
+        <span>${latest ? `גיבוי אחרון: ${escapeHtml(latest)}` : "יש גיבוי זמין לשחזור"}</span>
+        <strong>${backupCount} ${backupCount === 1 ? "גיבוי" : "גיבויים"}</strong>
+      </div>
+    `;
+  }
+  return `
+    <div class="backup-status muted">
+      <i data-lucide="shield-check"></i>
+      <span>שחזור יהיה זמין אחרי ההחלפה הראשונה של התמונה.</span>
+    </div>
+  `;
+}
+
 function showCropToolModal(slot, image, options = {}) {
   const modal = document.createElement("div");
   const aspect = ratioToAspect(slot.ratio);
@@ -1318,6 +1340,19 @@ function renderQualityReport(slot, file, metadata) {
 function formatFileSize(bytes = 0) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))}KB`;
   return `${(bytes / (1024 * 1024)).toFixed(bytes > 10 * 1024 * 1024 ? 0 : 1)}MB`;
+}
+
+function formatHebrewDateTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("he-IL", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function cropFileName(originalName, slotId) {
