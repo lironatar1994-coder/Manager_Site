@@ -42,7 +42,12 @@ const state = {
 const app = document.querySelector("#app");
 const basePath = getBasePath();
 
-init();
+init().catch((error) => {
+  console.error("App failed to start", error);
+  state.me = null;
+  renderLogin("Unable to start the app. Please try again.");
+});
+watchIcons();
 
 async function init() {
   const me = await api("/api/auth/me", { allow401: true });
@@ -1055,6 +1060,20 @@ function toast(message) {
 
 function icons() {
   if (window.lucide) window.lucide.createIcons();
+}
+
+function watchIcons() {
+  window.addEventListener("load", icons);
+  let attempts = 0;
+  const timer = window.setInterval(() => {
+    attempts += 1;
+    if (window.lucide) {
+      icons();
+      window.clearInterval(timer);
+    } else if (attempts >= 40) {
+      window.clearInterval(timer);
+    }
+  }, 250);
 }
 
 function normalizeUsername(value) {
