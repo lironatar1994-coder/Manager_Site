@@ -24,8 +24,7 @@ There is no public registration.
 
 - Keep authentication protected. Do not add public registration unless the user explicitly changes the product direction.
 - Keep backend client route as `/client/:username`. The user clarified Hebrew/RTL was for UI text, not backend routing.
-- Login and client screens are Hebrew and RTL.
-- Admin screen is currently English and LTR.
+- Login, admin, and client screens are Hebrew and RTL.
 - Usernames, URLs, and route examples should remain LTR even inside Hebrew UI.
 - Client users must only see their own assigned website.
 - Client workspace starts with a clean Hebrew first section and a live desktop/mobile iframe preview of the client website when the public URL allows framing. Do not expose internal review/status/approval wording in the client first section.

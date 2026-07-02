@@ -506,6 +506,36 @@ select:disabled {
   min-height: 100vh;
 }
 
+.admin-rtl.app-view {
+  grid-template-columns: minmax(0, 1fr) 220px;
+}
+
+.admin-rtl .side-rail {
+  grid-column: 2;
+  grid-row: 1;
+  direction: rtl;
+}
+
+.admin-rtl .workspace {
+  grid-column: 1;
+  grid-row: 1;
+  direction: rtl;
+  text-align: right;
+}
+
+.admin-rtl input[dir="ltr"],
+.admin-rtl strong[dir="ltr"],
+.admin-rtl bdi {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: isolate;
+}
+
+.admin-rtl .metric-strip span,
+.admin-rtl .credential-line span {
+  text-transform: none;
+}
+
 .side-rail {
   position: sticky;
   top: 0;
@@ -700,7 +730,7 @@ select:disabled {
 
 .credential-line {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) 34px;
+  grid-template-columns: minmax(96px, 0.34fr) minmax(0, 1fr) 34px;
   gap: 8px;
   align-items: center;
   min-height: 36px;
@@ -724,7 +754,7 @@ select:disabled {
 }
 
 .credential-line.locked {
-  grid-template-columns: 72px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(96px, 0.34fr) minmax(0, 1fr) auto;
 }
 
 .copy-action {
@@ -2392,6 +2422,23 @@ svg.lucide {
 @media (max-width: 760px) {
   .app-view {
     grid-template-columns: 1fr;
+  }
+
+  .admin-rtl.app-view {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-rtl .side-rail,
+  .admin-rtl .workspace {
+    grid-column: 1;
+  }
+
+  .admin-rtl .side-rail {
+    grid-row: 1;
+  }
+
+  .admin-rtl .workspace {
+    grid-row: 2;
   }
 
   .side-rail {

@@ -7,10 +7,10 @@ const DEFAULT_SLOTS = [
 ];
 
 const STATUS_META = {
-  draft: { label: "Draft", icon: "pencil-line" },
-  waiting_review: { label: "Waiting review", icon: "clock-3" },
-  published: { label: "Published", icon: "badge-check" },
-  needs_attention: { label: "Needs attention", icon: "triangle-alert" },
+  draft: { label: "טיוטה", icon: "pencil-line" },
+  waiting_review: { label: "ממתין לבדיקה", icon: "clock-3" },
+  published: { label: "פורסם", icon: "badge-check" },
+  needs_attention: { label: "דורש תיקון", icon: "triangle-alert" },
 };
 
 const HEBREW_STATUS_META = {
@@ -47,7 +47,7 @@ const basePath = getBasePath();
 init().catch((error) => {
   console.error("App failed to start", error);
   state.me = null;
-  renderLogin("Unable to start the app. Please try again.");
+  renderLogin("לא ניתן להפעיל את המערכת. נא לנסות שוב.");
 });
 watchIcons();
 
@@ -100,40 +100,40 @@ async function route() {
 }
 
 function renderAdminLogin(error = "") {
-  setDocumentLocale("en", "ltr");
-  app.className = "login-view admin-login-view";
+  setDocumentLocale("he", "rtl");
+  app.className = "login-view admin-login-view admin-rtl";
   app.innerHTML = `
-    <main class="login-shell admin-login-shell" lang="en">
+    <main class="login-shell admin-login-shell" dir="rtl" lang="he">
       <section class="login-panel admin-login-panel">
         <div class="brand-row">
           <span class="mark">MS</span>
           <span>
-            <strong>Manager Site</strong>
-            <small>Private admin access</small>
+            <strong>ניהול אתרים</strong>
+            <small>כניסת מנהל פרטית</small>
           </span>
         </div>
         <div class="login-copy">
-          <p class="eyebrow">Admin gate</p>
-          <h1>Control room access stays separate.</h1>
-          <p>This entrance is only for the operator account. Client credentials continue to use the regular Hebrew login page.</p>
+          <p class="eyebrow">כניסת מנהל</p>
+          <h1>אזור ניהול נפרד, נקי ומאובטח.</h1>
+          <p>הכניסה הזו מיועדת לחשבון המנהל בלבד. לקוחות ממשיכים להיכנס דרך מסך הכניסה הרגיל בעברית.</p>
         </div>
         <form class="login-form" id="loginForm" data-admin-login="true">
-          <label>Admin username<input name="username" autocomplete="username" placeholder="admin" dir="ltr" required /></label>
-          <label>Password<input name="password" type="password" autocomplete="current-password" dir="ltr" required /></label>
+          <label>שם משתמש מנהל<input name="username" autocomplete="username" placeholder="admin" dir="ltr" required /></label>
+          <label>סיסמה<input name="password" type="password" autocomplete="current-password" dir="ltr" required /></label>
           ${error ? `<div class="form-error">${escapeHtml(error)}</div>` : ""}
-          <button class="primary-button" type="submit"><i data-lucide="shield-check"></i>Enter admin panel</button>
+          <button class="primary-button" type="submit"><i data-lucide="shield-check"></i>כניסה ללוח הניהול</button>
         </form>
       </section>
-      <aside class="login-art admin-login-art" aria-label="Admin access overview">
+      <aside class="login-art admin-login-art" aria-label="סקירת גישת מנהל">
         <div class="art-window admin-window">
           <div class="window-bar"><span></span><span></span><span></span></div>
           <div class="admin-lockup">
             <i data-lucide="lock-keyhole"></i>
-            <strong>Admin only</strong>
-            <p>Users, routes, permissions, reset passwords, and production review stay behind this route.</p>
+            <strong>מנהל בלבד</strong>
+            <p>משתמשים, נתיבים, הרשאות, איפוס סיסמאות ובדיקת אתרים נשארים מאחורי הכניסה הזו.</p>
           </div>
           <div class="admin-signal-grid" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
-          <div class="admin-chip">Backend role checks still protect every admin API request.</div>
+          <div class="admin-chip">בדיקות הרשאה בשרת מגנות על כל פעולת ניהול.</div>
         </div>
       </aside>
     </main>
@@ -188,63 +188,63 @@ function renderLogin(error = "") {
 }
 
 function renderAdmin() {
-  setDocumentLocale("en", "ltr");
-  app.className = "app-view admin-mode";
+  setDocumentLocale("he", "rtl");
+  app.className = "app-view admin-mode admin-rtl";
   const clientUsers = state.users.filter((user) => user.role === "client");
   const activeUsers = clientUsers.filter((user) => user.active).length;
   const reviewSites = state.sites.filter((site) => site.status === "waiting_review").length;
   const totalImages = state.sites.reduce((sum, site) => sum + site.images.length, 0);
   app.innerHTML = `
     ${shell("admin")}
-    <main class="workspace admin-workspace">
+    <main class="workspace admin-workspace" dir="rtl" lang="he">
       <header class="page-head admin-head">
         <div>
-          <p class="eyebrow">Admin control room</p>
-          <h1>Routes, permissions, review queue.</h1>
+          <p class="eyebrow">לוח ניהול</p>
+          <h1>לקוחות, הרשאות, אתרים ותמונות במקום אחד.</h1>
         </div>
-        <button class="primary-button" id="createUserTop" type="button"><i data-lucide="user-plus"></i>Create user</button>
+        <button class="primary-button" id="createUserTop" type="button"><i data-lucide="user-plus"></i>יצירת משתמש</button>
       </header>
 
       <section class="metric-strip">
-        ${metric("Active clients", activeUsers, "can sign in")}
-        ${metric("In review", reviewSites, "need admin decision")}
-        ${metric("Managed sites", state.sites.length, "assigned routes")}
-        ${metric("Images", totalImages, "client assets")}
+        ${metric("לקוחות פעילים", activeUsers, "יכולים להתחבר")}
+        ${metric("בבדיקה", reviewSites, "ממתינים להחלטה")}
+        ${metric("אתרים מנוהלים", state.sites.length, "נתיבים משויכים")}
+        ${metric("תמונות", totalImages, "נכסי לקוחות")}
       </section>
 
       <section class="admin-grid upgraded">
         <article class="admin-panel create-panel">
           <div class="panel-title">
-            <h2>Create client</h2>
-            <span class="quiet">No public register</span>
+            <h2>יצירת לקוח</h2>
+            <span class="quiet">ללא הרשמה ציבורית</span>
           </div>
           ${createUserForm()}
         </article>
 
         <article class="admin-panel users-panel">
           <div class="panel-title">
-            <h2>Client routes</h2>
-            <span class="quiet">Preview what each client sees</span>
+            <h2>נתיבי לקוחות</h2>
+            <span class="quiet">תצוגה של מה שכל לקוח רואה</span>
           </div>
-          <div class="user-list route-list">${clientUsers.map(userCard).join("") || `<p class="empty">No clients yet.</p>`}</div>
+          <div class="user-list route-list">${clientUsers.map(userCard).join("") || `<p class="empty">עדיין אין לקוחות.</p>`}</div>
         </article>
 
         <article class="admin-panel review-panel">
           <div class="panel-title">
-            <h2>Review queue</h2>
-            <span class="quiet">${reviewSites} waiting</span>
+            <h2>תור בדיקה</h2>
+            <span class="quiet">${reviewSites} ממתינים</span>
           </div>
           <div class="review-list">
-            ${state.sites.map(reviewRow).join("") || `<p class="empty">No sites yet.</p>`}
+            ${state.sites.map(reviewRow).join("") || `<p class="empty">עדיין אין אתרים.</p>`}
           </div>
         </article>
 
         <article class="admin-panel audit-panel">
           <div class="panel-title">
-            <h2>Activity</h2>
-            <span class="quiet">Latest server events</span>
+            <h2>פעילות אחרונה</h2>
+            <span class="quiet">אירועים אחרונים מהשרת</span>
           </div>
-          <div class="audit-list">${state.audit.map(auditRow).join("") || `<p class="empty">No activity yet.</p>`}</div>
+          <div class="audit-list">${state.audit.map(auditRow).join("") || `<p class="empty">עדיין אין פעילות.</p>`}</div>
         </article>
       </section>
     </main>
@@ -426,11 +426,11 @@ function shell(active) {
       <nav>
         ${
           state.me?.role === "admin"
-            ? `<a class="${active === "admin" ? "active" : ""}" href="${href("/admin")}"><i data-lucide="shield"></i><span>Admin</span></a>`
+            ? `<a class="${active === "admin" ? "active" : ""}" href="${href("/admin")}"><i data-lucide="shield"></i><span>ניהול</span></a>`
             : `<a class="${active === "client" ? "active" : ""}" href="${href(`/client/${state.me.username}`)}"><i data-lucide="images"></i><span>האתר שלי</span></a>`
         }
       </nav>
-      <button class="logout-button" id="logoutButton" type="button"><i data-lucide="log-out"></i><span>${state.me?.role === "admin" ? "Logout" : "יציאה"}</span></button>
+      <button class="logout-button" id="logoutButton" type="button"><i data-lucide="log-out"></i><span>יציאה</span></button>
     </aside>
   `;
 }
@@ -439,22 +439,22 @@ function createUserForm() {
   return `
     <form id="createUserForm" class="create-form">
       <div class="two-col">
-        <label>Display name<input name="displayName" placeholder="Miryam Zelig" required /></label>
-        <label>Username<input id="newUsername" name="username" placeholder="miryam_zelig" required /></label>
+        <label>שם תצוגה<input name="displayName" placeholder="Miryam Zelig" required /></label>
+        <label>שם משתמש<input id="newUsername" name="username" placeholder="miryam_zelig" dir="ltr" required /></label>
       </div>
-      <label>Password<input name="password" type="password" minlength="10" placeholder="Temporary password" required /></label>
+      <label>סיסמה זמנית<input name="password" type="password" minlength="10" placeholder="סיסמה זמנית" dir="ltr" required /></label>
       <div class="two-col">
-        <label>Site name<input name="siteName" placeholder="Miryam Zelig Website" required /></label>
-        <label>Website link<input name="websiteUrl" placeholder="https://example.com" required /></label>
+        <label>שם האתר<input name="siteName" placeholder="Miryam Zelig Website" required /></label>
+        <label>קישור לאתר<input name="websiteUrl" placeholder="https://example.com" dir="ltr" required /></label>
       </div>
-      <div class="route-preview"><i data-lucide="route"></i><span>Route becomes <strong>/client/<em id="routePreview">username</em></strong></span></div>
+      <div class="route-preview"><i data-lucide="route"></i><span>נתיב הלקוח יהיה <strong dir="ltr">/client/<em id="routePreview">username</em></strong></span></div>
       <div class="permission-row">
-        ${permissionBox("canUpload", "Upload", true)}
-        ${permissionBox("canDelete", "Remove", true)}
-        ${permissionBox("canEditLinks", "Edit link", true)}
-        ${permissionBox("canPublish", "Publish", false)}
+        ${permissionBox("canUpload", "העלאה", true)}
+        ${permissionBox("canDelete", "מחיקה", true)}
+        ${permissionBox("canEditLinks", "עריכת קישור", true)}
+        ${permissionBox("canPublish", "פרסום", false)}
       </div>
-      <button class="primary-button" type="submit"><i data-lucide="user-plus"></i>Create route</button>
+      <button class="primary-button" type="submit"><i data-lucide="user-plus"></i>יצירת נתיב</button>
     </form>
   `;
 }
@@ -470,25 +470,25 @@ function userCard(user) {
       <span class="avatar">${escapeHtml(user.displayName.slice(0, 2).toUpperCase())}</span>
       <div>
         <h3>${escapeHtml(user.displayName)}</h3>
-        <p>${escapeHtml(site.name || "No site")} -> ${escapeHtml(`/client/${user.username}`)}</p>
+        <p><span>${escapeHtml(site.name || "לא הוגדר אתר")}</span> <strong dir="ltr">${escapeHtml(`/client/${user.username}`)}</strong></p>
         <div class="credential-grid">
-          ${credentialLine("Username", user.username)}
-          ${credentialLine("User ID", user.id)}
-          ${credentialLine("Site ID", user.siteId || "")}
+          ${credentialLine("שם משתמש", user.username)}
+          ${credentialLine("מזהה משתמש", user.id)}
+          ${credentialLine("מזהה אתר", user.siteId || "")}
           <div class="credential-line locked">
-            <span>Password</span>
-            <strong>Stored as secure hash</strong>
-            <button class="ghost-button small" type="button" data-reset-password="${user.id}"><i data-lucide="key-round"></i>Reset</button>
+            <span>סיסמה</span>
+            <strong>שמורה כהצפנה מאובטחת</strong>
+            <button class="ghost-button small" type="button" data-reset-password="${user.id}"><i data-lucide="key-round"></i>איפוס</button>
           </div>
         </div>
-        <a href="${href(`/client/${user.username}`)}"><i data-lucide="eye"></i>Preview client workspace</a>
+        <a href="${href(`/client/${user.username}`)}"><i data-lucide="eye"></i>תצוגת סביבת הלקוח</a>
         <div class="permission-chips">${permissionChips(user.permissions)}</div>
       </div>
       <div class="user-actions">
-        ${statusPill(site.status || "draft")}
-        <span class="status ${user.active ? "live" : "paused"}">${user.active ? "Active" : "Paused"}</span>
+        ${statusPill(site.status || "draft", "he")}
+        <span class="status ${user.active ? "live" : "paused"}">${user.active ? "פעיל" : "מושהה"}</span>
         ${shareCluster(user)}
-        <button class="ghost-button small" type="button" data-toggle-user="${user.id}" data-active="${user.active}">${user.active ? "Pause" : "Activate"}</button>
+        <button class="ghost-button small" type="button" data-toggle-user="${user.id}" data-active="${user.active}">${user.active ? "השהיה" : "הפעלה"}</button>
       </div>
     </div>
   `;
@@ -497,15 +497,15 @@ function userCard(user) {
 function shareCluster(user) {
   return `
     <div class="share-cluster" data-share-menu="${user.id}">
-      <div class="share-actions" aria-label="Share credentials">
-        <button class="share-channel whatsapp" type="button" data-share-user="${user.id}" data-share-channel="whatsapp" aria-label="Share by WhatsApp" title="WhatsApp">
+      <div class="share-actions" aria-label="שיתוף פרטי התחברות">
+        <button class="share-channel whatsapp" type="button" data-share-user="${user.id}" data-share-channel="whatsapp" aria-label="שיתוף ב-WhatsApp" title="WhatsApp">
           <i data-lucide="message-circle"></i>
         </button>
-        <button class="share-channel gmail" type="button" data-share-user="${user.id}" data-share-channel="gmail" aria-label="Share by Gmail" title="Gmail">
+        <button class="share-channel gmail" type="button" data-share-user="${user.id}" data-share-channel="gmail" aria-label="שיתוף ב-Gmail" title="Gmail">
           <i data-lucide="mail"></i>
         </button>
       </div>
-      <button class="share-trigger" type="button" data-share-toggle="${user.id}" aria-label="Open share actions" title="Share credentials">
+      <button class="share-trigger" type="button" data-share-toggle="${user.id}" aria-label="פתיחת פעולות שיתוף" title="שיתוף פרטי התחברות">
         <i data-lucide="share-2"></i>
       </button>
     </div>
@@ -519,7 +519,7 @@ function credentialLine(label, value) {
       <strong dir="ltr">${escapeHtml(value || "—")}</strong>
       ${
         value
-          ? `<button class="icon-action copy-action" type="button" data-copy-value="${escapeAttr(value)}" data-copy-label="${escapeAttr(label)}" aria-label="Copy ${escapeAttr(label)}"><i data-lucide="copy"></i></button>`
+          ? `<button class="icon-action copy-action" type="button" data-copy-value="${escapeAttr(value)}" data-copy-label="${escapeAttr(label)}" aria-label="העתקת ${escapeAttr(label)}"><i data-lucide="copy"></i></button>`
           : ""
       }
     </div>
@@ -531,12 +531,12 @@ function reviewRow(site) {
     <div class="review-row">
       <div>
         <strong>${escapeHtml(site.name)}</strong>
-        <span>${escapeHtml(site.ownerUsername)} · ${site.images.length} images</span>
+        <span><bdi>${escapeHtml(site.ownerUsername)}</bdi> · ${site.images.length} תמונות</span>
       </div>
-      ${statusPill(site.status)}
+      ${statusPill(site.status, "he")}
       <div class="review-actions">
-        <button class="ghost-button small" type="button" data-admin-status="published" data-site-id="${site.id}">Publish</button>
-        <button class="ghost-button small" type="button" data-admin-status="needs_attention" data-site-id="${site.id}">Flag</button>
+        <button class="ghost-button small" type="button" data-admin-status="published" data-site-id="${site.id}">פרסום</button>
+        <button class="ghost-button small" type="button" data-admin-status="needs_attention" data-site-id="${site.id}">דורש תיקון</button>
       </div>
     </div>
   `;
@@ -632,10 +632,10 @@ function statusPill(status = "draft", locale = "en") {
 
 function permissionChips(permissions = {}) {
   return [
-    ["canUpload", "Upload"],
-    ["canDelete", "Remove"],
-    ["canEditLinks", "Edit link"],
-    ["canPublish", "Publish"],
+    ["canUpload", "העלאה"],
+    ["canDelete", "מחיקה"],
+    ["canEditLinks", "עריכת קישור"],
+    ["canPublish", "פרסום"],
   ]
     .filter(([key]) => permissions[key])
     .map(([, label]) => `<span>${label}</span>`)
@@ -855,7 +855,7 @@ async function reorderDraggedImage({ imageId, slotId, source, targetSlotId, targ
   const response = productionMove
     ? await api(`/api/sites/${state.clientSite.id}/assets/reorder`, { method: "POST", body: { sourceSlotId: slotId, targetSlotId } })
     : await api(`/api/sites/${state.clientSite.id}/images/${imageId}/placement`, { method: "PATCH", body: { targetSlotId, targetImageId } });
-  if (response?.error) return toast(response.error, "error");
+  if (response?.error) return toast(formatApiError(response.error), "error");
   state.clientSite = response.site || state.clientSite;
   if (response.assets) state.clientAssets = { ...(state.clientAssets || {}), assets: response.assets };
   else await loadClientAssets();
@@ -878,11 +878,54 @@ function metric(label, value, note) {
 function auditRow(row) {
   return `
     <div class="audit-row">
-      <span>${escapeHtml(row.action)}</span>
+      <span>${escapeHtml(formatAuditAction(row.action))}</span>
       <strong>${escapeHtml(row.actor)}</strong>
-      <small>${new Date(row.at).toLocaleString()}</small>
+      <small>${new Date(row.at).toLocaleString("he-IL")}</small>
     </div>
   `;
+}
+
+function formatAuditAction(action) {
+  const labels = {
+    "user.created": "משתמש נוצר",
+    "user.updated": "משתמש עודכן",
+    "user.password_reset": "סיסמה אופסה",
+    "site.updated": "קישור אתר עודכן",
+    "site.status": "סטטוס אתר עודכן",
+    "image.uploaded": "תמונה הועלתה",
+    "image.deleted": "תמונה נמחקה",
+    "image.reordered": "סדר תמונות עודכן",
+    "asset.deleted": "תמונת אתר נמחקה",
+    "asset.restored": "תמונת אתר שוחזרה",
+    "asset.reordered": "תמונות אתר הוחלפו",
+  };
+  return labels[action] || action;
+}
+
+function formatApiError(error) {
+  const labels = {
+    "Username and password are required": "חובה להזין שם משתמש וסיסמה",
+    "Invalid credentials": "שם המשתמש או הסיסמה אינם נכונים",
+    "Username, display name, password, site name, and website URL are required": "חובה למלא שם תצוגה, שם משתמש, סיסמה, שם אתר וקישור לאתר",
+    "Username already exists": "שם המשתמש כבר קיים",
+    "Client user not found": "הלקוח לא נמצא",
+    "Permission denied": "אין הרשאה לבצע את הפעולה",
+    "Login required": "נדרשת התחברות",
+    "Admin access required": "נדרשת הרשאת מנהל",
+    "Site not found": "האתר לא נמצא",
+    "Site access denied": "אין גישה לאתר הזה",
+    "Image file is required": "חובה לבחור קובץ תמונה",
+    "Image not found": "התמונה לא נמצאה",
+    "Asset slot not configured": "אזור התמונה לא מוגדר",
+    "Asset file not found": "קובץ התמונה לא נמצא",
+    "Invalid site status": "סטטוס האתר אינו תקין",
+    "Source and target image slots are required": "חובה לבחור תמונת מקור ותמונת יעד",
+    "Configured image slot not found": "אזור התמונה לא נמצא בהגדרות",
+    "Production images must be reordered by slot": "תמונות אתר חי אפשר לסדר רק לפי אזורי תמונה",
+    "Could not restore image backup": "לא ניתן לשחזר את גיבוי התמונה",
+    "Request failed": "הבקשה נכשלה",
+  };
+  return labels[error] || error || "הפעולה נכשלה";
 }
 
 async function onLogin(event) {
@@ -894,11 +937,11 @@ async function onLogin(event) {
     body: { username: form.get("username"), password: form.get("password") },
     allow401: true,
   });
-  if (response?.error) return isAdminLogin ? renderAdminLogin(response.error) : renderLogin(response.error);
+  if (response?.error) return isAdminLogin ? renderAdminLogin(formatApiError(response.error)) : renderLogin(formatApiError(response.error));
   if (isAdminLogin && response.user?.role !== "admin") {
     await api("/api/auth/logout", { method: "POST", allow401: true });
     state.me = null;
-    return renderAdminLogin("Admin credentials are required.");
+    return renderAdminLogin("נדרשת התחברות של מנהל.");
   }
   state.me = response.user;
   navigate(response.redirectTo, true);
@@ -922,15 +965,15 @@ async function onCreateUser(event) {
     },
   };
   const response = await api("/api/admin/users", { method: "POST", body });
-  if (response?.error) return toast(response.error, "error");
-  toast(`Created /client/${response.user.username}`, "success");
+  if (response?.error) return toast(formatApiError(response.error), "error");
+  toast(`נוצר נתיב /client/${response.user.username}`, "success");
   await loadAdmin();
   renderAdmin();
 }
 
 async function toggleUser(userId, active) {
   const response = await api(`/api/admin/users/${userId}`, { method: "PATCH", body: { active } });
-  if (response?.error) return toast(response.error, "error");
+  if (response?.error) return toast(formatApiError(response.error), "error");
   await loadAdmin();
   renderAdmin();
 }
@@ -939,12 +982,12 @@ async function resetUserPassword(userId) {
   const user = state.users.find((item) => item.id === userId);
   if (!user) return;
   confirmAction({
-    title: "Reset client password?",
-    body: `This will replace the current password for ${user.username}. The new temporary password will be shown once.`,
-    confirmText: "Reset password",
+    title: "לאפס את סיסמת הלקוח?",
+    body: `הפעולה תחליף את הסיסמה הנוכחית של ${user.username}. הסיסמה הזמנית החדשה תוצג פעם אחת בלבד.`,
+    confirmText: "איפוס סיסמה",
     onConfirm: async () => {
       const response = await api(`/api/admin/users/${userId}/reset-password`, { method: "POST" });
-      if (response?.error) return toast(response.error, "error");
+      if (response?.error) return toast(formatApiError(response.error), "error");
       showTemporaryPassword(user, response.temporaryPassword);
       await loadAdmin();
       renderAdmin();
@@ -970,7 +1013,7 @@ async function onUpdateSite(event) {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
   const response = await api(`/api/sites/${state.clientSite.id}`, { method: "PATCH", body: { websiteUrl: form.get("websiteUrl") } });
-  if (response?.error) return toast(response.error, "error");
+  if (response?.error) return toast(formatApiError(response.error), "error");
   state.clientSite = response.site;
   toast("קישור האתר נשמר", "success");
   renderClient();
@@ -981,7 +1024,7 @@ async function onUploadImage(event) {
   const form = new FormData(event.currentTarget);
   const selectedSlot = form.get("slotId") || "gallery";
   const response = await api(`/api/sites/${state.clientSite.id}/images`, { method: "POST", form });
-  if (response?.error) return toast(response.error, "error");
+  if (response?.error) return toast(formatApiError(response.error), "error");
   state.clientSite = response.site;
   await loadClientAssets();
   state.livePreviewVersion = Date.now();
@@ -1003,7 +1046,7 @@ async function uploadImageToSlot(slotId, file, name = "") {
   if (name) form.set("name", name);
   const response = await api(`/api/sites/${state.clientSite.id}/images`, { method: "POST", form });
   if (response?.error) {
-    toast(response.error, "error");
+    toast(formatApiError(response.error), "error");
     return false;
   }
   state.clientSite = response.site;
@@ -1023,7 +1066,7 @@ async function uploadImageToSlot(slotId, file, name = "") {
 
 async function deleteImage(imageId) {
   const response = await api(`/api/sites/${state.clientSite.id}/images/${imageId}`, { method: "DELETE" });
-  if (response?.error) return toast(response.error, "error");
+  if (response?.error) return toast(formatApiError(response.error), "error");
   state.clientSite = response.site;
   toast("התמונה הוסרה", "success");
   renderClient();
@@ -1031,7 +1074,7 @@ async function deleteImage(imageId) {
 
 async function deleteAsset(slotId) {
   const response = await api(`/api/sites/${state.clientSite.id}/assets/${slotId}`, { method: "DELETE" });
-  if (response?.error) return toast(response.error, "error");
+  if (response?.error) return toast(formatApiError(response.error), "error");
   state.clientSite = response.site || state.clientSite;
   state.clientAssets = { ...(state.clientAssets || {}), assets: response.assets || [] };
   state.livePreviewVersion = Date.now();
@@ -1048,7 +1091,7 @@ async function deleteAsset(slotId) {
 
 async function restoreAsset(slotId) {
   const response = await api(`/api/sites/${state.clientSite.id}/assets/${slotId}/restore`, { method: "POST" });
-  if (response?.error) return toast(response.error, "error");
+  if (response?.error) return toast(formatApiError(response.error), "error");
   state.clientSite = response.site || state.clientSite;
   state.clientAssets = { ...(state.clientAssets || {}), assets: response.assets || [] };
   state.livePreviewVersion = Date.now();
@@ -1071,7 +1114,7 @@ function showImageActionModal(slotId) {
   modal.className = "modal-backdrop";
   modal.innerHTML = `
     <div class="image-action-modal" role="dialog" aria-modal="true" aria-label="${escapeAttr(slotDisplayLabel(slot))}">
-      <button class="icon-action modal-close" type="button" aria-label="Close"><i data-lucide="x"></i></button>
+      <button class="icon-action modal-close" type="button" aria-label="סגירה"><i data-lucide="x"></i></button>
       <button class="action-preview ${image ? "filled" : "empty"}" type="button" data-preview-zoom ${image ? "" : "disabled"}>
         ${image ? `<img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" data-action-preview-media />` : `<i data-lucide="image-plus"></i>`}
       </button>
@@ -1234,7 +1277,7 @@ function showCropToolModal(slot, image, options = {}) {
   modal.className = "modal-backdrop";
   modal.innerHTML = `
     <div class="crop-modal" role="dialog" aria-modal="true" aria-label="כלי חיתוך">
-      <button class="icon-action modal-close" type="button" aria-label="Close"><i data-lucide="x"></i></button>
+      <button class="icon-action modal-close" type="button" aria-label="סגירה"><i data-lucide="x"></i></button>
       <div class="panel-title">
         <h2>חיתוך תמונה</h2>
         <span class="quiet">${escapeHtml(slotDisplayLabel(slot))}</span>
@@ -1401,9 +1444,9 @@ function cropImageToBlob(imageNode, options) {
 
 async function updateSiteStatus(siteId, status) {
   const response = await api(`/api/sites/${siteId}/status`, { method: "POST", body: { status } });
-  if (response?.error) return toast(response.error, "error");
+  if (response?.error) return toast(formatApiError(response.error), "error");
   if (state.clientSite?.id === siteId) state.clientSite = response.site;
-  toast(isClientRoute() ? HEBREW_STATUS_META[status]?.label || "הסטטוס עודכן" : STATUS_META[status]?.label || "Status updated", "success");
+  toast(HEBREW_STATUS_META[status]?.label || "הסטטוס עודכן", "success");
   if (stripBase(location.pathname) === "/admin") {
     await loadAdmin();
     renderAdmin();
@@ -1458,8 +1501,8 @@ async function api(path, options = {}) {
     state.me = null;
     const nextLogin = isAdminAreaRoute() ? "/admin-login" : "/login";
     navigate(nextLogin, true);
-    if (nextLogin === "/admin-login") renderAdminLogin("Please sign in again.");
-    else renderLogin("Please sign in again.");
+    if (nextLogin === "/admin-login") renderAdminLogin("נא להתחבר מחדש.");
+    else renderLogin("נא להתחבר מחדש.");
     return {};
   }
   const contentType = response.headers.get("content-type") || "";
@@ -1484,11 +1527,11 @@ function confirmAction({ title, body, confirmText, onConfirm }) {
   modal.className = "modal-backdrop";
   modal.innerHTML = `
     <div class="confirm-modal" role="dialog" aria-modal="true" aria-label="${escapeAttr(title)}">
-      <button class="icon-action modal-close" type="button" aria-label="Close"><i data-lucide="x"></i></button>
+      <button class="icon-action modal-close" type="button" aria-label="סגירה"><i data-lucide="x"></i></button>
       <h2>${escapeHtml(title)}</h2>
       <p>${escapeHtml(body)}</p>
       <div class="modal-actions">
-        <button class="ghost-button" type="button" data-cancel>Cancel</button>
+        <button class="ghost-button" type="button" data-cancel>ביטול</button>
         <button class="danger-button" type="button" data-confirm>${escapeHtml(confirmText)}</button>
       </div>
     </div>
@@ -1507,16 +1550,16 @@ function showTemporaryPassword(user, temporaryPassword) {
   const modal = document.createElement("div");
   modal.className = "modal-backdrop";
   modal.innerHTML = `
-    <div class="confirm-modal credential-modal" role="dialog" aria-modal="true" aria-label="Temporary password">
-      <button class="icon-action modal-close" type="button" aria-label="Close"><i data-lucide="x"></i></button>
-      <h2>Temporary password</h2>
-      <p>${escapeHtml(user.username)} can sign in with this password now. It will not be shown again.</p>
+    <div class="confirm-modal credential-modal" role="dialog" aria-modal="true" aria-label="סיסמה זמנית" dir="rtl" lang="he">
+      <button class="icon-action modal-close" type="button" aria-label="סגירה"><i data-lucide="x"></i></button>
+      <h2>סיסמה זמנית</h2>
+      <p><bdi>${escapeHtml(user.username)}</bdi> יכול להתחבר עכשיו עם הסיסמה הזו. היא לא תוצג שוב.</p>
       <div class="secret-box">
         <input value="${escapeAttr(temporaryPassword)}" readonly dir="ltr" />
-        <button class="ghost-button" type="button" data-copy-temp><i data-lucide="copy"></i>Copy</button>
+        <button class="ghost-button" type="button" data-copy-temp><i data-lucide="copy"></i>העתקה</button>
       </div>
       <div class="modal-actions">
-        <button class="primary-button" type="button" data-done>Done</button>
+        <button class="primary-button" type="button" data-done>סיום</button>
       </div>
     </div>
   `;
@@ -1525,7 +1568,7 @@ function showTemporaryPassword(user, temporaryPassword) {
   const close = () => modal.remove();
   modal.querySelector(".modal-close").addEventListener("click", close);
   modal.querySelector("[data-done]").addEventListener("click", close);
-  modal.querySelector("[data-copy-temp]").addEventListener("click", () => copyText(temporaryPassword, "Temporary password"));
+  modal.querySelector("[data-copy-temp]").addEventListener("click", () => copyText(temporaryPassword, "סיסמה זמנית"));
   modal.querySelector("input").select();
 }
 
@@ -1534,22 +1577,22 @@ function showCredentialShareModal(user, channel) {
   const modal = document.createElement("div");
   modal.className = "modal-backdrop";
   modal.innerHTML = `
-    <div class="confirm-modal credential-modal share-password-modal" role="dialog" aria-modal="true" aria-label="Share credentials">
-      <button class="icon-action modal-close" type="button" aria-label="Close"><i data-lucide="x"></i></button>
-      <h2>Share login details</h2>
-      <p>Enter the client password to include it in a ${escapeHtml(channelLabel)} message. You will confirm once more before the message opens.</p>
-      <label>Password to share
+    <div class="confirm-modal credential-modal share-password-modal" role="dialog" aria-modal="true" aria-label="שיתוף פרטי התחברות" dir="rtl" lang="he">
+      <button class="icon-action modal-close" type="button" aria-label="סגירה"><i data-lucide="x"></i></button>
+      <h2>שיתוף פרטי התחברות</h2>
+      <p>הכניסו את סיסמת הלקוח כדי לצרף אותה להודעת ${escapeHtml(channelLabel)}. לפני הפתיחה תידרש עוד בדיקת אישור.</p>
+      <label>סיסמה לשיתוף
         <input name="sharePassword" type="password" autocomplete="off" minlength="1" dir="ltr" required />
       </label>
       <div class="credential-preview">
-        <span>Username</span>
+        <span>שם משתמש</span>
         <strong dir="ltr">${escapeHtml(user.username)}</strong>
-        <span>Route</span>
+        <span>נתיב</span>
         <strong dir="ltr">${escapeHtml(href(`/client/${user.username}`))}</strong>
       </div>
       <div class="modal-actions">
-        <button class="ghost-button" type="button" data-cancel>Cancel</button>
-        <button class="primary-button" type="button" data-confirm-share><i data-lucide="${channel === "whatsapp" ? "message-circle" : "mail"}"></i>Open ${escapeHtml(channelLabel)}</button>
+        <button class="ghost-button" type="button" data-cancel>ביטול</button>
+        <button class="primary-button" type="button" data-confirm-share><i data-lucide="${channel === "whatsapp" ? "message-circle" : "mail"}"></i>פתיחת ${escapeHtml(channelLabel)}</button>
       </div>
     </div>
   `;
@@ -1561,10 +1604,10 @@ function showCredentialShareModal(user, channel) {
   modal.querySelector("[data-confirm-share]").addEventListener("click", () => {
     const password = modal.querySelector("input[name='sharePassword']").value.trim();
     if (!password) {
-      toast("Password is required", "error");
+      toast("חובה להזין סיסמה", "error");
       return;
     }
-    const confirmed = window.confirm(`Open ${channelLabel} with login details for ${user.username}?`);
+    const confirmed = window.confirm(`לפתוח את ${channelLabel} עם פרטי ההתחברות של ${user.username}?`);
     if (!confirmed) return;
     openCredentialShareTarget(user, channel, password);
     close();
@@ -1645,9 +1688,9 @@ function clearLoginPrefillFromUrl(prefill) {
 async function copyText(value, label = "Value") {
   try {
     await navigator.clipboard.writeText(value);
-    toast(`${label} copied`, "success");
+    toast(`${label} הועתק`, "success");
   } catch (error) {
-    toast("Copy failed", "error");
+    toast("ההעתקה נכשלה", "error");
   }
 }
 
@@ -1701,8 +1744,9 @@ function isAdminAreaRoute() {
 }
 
 function renderForbidden() {
-  app.className = "login-view";
-  app.innerHTML = `<main class="forbidden"><h1>Access denied</h1><p>This route is not assigned to your account.</p></main>`;
+  setDocumentLocale("he", "rtl");
+  app.className = "login-view login-rtl";
+  app.innerHTML = `<main class="forbidden" dir="rtl" lang="he"><h1>אין גישה</h1><p>הנתיב הזה לא משויך לחשבון שלך.</p></main>`;
 }
 
 function navigate(path, replace = false) {

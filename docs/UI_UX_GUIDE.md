@@ -32,10 +32,10 @@ Client workspace:
 
 Admin workspace:
 
-- currently English
-- currently LTR
-
-If localizing admin later, do it intentionally across the whole admin workflow.
+- Hebrew
+- RTL
+- operational labels, dialogs, errors, and audit text should stay Hebrew
+- usernames, URLs, IDs, and route examples remain LTR
 
 ## Mobile UX Priorities
 

@@ -51,9 +51,9 @@ Current statuses are simple. Future workflow could include:
 - email or WhatsApp notification
 - status history visible to clients
 
-### 6. Full Admin Localization
+### 6. Admin Localization Follow-Up
 
-Login and client views are Hebrew RTL. Admin is still English LTR. If requested, localize admin as a complete workflow rather than changing only scattered labels.
+Login, admin, and client views are Hebrew RTL. Future admin work should keep labels, dialogs, validation feedback, and audit text Hebrew while preserving usernames, URLs, IDs, and backend route examples in LTR.
 
 ### 7. Accessibility Pass
 

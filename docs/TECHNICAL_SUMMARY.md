@@ -144,7 +144,7 @@ Do not change `/client/:username` to a Hebrew backend path unless the user expli
 
 - Login: Hebrew, RTL
 - Client workspace: Hebrew, RTL
-- Admin workspace: English, LTR
+- Admin workspace: Hebrew, RTL
 
 ## Local Check
 
