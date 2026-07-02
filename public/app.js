@@ -635,19 +635,26 @@ function assetRailItem(site, slot) {
   const images = imagesForSlot(site, slot.id);
   const primary = images[0];
   const sourceLabel = primary?.source === "production" ? "מהאתר החי" : primary ? "עודכן במערכת" : "חסר";
+  const stateLabel = primary ? "תמונה קיימת" : slot.required ? "נדרשת תמונה" : "אפשר להוסיף";
+  const actionLabel = primary ? "ניהול" : "הוספה";
   return `
     <button class="asset-queue-item ${primary ? "filled" : "missing"}" type="button" data-image-action-slot="${slot.id}" data-drop-slot="${slot.id}" ${
       primary ? draggableAttrs(primary) : ""
     } ${can("canUpload") ? "" : "disabled"}>
       <span class="asset-queue-thumb">
         ${primary ? `<img src="${escapeAttr(primary.url)}" alt="${escapeAttr(primary.name)}" />` : `<i data-lucide="image-plus"></i>`}
+        <em>${escapeHtml(stateLabel)}</em>
       </span>
       <span class="asset-queue-copy">
         <strong>${escapeHtml(slotDisplayLabel(slot))}</strong>
         <small>${escapeHtml(sourceLabel)} · ${escapeHtml(slotRatioLabel(slot.ratio))}</small>
         ${primary ? imageQualityChips(primary, slot) : `<span class="image-meta-chips"><small><i data-lucide="scan"></i>מומלץ ${escapeHtml(recommendedSizeText(slot))}</small></span>`}
+        <span class="asset-queue-hint">${primary ? "לחצו לפתיחה, החלפה, חיתוך או מחיקה" : "לחצו כדי לבחור תמונה מתאימה"}</span>
       </span>
-      <i data-lucide="${primary ? "replace" : "plus"}"></i>
+      <span class="asset-queue-action">
+        <i data-lucide="${primary ? "settings-2" : "plus"}"></i>
+        ${escapeHtml(actionLabel)}
+      </span>
     </button>
   `;
 }

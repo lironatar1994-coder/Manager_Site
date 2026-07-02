@@ -54,7 +54,7 @@ The current mobile order for clients is:
 
 1. clean Hebrew site header and link edit
 2. live desktop/mobile website preview
-3. drag/drop image rail
+3. drag/drop image rail with task-style image cards
 4. image action modal for replace, delete, and crop
 
 ## Client Workflow
@@ -70,6 +70,8 @@ The client should immediately understand:
 Do not show internal review/status/approval language in the first client-facing section. Admin-only status controls may exist for admin preview, but the normal client experience should read like a simple website image manager.
 
 Use explicit labels. Do not hide core actions behind unclear icons.
+
+The client image rail should read as a practical task list. Each image area should show current/missing state, recommended size, and one obvious primary action; advanced choices stay inside the image modal.
 
 ## Admin Workflow
 
