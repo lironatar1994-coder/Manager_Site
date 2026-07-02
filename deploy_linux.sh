@@ -105,7 +105,7 @@ location = ${LOWER_ROUTE_BASE} {
 }
 
 location ^~ ${LOWER_ROUTE_BASE}/ {
-    return 301 ${ROUTE_BASE}/;
+    rewrite ^${LOWER_ROUTE_BASE}(/.*)$ ${ROUTE_BASE}\$1 permanent;
 }
 
 location ^~ ${ROUTE_BASE}/ {
