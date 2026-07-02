@@ -946,16 +946,16 @@ function openCredentialShareTarget(user, channel, password) {
   const loginUrl = `${location.origin}${basePath}/login`;
   const clientUrl = `${location.origin}${href(`/client/${user.username}`)}`;
   const message = [
-    `Hi ${user.displayName},`,
+    "שלום,",
     "",
-    "Your website manager login details:",
-    `Login: ${loginUrl}`,
-    `Client route: ${clientUrl}`,
-    `Username: ${user.username}`,
-    `Password: ${password}`,
-    site.websiteUrl ? `Website: ${site.websiteUrl}` : "",
+    "פרטי הכניסה שלך למערכת ניהול האתר:",
+    `קישור כניסה: ${loginUrl}`,
+    `אזור הלקוח: ${clientUrl}`,
+    `שם משתמש: ${user.username}`,
+    `סיסמה: ${password}`,
+    site.websiteUrl ? `האתר שלך: ${site.websiteUrl}` : "",
     "",
-    "Please keep these details private.",
+    "נא לשמור את הפרטים האלה באופן פרטי ולא להעביר אותם הלאה.",
   ]
     .filter(Boolean)
     .join("\n");
@@ -963,7 +963,7 @@ function openCredentialShareTarget(user, channel, password) {
   const url =
     channel === "whatsapp"
       ? `https://wa.me/?text=${encodedMessage}`
-      : `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`Website manager login - ${user.displayName}`)}&body=${encodedMessage}`;
+      : `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent("פרטי כניסה למערכת ניהול האתר")}&body=${encodedMessage}`;
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
