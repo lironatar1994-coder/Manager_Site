@@ -135,6 +135,53 @@ h3 {
   padding: clamp(24px, 4vw, 48px);
 }
 
+.admin-login-view {
+  background:
+    linear-gradient(90deg, rgba(255, 250, 241, 0.05) 1px, transparent 1px) 0 0 / 52px 52px,
+    linear-gradient(rgba(255, 250, 241, 0.045) 1px, transparent 1px) 0 0 / 52px 52px,
+    #11110f;
+}
+
+.admin-login-shell {
+  grid-template-columns: minmax(360px, 0.74fr) minmax(440px, 1.26fr);
+}
+
+.admin-login-panel {
+  color: #fffaf1;
+  background: rgba(25, 24, 21, 0.96);
+  border-color: rgba(255, 250, 241, 0.16);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.34);
+}
+
+.admin-login-panel .mark {
+  color: var(--black);
+  background: var(--gold);
+  border-color: rgba(255, 250, 241, 0.28);
+}
+
+.admin-login-panel .brand-row small,
+.admin-login-panel .login-copy p,
+.admin-login-panel label {
+  color: rgba(255, 250, 241, 0.68);
+}
+
+.admin-login-panel input {
+  color: #fffaf1;
+  background: rgba(255, 250, 241, 0.08);
+  border-color: rgba(255, 250, 241, 0.18);
+}
+
+.admin-login-panel input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(184, 135, 70, 0.18);
+}
+
+.admin-login-panel .primary-button {
+  color: var(--black);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
 .brand-row,
 .panel-title,
 .page-head,
@@ -386,6 +433,71 @@ select:disabled {
   padding: 12px 14px;
   color: #fff;
   background: var(--black);
+}
+
+.admin-login-art {
+  background:
+    radial-gradient(circle at 28% 24%, rgba(184, 135, 70, 0.28), transparent 34%),
+    linear-gradient(135deg, rgba(10, 10, 9, 0.96), rgba(37, 93, 115, 0.76)),
+    var(--black);
+}
+
+.admin-window {
+  color: var(--panel);
+  background: rgba(17, 17, 17, 0.72);
+  border-color: rgba(255, 250, 241, 0.18);
+}
+
+.admin-lockup {
+  display: grid;
+  align-content: center;
+  min-height: 250px;
+  padding: 28px;
+  background:
+    linear-gradient(135deg, rgba(255, 250, 241, 0.12), rgba(255, 250, 241, 0.03)),
+    rgba(255, 250, 241, 0.06);
+  border: 1px solid rgba(255, 250, 241, 0.14);
+}
+
+.admin-lockup svg {
+  width: 46px;
+  height: 46px;
+  margin-bottom: 18px;
+  color: var(--gold);
+}
+
+.admin-lockup strong {
+  display: block;
+  margin-bottom: 10px;
+  font-family: Archivo, sans-serif;
+  font-size: clamp(2rem, 4vw, 4rem);
+  line-height: 0.92;
+}
+
+.admin-lockup p {
+  max-width: 360px;
+  color: rgba(255, 250, 241, 0.68);
+  line-height: 1.55;
+}
+
+.admin-signal-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.admin-signal-grid span {
+  min-height: 84px;
+  background:
+    linear-gradient(180deg, rgba(184, 135, 70, 0.58), rgba(37, 93, 115, 0.24)),
+    repeating-linear-gradient(0deg, rgba(255, 250, 241, 0.14) 0 1px, transparent 1px 12px);
+  border: 1px solid rgba(255, 250, 241, 0.12);
+}
+
+.admin-window .admin-chip {
+  color: var(--black);
+  background: var(--gold);
 }
 
 .app-view {

@@ -356,7 +356,7 @@ router.get("/api/admin/audit", requireAdmin, async (req, res) => {
   res.json({ audit: store.audit.slice(-80).reverse() });
 });
 
-router.get(["/", "/login", "/admin", "/client/:username"], (req, res) => {
+router.get(["/", "/login", "/admin-login", "/admin", "/client/:username"], (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 

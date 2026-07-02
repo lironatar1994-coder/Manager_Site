@@ -61,11 +61,20 @@ async function init() {
 
 async function route() {
   const path = stripBase(location.pathname);
+  const isLoginRoute = path === "/login" || path === "/admin-login";
+  if (!state.me && path === "/admin") {
+    navigate("/admin-login", true);
+    return;
+  }
+  if (!state.me && path === "/admin-login") {
+    renderAdminLogin();
+    return;
+  }
   if (!state.me && path !== "/login") {
     navigate("/login", true);
     return;
   }
-  if (state.me && path === "/login") {
+  if (state.me && isLoginRoute) {
     navigate(state.me.role === "admin" ? "/admin" : `/client/${state.me.username}`, true);
     return;
   }
@@ -86,6 +95,49 @@ async function route() {
     return;
   }
   renderLogin();
+}
+
+function renderAdminLogin(error = "") {
+  setDocumentLocale("en", "ltr");
+  app.className = "login-view admin-login-view";
+  app.innerHTML = `
+    <main class="login-shell admin-login-shell" lang="en">
+      <section class="login-panel admin-login-panel">
+        <div class="brand-row">
+          <span class="mark">MS</span>
+          <span>
+            <strong>Manager Site</strong>
+            <small>Private admin access</small>
+          </span>
+        </div>
+        <div class="login-copy">
+          <p class="eyebrow">Admin gate</p>
+          <h1>Control room access stays separate.</h1>
+          <p>This entrance is only for the operator account. Client credentials continue to use the regular Hebrew login page.</p>
+        </div>
+        <form class="login-form" id="loginForm" data-admin-login="true">
+          <label>Admin username<input name="username" autocomplete="username" placeholder="admin" dir="ltr" required /></label>
+          <label>Password<input name="password" type="password" autocomplete="current-password" dir="ltr" required /></label>
+          ${error ? `<div class="form-error">${escapeHtml(error)}</div>` : ""}
+          <button class="primary-button" type="submit"><i data-lucide="shield-check"></i>Enter admin panel</button>
+        </form>
+      </section>
+      <aside class="login-art admin-login-art" aria-label="Admin access overview">
+        <div class="art-window admin-window">
+          <div class="window-bar"><span></span><span></span><span></span></div>
+          <div class="admin-lockup">
+            <i data-lucide="lock-keyhole"></i>
+            <strong>Admin only</strong>
+            <p>Users, routes, permissions, reset passwords, and production review stay behind this route.</p>
+          </div>
+          <div class="admin-signal-grid" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+          <div class="admin-chip">Backend role checks still protect every admin API request.</div>
+        </div>
+      </aside>
+    </main>
+  `;
+  document.querySelector("#loginForm").addEventListener("submit", onLogin);
+  icons();
 }
 
 function renderLogin(error = "") {
@@ -662,13 +714,19 @@ function auditRow(row) {
 
 async function onLogin(event) {
   event.preventDefault();
+  const isAdminLogin = event.currentTarget.dataset.adminLogin === "true";
   const form = new FormData(event.currentTarget);
   const response = await api("/api/auth/login", {
     method: "POST",
     body: { username: form.get("username"), password: form.get("password") },
     allow401: true,
   });
-  if (response?.error) return renderLogin(response.error);
+  if (response?.error) return isAdminLogin ? renderAdminLogin(response.error) : renderLogin(response.error);
+  if (isAdminLogin && response.user?.role !== "admin") {
+    await api("/api/auth/logout", { method: "POST", allow401: true });
+    state.me = null;
+    return renderAdminLogin("Admin credentials are required.");
+  }
   state.me = response.user;
   navigate(response.redirectTo, true);
   await route();
@@ -831,8 +889,10 @@ async function api(path, options = {}) {
   const response = await fetch(`${basePath}${path}`, request);
   if (response.status === 401 && !options.allow401) {
     state.me = null;
-    navigate("/login", true);
-    renderLogin("Please sign in again.");
+    const nextLogin = isAdminAreaRoute() ? "/admin-login" : "/login";
+    navigate(nextLogin, true);
+    if (nextLogin === "/admin-login") renderAdminLogin("Please sign in again.");
+    else renderLogin("Please sign in again.");
     return {};
   }
   const contentType = response.headers.get("content-type") || "";
@@ -843,10 +903,12 @@ async function api(path, options = {}) {
 
 function bindShell() {
   document.querySelector("#logoutButton").addEventListener("click", async () => {
+    const logoutRoute = state.me?.role === "admin" ? "/admin-login" : "/login";
     await api("/api/auth/logout", { method: "POST" });
     state.me = null;
-    navigate("/login", true);
-    renderLogin();
+    navigate(logoutRoute, true);
+    if (logoutRoute === "/admin-login") renderAdminLogin();
+    else renderLogin();
   });
 }
 
@@ -1064,6 +1126,11 @@ function slotRatioLabel(ratio) {
 
 function isClientRoute() {
   return stripBase(location.pathname).startsWith("/client/");
+}
+
+function isAdminAreaRoute() {
+  const path = stripBase(location.pathname);
+  return path === "/admin" || path === "/admin-login";
 }
 
 function renderForbidden() {
