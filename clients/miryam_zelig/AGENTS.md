@@ -11,7 +11,7 @@ This file documents Miryam Zelig's website workspace for future agents.
 
 ## Website Goal
 
-Miryam's website should be manageable through Manager Site. The client should be able to review the current desktop/mobile preview and replace only the image areas listed in `client.config.json`.
+Miryam's website should be manageable through Manager Site. The client should be able to review the current live desktop/mobile preview and replace only the image areas listed in `client.config.json`.
 
 ## Production Location
 
@@ -35,14 +35,13 @@ Current slots:
 - Before/after after image: `gallery/before-after-after.jpeg`
 - About portrait: `miryam.jpeg`
 
-## Preview Screenshots
+## Live Preview
 
-The Manager Site client workspace uses saved first-viewport screenshots:
+The Manager Site client workspace uses the live public URL as an iframe preview:
 
-- Desktop: `public/client-previews/miryam_zelig/desktop.png`
-- Mobile: `public/client-previews/miryam_zelig/mobile.png`
+- `https://vee-app.co.il/Miryam_Zelig/`
 
-These were captured from `https://vee-app.co.il/Miryam_Zelig/` and should be refreshed when the website design or first viewport changes.
+Desktop/mobile buttons resize the Manager Site preview frame. Do not add static screenshots, Playwright, or Chromium for this preview.
 
 ## Agent Notes
 

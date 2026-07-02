@@ -32,11 +32,6 @@ else
   npm install --omit=dev
 fi
 
-if node -e "require.resolve('playwright')" >/dev/null 2>&1; then
-  echo "[INFO] Ensuring Playwright Chromium is installed..."
-  npx playwright install --with-deps chromium
-fi
-
 mkdir -p "${REMOTE_DIR}/data"
 chmod 700 "${REMOTE_DIR}/data"
 

@@ -25,8 +25,6 @@ Local:
 - `clients/_template`
 - `clients/<username>/AGENTS.md`
 - `clients/<username>/client.config.json`
-- `public/client-previews/<username>/desktop.png`
-- `public/client-previews/<username>/mobile.png`
 
 Production:
 
@@ -120,16 +118,11 @@ When a configured production site root exists, uploading to a mapped slot copies
 
 If a config exists but the production `siteRoot` does not exist yet, uploads remain inside Manager Site storage instead of creating random production folders.
 
-## Client Preview Screenshots
+## Client Live Preview
 
-The client desktop/mobile preview uses static PNG screenshots when available:
+The client desktop/mobile preview uses an iframe pointed at the configured public website URL. The frontend adds a `manager_preview` cache-busting query parameter and resizes the preview shell for desktop/mobile modes.
 
-- `/Manager_Site/client-previews/<username>/desktop.png`
-- `/Manager_Site/client-previews/<username>/mobile.png`
-
-Source files live under `public/client-previews/<username>/`. Capture them from the live website during new client setup, using viewport screenshots rather than full-page screenshots. The current standard is `1440x1000` for desktop and `390x844` for mobile.
-
-If a screenshot is missing or fails to load, the frontend shows a fallback message instead of breaking the client workspace.
+Do not add Playwright, Chromium, or server-side screenshot generation for this preview. If a client website blocks framing, fix the website response headers when we control that website, or document the limitation in `clients/<username>/AGENTS.md`.
 
 ## Frontend Routing
 

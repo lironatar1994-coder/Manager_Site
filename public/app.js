@@ -37,8 +37,8 @@ const state = {
   clientAssets: null,
   clientUsername: "",
   previewMode: "desktop",
-  previewVersion: "",
   lastProof: null,
+  livePreviewVersion: Date.now(),
 };
 
 const app = document.querySelector("#app");
@@ -323,19 +323,14 @@ function renderClient() {
               <button class="${state.previewMode === "desktop" ? "active" : ""}" type="button" data-preview-mode="desktop"><i data-lucide="monitor"></i>מחשב</button>
               <button class="${state.previewMode === "mobile" ? "active" : ""}" type="button" data-preview-mode="mobile"><i data-lucide="smartphone"></i>נייד</button>
             </div>
-            <button class="ghost-button small preview-refresh-button" type="button" data-refresh-preview ${can("canUpload") ? "" : "disabled"}>
+            <button class="ghost-button small preview-refresh-button" type="button" data-refresh-preview>
               <i data-lucide="refresh-cw"></i>רענון תצוגה
             </button>
           </div>
           <div class="preview-device">
             <div class="browser-bar"><span></span><span></span><span></span><p>${escapeHtml(visibleWebsiteUrl)}</p></div>
-            <div class="preview-canvas live-screenshot-preview">
-              <img class="preview-screenshot" src="${escapeAttr(clientPreviewScreenshotUrl(site, state.previewMode))}" alt="תצוגת ${state.previewMode === "mobile" ? "נייד" : "מחשב"} של האתר" data-preview-shot />
-              <div class="screenshot-fallback">
-                <i data-lucide="image"></i>
-                <strong>תצוגת האתר תופיע כאן</strong>
-                <span>עדיין אין צילום שמור למצב הזה.</span>
-              </div>
+            <div class="preview-canvas live-iframe-preview">
+              <iframe src="${escapeAttr(clientLivePreviewUrl(visibleWebsiteUrl))}" title="תצוגת האתר החי" loading="lazy" data-live-preview></iframe>
             </div>
           </div>
         </article>
@@ -375,7 +370,7 @@ function renderClient() {
     button.addEventListener("click", () => setPreviewMode(button.dataset.previewMode));
   });
   document.querySelector("[data-refresh-preview]")?.addEventListener("click", refreshSitePreview);
-  bindPreviewScreenshots();
+  bindLivePreview();
   // The previous slot grid and standalone upload form are intentionally not rendered.
   // Image actions now live in the drag/drop rail to keep one clear workflow.
   document.querySelectorAll("[data-image-action-slot]").forEach((button) => {
@@ -676,57 +671,40 @@ function renderUpdateProof(websiteUrl) {
   `;
 }
 
-function clientPreviewScreenshotUrl(site, mode) {
-  const username = site?.ownerUsername || state.clientUsername || state.me?.username || "client";
-  const version = encodeURIComponent(state.previewVersion || site?.updatedAt || "preview");
-  return `${href(`/client-previews/${encodeURIComponent(username)}/${mode}.png`)}?v=${version}`;
-}
-
-function applyPreviewRefresh(previewRefresh) {
-  if (!previewRefresh) return false;
-  if (previewRefresh.version) state.previewVersion = String(previewRefresh.version);
-  return previewRefresh.ok === true && previewRefresh.refreshed === true;
-}
-
-async function refreshSitePreview() {
-  const button = document.querySelector("[data-refresh-preview]");
-  if (!state.clientSite?.id || button?.disabled) return;
-  button.disabled = true;
-  button.classList.add("is-loading");
+function clientLivePreviewUrl(websiteUrl) {
   try {
-    const response = await api(`/api/sites/${state.clientSite.id}/previews/refresh`, { method: "POST" });
-    if (response?.error) {
-      toast(response.error, "error");
-      return;
-    }
-    state.clientSite = response.site || state.clientSite;
-    const previewOk = applyPreviewRefresh(response.previewRefresh);
-    state.lastProof = {
-      title: previewOk ? "התצוגה רועננה" : "התצוגה לא רועננה",
-      imageText: "צילום האתר עודכן",
-      liveFileOk: true,
-      previewOk,
-      previewText: previewOk ? "מחשב ונייד רועננו" : response.previewRefresh?.message || "נדרש רענון ידני",
-    };
-    toast(previewOk ? "התצוגה רועננה" : "לא ניתן לרענן את התצוגה כרגע", previewOk ? "success" : "error");
-    renderClient();
-  } finally {
-    button?.classList.remove("is-loading");
-    if (button) button.disabled = !can("canUpload");
+    const url = new URL(websiteUrl);
+    url.searchParams.set("manager_preview", String(state.livePreviewVersion || Date.now()));
+    return url.toString();
+  } catch (error) {
+    return websiteUrl;
   }
 }
 
-function bindPreviewScreenshots() {
-  document.querySelectorAll("[data-preview-shot]").forEach((image) => {
-    const frame = image.closest(".live-screenshot-preview");
-    if (!frame) return;
-    const markReady = () => {
-      frame.classList.toggle("is-missing", !image.naturalWidth);
-    };
-    image.addEventListener("load", markReady);
-    image.addEventListener("error", () => frame.classList.add("is-missing"));
-    if (image.complete) markReady();
+function refreshSitePreview() {
+  state.livePreviewVersion = Date.now();
+  state.lastProof = {
+    title: "התצוגה רועננה",
+    imageText: "האתר נטען מחדש בתצוגה",
+    liveFileOk: true,
+    previewOk: true,
+    previewText: "התצוגה החיה רועננה בדפדפן",
+  };
+  toast("התצוגה רועננה", "success");
+  renderClient();
+}
+
+function bindLivePreview() {
+  const preview = document.querySelector("[data-live-preview]");
+  const frame = preview?.closest(".live-iframe-preview");
+  const refreshButton = document.querySelector("[data-refresh-preview]");
+  if (!preview || !frame) return;
+  preview.addEventListener("load", () => {
+    frame.classList.remove("is-loading");
+    refreshButton?.classList.remove("is-loading");
   });
+  frame.classList.add("is-loading");
+  refreshButton?.classList.add("is-loading");
 }
 
 function setPreviewMode(mode) {
@@ -734,13 +712,6 @@ function setPreviewMode(mode) {
   state.previewMode = mode;
   const preview = document.querySelector(".managed-preview");
   if (preview) preview.dataset.previewMode = mode;
-  const image = document.querySelector("[data-preview-shot]");
-  if (image) {
-    const frame = image.closest(".live-screenshot-preview");
-    if (frame) frame.classList.remove("is-missing");
-    image.src = clientPreviewScreenshotUrl(state.clientSite, mode);
-    image.alt = `תצוגת ${mode === "mobile" ? "נייד" : "מחשב"} של האתר`;
-  }
   document.querySelectorAll("button[data-preview-mode]").forEach((button) => {
     button.classList.toggle("active", button.dataset.previewMode === mode);
   });
@@ -851,13 +822,13 @@ async function reorderDraggedImage({ imageId, slotId, source, targetSlotId, targ
   state.clientSite = response.site || state.clientSite;
   if (response.assets) state.clientAssets = { ...(state.clientAssets || {}), assets: response.assets };
   else await loadClientAssets();
-  const previewOk = applyPreviewRefresh(response.previewRefresh);
+  state.livePreviewVersion = Date.now();
   state.lastProof = {
     title: "סדר התמונות עודכן",
     imageText: "המיקום החדש נשמר",
     liveFileOk: true,
-    previewOk,
-    previewText: previewOk ? "התצוגה רועננה" : response.previewRefresh?.message || "התצוגה לא רועננה",
+    previewOk: true,
+    previewText: "התצוגה החיה רועננה בדפדפן",
   };
   toast("סדר התמונות עודכן", "success");
   renderClient();
@@ -976,15 +947,15 @@ async function onUploadImage(event) {
   if (response?.error) return toast(response.error, "error");
   state.clientSite = response.site;
   await loadClientAssets();
-  const previewOk = applyPreviewRefresh(response.previewRefresh);
+  state.livePreviewVersion = Date.now();
   state.lastProof = {
     title: "התמונה עודכנה",
     imageText: `${slotLabel(state.clientSite, selectedSlot)} עודכן`,
     liveFileOk: response.image?.source === "production",
-    previewOk: previewOk || !response.previewRefresh,
-    previewText: response.previewRefresh ? (previewOk ? "התצוגה רועננה" : response.previewRefresh.message || "התצוגה לא רועננה") : "אין צורך ברענון תצוגה",
+    previewOk: true,
+    previewText: "התצוגה החיה רועננה בדפדפן",
   };
-  toast(previewOk ? "התמונה עודכנה והתצוגה רועננה" : `${slotLabel(state.clientSite, selectedSlot)} עודכן`, "success");
+  toast("התמונה עודכנה והתצוגה רועננה", "success");
   renderClient();
 }
 
@@ -1000,15 +971,15 @@ async function uploadImageToSlot(slotId, file, name = "") {
   }
   state.clientSite = response.site;
   await loadClientAssets();
-  const previewOk = applyPreviewRefresh(response.previewRefresh);
+  state.livePreviewVersion = Date.now();
   state.lastProof = {
     title: "התמונה עודכנה",
     imageText: `${slotLabel(state.clientSite, slotId)} עודכן`,
     liveFileOk: response.image?.source === "production",
-    previewOk: previewOk || !response.previewRefresh,
-    previewText: response.previewRefresh ? (previewOk ? "התצוגה רועננה" : response.previewRefresh.message || "התצוגה לא רועננה") : "אין צורך ברענון תצוגה",
+    previewOk: true,
+    previewText: "התצוגה החיה רועננה בדפדפן",
   };
-  toast(previewOk ? "התמונה עודכנה והתצוגה רועננה" : `${slotLabel(state.clientSite, slotId)} עודכן`, "success");
+  toast("התמונה עודכנה והתצוגה רועננה", "success");
   renderClient();
   return true;
 }
@@ -1026,13 +997,13 @@ async function deleteAsset(slotId) {
   if (response?.error) return toast(response.error, "error");
   state.clientSite = response.site || state.clientSite;
   state.clientAssets = { ...(state.clientAssets || {}), assets: response.assets || [] };
-  const previewOk = applyPreviewRefresh(response.previewRefresh);
+  state.livePreviewVersion = Date.now();
   state.lastProof = {
     title: "התמונה הוסרה",
     imageText: "התמונה הוסרה מהאתר",
     liveFileOk: true,
-    previewOk,
-    previewText: previewOk ? "התצוגה רועננה" : response.previewRefresh?.message || "התצוגה לא רועננה",
+    previewOk: true,
+    previewText: "התצוגה החיה רועננה בדפדפן",
   };
   toast("התמונה הוסרה מקובץ האתר", "success");
   renderClient();

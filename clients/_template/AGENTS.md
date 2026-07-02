@@ -45,14 +45,11 @@ Example:
 | `before_after_before` | `לפני - לפני ואחרי` | `/var/www/example/images/before.jpg` | before/after |
 | `before_after_after` | `אחרי - לפני ואחרי` | `/var/www/example/images/after.jpg` | before/after |
 
-## Preview Screenshots
+## Live Preview
 
-The Manager Site client workspace should show real screenshots of this website:
+The Manager Site client workspace uses the configured public URL as a live iframe preview with desktop/mobile sizing controls.
 
-- `public/client-previews/replace_username/desktop.png`
-- `public/client-previews/replace_username/mobile.png`
-
-Capture these from the live public URL after the website is reachable. Use the workflow in `docs/NEW_CLIENT_AGENT_WORKFLOW.md`.
+Verify the public URL returns a normal page and does not send headers that block framing. Do not add static screenshot files, Playwright, or Chromium just for the preview.
 
 ## Agent Notes
 

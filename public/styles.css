@@ -1571,7 +1571,7 @@ select:disabled {
   box-shadow: 0 24px 60px rgba(25, 24, 21, 0.13);
 }
 
-.live-screenshot-preview {
+.live-iframe-preview {
   position: relative;
   display: block;
   min-height: 520px;
@@ -1585,60 +1585,54 @@ select:disabled {
   box-shadow: 0 24px 60px rgba(25, 24, 21, 0.13);
 }
 
-.preview-screenshot {
+.live-iframe-preview iframe {
   display: block;
   width: 100%;
-  height: 100%;
+  height: 620px;
   min-height: 520px;
-  object-fit: cover;
-  object-position: top center;
+  background: #fff;
+  border: 0;
+  transform-origin: top center;
 }
 
-.screenshot-fallback {
+.live-iframe-preview.is-loading iframe {
+  opacity: 0.72;
+}
+
+.live-iframe-preview::after {
   position: absolute;
   inset: 0;
-  display: none;
-  place-items: center;
-  align-content: center;
-  gap: 10px;
-  padding: 28px;
-  color: rgba(255, 250, 241, 0.86);
-  text-align: center;
+  z-index: 2;
+  content: "";
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+
+.live-iframe-preview.is-loading::after {
   background:
-    linear-gradient(135deg, rgba(37, 93, 115, 0.22), transparent 46%),
-    linear-gradient(315deg, rgba(184, 135, 70, 0.18), transparent 48%),
-    var(--black);
+    linear-gradient(90deg, transparent, rgba(255, 250, 241, 0.14), transparent),
+    rgba(25, 24, 21, 0.08);
+  background-size: 220% 100%;
+  animation: previewShimmer 1.2s ease-in-out infinite;
 }
 
-.screenshot-fallback i {
-  width: 34px;
-  height: 34px;
+@keyframes previewShimmer {
+  from {
+    background-position: 120% 0;
+  }
+
+  to {
+    background-position: -120% 0;
+  }
 }
 
-.screenshot-fallback strong,
-.screenshot-fallback span {
-  display: block;
-}
-
-.screenshot-fallback span {
-  color: rgba(255, 250, 241, 0.64);
-  font-size: 0.9rem;
-}
-
-.live-screenshot-preview.is-missing .preview-screenshot {
-  opacity: 0;
-}
-
-.live-screenshot-preview.is-missing .screenshot-fallback {
-  display: grid;
-}
-
-.managed-preview[data-preview-mode="mobile"] .live-screenshot-preview {
+.managed-preview[data-preview-mode="mobile"] .live-iframe-preview {
   width: min(390px, 100%);
   min-height: 680px;
 }
 
-.managed-preview[data-preview-mode="mobile"] .preview-screenshot {
+.managed-preview[data-preview-mode="mobile"] .live-iframe-preview iframe {
+  height: 680px;
   min-height: 680px;
 }
 

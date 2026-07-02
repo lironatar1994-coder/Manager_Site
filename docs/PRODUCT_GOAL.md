@@ -40,16 +40,15 @@ The client is responsible for:
 - Login and client-facing screens are Hebrew and RTL.
 - Backend routes remain stable English routes, especially `/client/:username`.
 - The first client workspace section should be client-safe and must not expose internal review/status/approval wording.
-- The client workspace should show real saved desktop/mobile screenshots of the live website when available.
+- The client workspace should show a live desktop/mobile preview of the configured public website when the website allows framing.
 
-## Website Preview Screenshots
+## Website Live Preview
 
-Each reachable live client website should have:
+Each reachable live client website should:
 
-- `public/client-previews/<username>/desktop.png`
-- `public/client-previews/<username>/mobile.png`
-
-These are captured from the live website and shown in the client workspace desktop/mobile preview. They should show the real first viewport of the client's website, not a blank page, error page, or generic mockup.
+- return the real public website URL configured for the client
+- allow Manager Site to display it in an iframe
+- support desktop/mobile preview sizing inside the Manager Site client workspace
 
 ## Current Client Image Slots
 

@@ -20,7 +20,7 @@ Admin can create and pause users, but future polish could add:
 
 ### 3. Real Website Integration
 
-The current app has a managed desktop/mobile preview inside Manager Site. It is not yet a true iframe or live render from the external website. A future version should define how changes propagate to each actual client website:
+The current app has a live desktop/mobile iframe preview inside Manager Site. A future version should define whether changed production assets need extra propagation steps for each actual client website:
 
 - manual export
 - API push

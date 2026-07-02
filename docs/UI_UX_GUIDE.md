@@ -43,9 +43,9 @@ Most clients will use phones. Keep mobile flows fast:
 
 - Login form must be reachable without awkward scrolling.
 - Client top navigation should stay compact and usable.
-- The real website screenshot preview should appear before the editing list on mobile.
+- The live website preview should appear before the editing list on mobile.
 - The preview must include desktop/mobile controls.
-- The preview should load saved images from `public/client-previews/<username>/desktop.png` and `public/client-previews/<username>/mobile.png` when available.
+- The preview should load the client's configured public URL in an iframe and refresh without server-side browser automation.
 - Buttons and inputs should be comfortable touch targets.
 - Avoid horizontal overflow at `390px` and `360px`.
 - The preview is the orientation layer; the image rail below is the exact edit list.
@@ -53,7 +53,7 @@ Most clients will use phones. Keep mobile flows fast:
 The current mobile order for clients is:
 
 1. clean Hebrew site header and link edit
-2. real desktop/mobile screenshot preview
+2. live desktop/mobile website preview
 3. drag/drop image rail
 4. image action modal for replace, delete, and crop
 
@@ -95,7 +95,7 @@ Before finishing UI changes:
 - verify URLs/usernames remain readable LTR
 - verify buttons are not cramped
 - verify client upload path is obvious on mobile
-- verify desktop/mobile screenshot previews load and are not blank
+- verify desktop/mobile live preview loads or fails gracefully if the client website blocks framing
 - verify the first client section does not expose internal review/status/approval wording
 - verify login still has no English operational copy
 

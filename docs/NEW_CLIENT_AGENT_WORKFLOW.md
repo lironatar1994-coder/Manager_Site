@@ -23,13 +23,11 @@ For each new client, create or update:
 
 - `clients/<username>/AGENTS.md`
 - `clients/<username>/client.config.json`
-- `public/client-previews/<username>/desktop.png`
-- `public/client-previews/<username>/mobile.png`
 - Production copy at `/root/Manager_Site/data/clients/<username>/client.config.json` when deploying live
 
 The `client.config.json` file is the machine-readable allowlist. Manager Site can only view, replace, remove, or reorder images that are listed there.
 
-The preview screenshots are the client-facing desktop/mobile website previews shown at the top of the client workspace. Do not leave a new client with blank or generic preview imagery when the live website can be opened.
+The client-facing desktop/mobile preview is a live iframe pointed at the configured public website URL. Do not install Playwright, Chromium, or static screenshot generation just to power Manager Site previews.
 
 ## Workflow
 
@@ -104,53 +102,19 @@ The preview screenshots are the client-facing desktop/mobile website previews sh
    - important client-specific notes
    - deployment or verification notes
 
-6. Capture desktop and mobile website screenshots.
+6. Verify the live desktop/mobile preview.
 
-   The client workspace first section uses saved screenshots from:
+   The client workspace first section loads the configured public website URL in an iframe and adds a cache-busting `manager_preview` query parameter.
 
-   - `public/client-previews/<username>/desktop.png`
-   - `public/client-previews/<username>/mobile.png`
+   Verify the live website URL after it is reachable:
 
-   Capture them from the live website URL after the website is reachable. Use the same pattern used for Miryam Zelig:
+   - the URL returns `200`
+   - the page is the real client website, not an error page or placeholder
+   - response headers do not include `X-Frame-Options: DENY`, `X-Frame-Options: SAMEORIGIN` on a different origin, or a `Content-Security-Policy` `frame-ancestors` rule that blocks Manager Site
+   - desktop and mobile preview buttons resize the Manager Site frame
+   - the refresh preview button reloads the iframe
 
-   - desktop viewport: `1440x1000`
-   - mobile viewport: `390x844`
-   - screenshot only the visible viewport, not the full page
-   - save PNG files under the exact username folder
-
-   Example Playwright workflow:
-
-   ```js
-   const fs = await import("node:fs/promises");
-   const path = await import("node:path");
-   const { chromium } = await import("playwright");
-
-   const username = "<username>";
-   const liveUrl = "<live website URL>";
-   const outDir = `C:/Users/liron/Sites_Manager/public/client-previews/${username}`;
-
-   await fs.mkdir(outDir, { recursive: true });
-   const browser = await chromium.launch({ headless: true });
-
-   const desktop = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 });
-   await desktop.goto(liveUrl, { waitUntil: "networkidle", timeout: 45000 });
-   await desktop.screenshot({ path: path.join(outDir, "desktop.png"), fullPage: false });
-
-   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true });
-   await mobile.goto(liveUrl, { waitUntil: "networkidle", timeout: 45000 });
-   await mobile.screenshot({ path: path.join(outDir, "mobile.png"), fullPage: false });
-
-   await browser.close();
-   ```
-
-   Verify the screenshots before committing:
-
-   - open both images visually
-   - confirm they are not blank, error pages, login pages, or placeholder pages
-   - confirm they show the real client website first viewport
-   - confirm desktop and mobile are different when the site is responsive
-
-   If the live website cannot be reached or screenshots fail, do not block the rest of setup. Leave a short note in `clients/<username>/AGENTS.md` explaining why screenshots are missing and that Manager Site will show its built-in fallback.
+   If the live website cannot be framed, do not install Playwright or Chromium as a workaround. Leave a short note in `clients/<username>/AGENTS.md` explaining the framing block and fix the website headers if that site is under our control.
 
 7. Sync production config.
 
@@ -206,8 +170,8 @@ The preview screenshots are the client-facing desktop/mobile website previews sh
    - Hebrew/RTL client UI
    - the first client section is client-safe and does not show internal status/review/approval wording
    - the first client section shows `ניהול תמונות האתר` or similarly clear client-facing wording
-   - desktop screenshot loads from `/Manager_Site/client-previews/<username>/desktop.png`
-   - mobile toggle loads `/Manager_Site/client-previews/<username>/mobile.png`
+   - desktop preview loads the live public URL in the iframe
+   - mobile toggle resizes the iframe preview
    - all slots appear under `תמונות להחלפה`
    - upload/replace targets are understandable
    - drag-and-drop works for reorderable existing images
@@ -247,9 +211,8 @@ Avoid:
 The setup is complete only when:
 
 - client files exist in `clients/<username>/`
-- desktop/mobile screenshots exist in `public/client-previews/<username>/`
 - runtime production config is synced when live
 - Manager Site API returns the expected slots
-- live UI shows those slots and the saved desktop/mobile screenshots
+- live UI shows those slots and the live desktop/mobile iframe preview
 - uploads/replacements affect the intended live website files
 - changes are committed and pushed
