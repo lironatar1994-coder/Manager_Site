@@ -24,6 +24,7 @@ The client is responsible for:
 
 - logging in with credentials from the admin
 - seeing only their own website workspace
+- reviewing a managed desktop/mobile preview of the website
 - changing the website link if permitted
 - uploading, replacing, or removing images if permitted
 - sending the website for review
@@ -38,6 +39,7 @@ The client is responsible for:
 - Client-facing UI should feel premium, minimal, fast, and simple.
 - Login and client-facing screens are Hebrew and RTL.
 - Backend routes remain stable English routes, especially `/client/:username`.
+- The first client workspace section should show the managed website preview, not a generic dashboard.
 
 ## Current Client Image Slots
 
@@ -48,6 +50,8 @@ The client is responsible for:
 - Gallery
 
 The Hebrew UI maps these to client-friendly Hebrew labels.
+
+The managed preview should expose all five slots as editable markers so the client can understand which images can be added, replaced, or removed.
 
 ## Current Site Status Flow
 

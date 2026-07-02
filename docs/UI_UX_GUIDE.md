@@ -43,18 +43,20 @@ Most clients will use phones. Keep mobile flows fast:
 
 - Login form must be reachable without awkward scrolling.
 - Client top navigation should stay compact and usable.
-- Upload/edit image controls must appear before the large website preview on mobile.
+- The managed website preview should appear before the editing list on mobile.
+- The preview must include desktop/mobile controls.
+- The preview must show editable markers for hero, logo, about, service, and gallery.
 - Buttons and inputs should be comfortable touch targets.
 - Avoid horizontal overflow at `390px` and `360px`.
-- Keep the website preview available, but do not let it block the primary editing workflow.
+- The preview is the orientation layer; the slot cards below are the exact edit list.
 
 The current mobile order for clients is:
 
-1. compact site header and link edit
-2. image upload/edit panel
-3. slot cards
-4. readiness/status panel
-5. website preview
+1. managed desktop/mobile preview
+2. compact site header and link edit
+3. editable image slot cards
+4. upload form
+5. readiness/status panel
 
 ## Client Workflow
 
@@ -62,6 +64,7 @@ The client should immediately understand:
 
 - which website they are managing
 - current status
+- how the website currently looks on desktop and mobile
 - how to change the website link
 - which image area they are editing
 - how to upload or replace an image

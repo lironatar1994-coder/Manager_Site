@@ -35,6 +35,7 @@ const state = {
   audit: [],
   clientSite: null,
   clientUsername: "",
+  previewMode: "desktop",
 };
 
 const app = document.querySelector("#app");
@@ -233,12 +234,36 @@ function renderClient() {
       </header>
 
       <section class="client-overview">
-        <article class="website-preview">
-          <div class="browser-bar"><span></span><span></span><span></span><p>${escapeHtml(site.websiteUrl)}</p></div>
-          <div class="preview-canvas">
-            <div class="preview-hero">${slotPreview(site, "hero")}</div>
-            <div class="preview-copy"><strong>${escapeHtml(site.name)}</strong><span></span><span></span><span class="short"></span></div>
-            <div class="preview-tiles">${slotPreview(site, "about")}${slotPreview(site, "service")}${slotPreview(site, "logo")}</div>
+        <article class="website-preview managed-preview" data-preview-mode="${state.previewMode}">
+          <div class="preview-toolbar">
+            <div>
+              <p class="eyebrow">תצוגה חיה</p>
+              <h2>כך האתר נראה עכשיו</h2>
+            </div>
+            <div class="preview-toggle" role="tablist" aria-label="בחירת תצוגה">
+              <button class="${state.previewMode === "desktop" ? "active" : ""}" type="button" data-preview-mode="desktop"><i data-lucide="monitor"></i>מחשב</button>
+              <button class="${state.previewMode === "mobile" ? "active" : ""}" type="button" data-preview-mode="mobile"><i data-lucide="smartphone"></i>נייד</button>
+            </div>
+          </div>
+          <div class="preview-device">
+            <div class="browser-bar"><span></span><span></span><span></span><p>${escapeHtml(site.websiteUrl)}</p></div>
+            <div class="preview-canvas managed-site">
+              <section class="managed-hero">
+                ${previewEditableSlot(site, "hero", "hero")}
+                <div class="managed-copy">
+                  ${previewEditableSlot(site, "logo", "logo")}
+                  <strong>${escapeHtml(site.name)}</strong>
+                  <p>תצוגה מנוהלת של האתר עם התמונות שהועלו למערכת.</p>
+                </div>
+              </section>
+              <section class="managed-sections">
+                ${previewEditableSlot(site, "about", "section")}
+                ${previewEditableSlot(site, "service", "section")}
+              </section>
+              <section class="managed-gallery">
+                ${previewEditableSlot(site, "gallery", "gallery")}
+              </section>
+            </div>
           </div>
         </article>
         <article class="progress-panel">
@@ -294,6 +319,9 @@ function renderClient() {
   document.querySelector("#siteLinkForm").addEventListener("submit", onUpdateSite);
   document.querySelector("#uploadForm").addEventListener("submit", onUploadImage);
   document.querySelector("#reviewButton").addEventListener("click", () => updateSiteStatus(site.id, "waiting_review"));
+  document.querySelectorAll("button[data-preview-mode]").forEach((button) => {
+    button.addEventListener("click", () => setPreviewMode(button.dataset.previewMode));
+  });
   document.querySelectorAll("[data-upload-slot]").forEach((button) => {
     button.addEventListener("click", () => {
       document.querySelector("#slotSelect").value = button.dataset.uploadSlot;
@@ -408,6 +436,7 @@ function slotCard(site, slot) {
         <span>
           <strong>${escapeHtml(slotDisplayLabel(slot))}</strong>
           <small>${slot.required ? "חובה" : "לא חובה"} · ${escapeHtml(slotRatioLabel(slot.ratio))}</small>
+          <em class="slot-state">${primary ? "תמונה קיימת - אפשר להחליף או להסיר" : "אין תמונה - אפשר להוסיף"}</em>
         </span>
         <button class="ghost-button small" type="button" data-upload-slot="${slot.id}" ${can("canUpload") ? "" : "disabled"}>
           <i data-lucide="${primary ? "replace" : "plus"}"></i>${primary && !gallery ? "החלפה" : "העלאה"}
@@ -470,6 +499,30 @@ function slotPreview(site, slotId) {
   const image = imagesForSlot(site, slotId)[0];
   if (image) return `<img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" />`;
   return `<span class="preview-placeholder">${escapeHtml(slotDisplayLabel((site.slots || DEFAULT_SLOTS).find((slot) => slot.id === slotId) || { id: slotId }))}</span>`;
+}
+
+function previewEditableSlot(site, slotId, variant = "section") {
+  const image = imagesForSlot(site, slotId)[0];
+  const label = slotDisplayLabel((site.slots || DEFAULT_SLOTS).find((slot) => slot.id === slotId) || { id: slotId });
+  return `
+    <div class="editable-preview-slot ${variant} ${image ? "has-image" : "missing"}">
+      ${image ? `<img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" />` : `<span>${escapeHtml(label)}</span>`}
+      <button class="slot-marker" type="button" data-upload-slot="${slotId}" ${can("canUpload") ? "" : "disabled"}>
+        <i data-lucide="${image ? "replace" : "plus"}"></i>
+        <span>${escapeHtml(label)}</span>
+      </button>
+    </div>
+  `;
+}
+
+function setPreviewMode(mode) {
+  if (!["desktop", "mobile"].includes(mode)) return;
+  state.previewMode = mode;
+  const preview = document.querySelector(".managed-preview");
+  if (preview) preview.dataset.previewMode = mode;
+  document.querySelectorAll("button[data-preview-mode]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.previewMode === mode);
+  });
 }
 
 function imagesForSlot(site, slotId) {

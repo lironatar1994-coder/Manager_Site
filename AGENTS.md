@@ -28,6 +28,7 @@ There is no public registration.
 - Admin screen is currently English and LTR.
 - Usernames, URLs, and route examples should remain LTR even inside Hebrew UI.
 - Client users must only see their own assigned website.
+- Client workspace starts with a managed live preview, including desktop/mobile toggle and editable markers for all image slots.
 - Admin users can preview client workspaces and manage users, permissions, statuses, and client sites.
 
 ## Main Files

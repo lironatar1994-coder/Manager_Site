@@ -20,7 +20,7 @@ Admin can create and pause users, but future polish could add:
 
 ### 3. Real Website Integration
 
-The current app manages images and metadata inside Manager Site. A future version should define how changes propagate to each actual client website:
+The current app has a managed desktop/mobile preview inside Manager Site. It is not yet a true iframe or live render from the external website. A future version should define how changes propagate to each actual client website:
 
 - manual export
 - API push
@@ -81,6 +81,8 @@ Recent verification covered:
 
 - `npm.cmd run check`
 - local login/client/admin mobile rendering
+- managed preview desktop/mobile toggle
+- five editable preview markers for hero, logo, about, service, and gallery
 - no horizontal overflow at `390px` and `360px`
 - live route `https://vee-app.co.il/Manager_Site/login` returning `200`
 - live assets including the mobile CSS and Hebrew ratio label handling
