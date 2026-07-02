@@ -33,6 +33,15 @@ Current slots:
 - Gallery images: `gallery/img2.jpeg` through `gallery/img8.jpeg`
 - About portrait: `miryam.jpeg`
 
+## Preview Screenshots
+
+The Manager Site client workspace uses saved first-viewport screenshots:
+
+- Desktop: `public/client-previews/miryam_zelig/desktop.png`
+- Mobile: `public/client-previews/miryam_zelig/mobile.png`
+
+These were captured from `https://vee-app.co.il/Miryam_Zelig/` and should be refreshed when the website design or first viewport changes.
+
 ## Agent Notes
 
 - Keep `/client/miryam_zelig` as the backend route.

@@ -43,32 +43,31 @@ Most clients will use phones. Keep mobile flows fast:
 
 - Login form must be reachable without awkward scrolling.
 - Client top navigation should stay compact and usable.
-- The managed website preview should appear before the editing list on mobile.
+- The real website screenshot preview should appear before the editing list on mobile.
 - The preview must include desktop/mobile controls.
-- The preview must show editable markers for hero, logo, about, service, and gallery.
+- The preview should load saved images from `public/client-previews/<username>/desktop.png` and `public/client-previews/<username>/mobile.png` when available.
 - Buttons and inputs should be comfortable touch targets.
 - Avoid horizontal overflow at `390px` and `360px`.
-- The preview is the orientation layer; the slot cards below are the exact edit list.
+- The preview is the orientation layer; the image rail below is the exact edit list.
 
 The current mobile order for clients is:
 
-1. managed desktop/mobile preview
-2. compact site header and link edit
-3. editable image slot cards
-4. upload form
-5. readiness/status panel
+1. clean Hebrew site header and link edit
+2. real desktop/mobile screenshot preview
+3. drag/drop image rail
+4. image action modal for replace, delete, and crop
 
 ## Client Workflow
 
 The client should immediately understand:
 
 - which website they are managing
-- current status
 - how the website currently looks on desktop and mobile
 - how to change the website link
 - which image area they are editing
 - how to upload or replace an image
-- how to send for review
+
+Do not show internal review/status/approval language in the first client-facing section. Admin-only status controls may exist for admin preview, but the normal client experience should read like a simple website image manager.
 
 Use explicit labels. Do not hide core actions behind unclear icons.
 
@@ -96,6 +95,8 @@ Before finishing UI changes:
 - verify URLs/usernames remain readable LTR
 - verify buttons are not cramped
 - verify client upload path is obvious on mobile
+- verify desktop/mobile screenshot previews load and are not blank
+- verify the first client section does not expose internal review/status/approval wording
 - verify login still has no English operational copy
 
 ## Hebrew Editing Note

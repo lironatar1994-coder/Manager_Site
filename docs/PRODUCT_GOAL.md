@@ -39,7 +39,17 @@ The client is responsible for:
 - Client-facing UI should feel premium, minimal, fast, and simple.
 - Login and client-facing screens are Hebrew and RTL.
 - Backend routes remain stable English routes, especially `/client/:username`.
-- The first client workspace section should show the managed website preview, not a generic dashboard.
+- The first client workspace section should be client-safe and must not expose internal review/status/approval wording.
+- The client workspace should show real saved desktop/mobile screenshots of the live website when available.
+
+## Website Preview Screenshots
+
+Each reachable live client website should have:
+
+- `public/client-previews/<username>/desktop.png`
+- `public/client-previews/<username>/mobile.png`
+
+These are captured from the live website and shown in the client workspace desktop/mobile preview. They should show the real first viewport of the client's website, not a blank page, error page, or generic mockup.
 
 ## Current Client Image Slots
 

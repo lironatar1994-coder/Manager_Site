@@ -45,6 +45,15 @@ Example:
 | `before_after_before` | `לפני - לפני ואחרי` | `/var/www/example/images/before.jpg` | before/after |
 | `before_after_after` | `אחרי - לפני ואחרי` | `/var/www/example/images/after.jpg` | before/after |
 
+## Preview Screenshots
+
+The Manager Site client workspace should show real screenshots of this website:
+
+- `public/client-previews/replace_username/desktop.png`
+- `public/client-previews/replace_username/mobile.png`
+
+Capture these from the live public URL after the website is reachable. Use the workflow in `docs/NEW_CLIENT_AGENT_WORKFLOW.md`.
+
 ## Agent Notes
 
 - Do not add public registration.

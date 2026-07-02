@@ -25,6 +25,8 @@ Local:
 - `clients/_template`
 - `clients/<username>/AGENTS.md`
 - `clients/<username>/client.config.json`
+- `public/client-previews/<username>/desktop.png`
+- `public/client-previews/<username>/mobile.png`
 
 Production:
 
@@ -117,6 +119,17 @@ The app never lets clients choose filesystem paths. It reads and replaces only p
 When a configured production site root exists, uploading to a mapped slot copies the upload to that production path and first backs up the previous file under `.manager-site-backups`.
 
 If a config exists but the production `siteRoot` does not exist yet, uploads remain inside Manager Site storage instead of creating random production folders.
+
+## Client Preview Screenshots
+
+The client desktop/mobile preview uses static PNG screenshots when available:
+
+- `/Manager_Site/client-previews/<username>/desktop.png`
+- `/Manager_Site/client-previews/<username>/mobile.png`
+
+Source files live under `public/client-previews/<username>/`. Capture them from the live website during new client setup, using viewport screenshots rather than full-page screenshots. The current standard is `1440x1000` for desktop and `390x844` for mobile.
+
+If a screenshot is missing or fails to load, the frontend shows a fallback message instead of breaking the client workspace.
 
 ## Frontend Routing
 

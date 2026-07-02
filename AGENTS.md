@@ -28,7 +28,7 @@ There is no public registration.
 - Admin screen is currently English and LTR.
 - Usernames, URLs, and route examples should remain LTR even inside Hebrew UI.
 - Client users must only see their own assigned website.
-- Client workspace starts with a managed live preview, including desktop/mobile toggle and editable markers for all image slots.
+- Client workspace starts with a clean Hebrew first section and real saved desktop/mobile website screenshots when available. Do not expose internal review/status/approval wording in the client first section.
 - Admin users can preview client workspaces and manage users, permissions, statuses, and client sites.
 
 ## Main Files
@@ -42,6 +42,7 @@ There is no public registration.
 - `scripts/hash-password.js` - helper for production admin password hash.
 - `clients/<username>/AGENTS.md` - human notes for a specific client website.
 - `clients/<username>/client.config.json` - machine-readable allowlist for real production image paths.
+- `public/client-previews/<username>/desktop.png` and `mobile.png` - saved first-viewport screenshots used in the client desktop/mobile preview.
 
 ## New Client Setup
 
@@ -54,6 +55,7 @@ If the user wants a short reusable instruction to send to another AI agent, use:
 - `docs/NEW_CLIENT_AGENT_PROMPT.md`
 
 Do not ask the user to repeat the whole product context. The workflow file explains how to inspect the live website, find production image files, create the client agent file, create the image allowlist, sync production config, and verify through the Manager Site API.
+It also explains how to capture the real desktop/mobile preview screenshots that must be saved for every reachable live client website.
 
 ## Safe Verification
 

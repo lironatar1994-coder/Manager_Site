@@ -23,9 +23,13 @@ For each new client, create or update:
 
 - `clients/<username>/AGENTS.md`
 - `clients/<username>/client.config.json`
+- `public/client-previews/<username>/desktop.png`
+- `public/client-previews/<username>/mobile.png`
 - Production copy at `/root/Manager_Site/data/clients/<username>/client.config.json` when deploying live
 
 The `client.config.json` file is the machine-readable allowlist. Manager Site can only view, replace, remove, or reorder images that are listed there.
+
+The preview screenshots are the client-facing desktop/mobile website previews shown at the top of the client workspace. Do not leave a new client with blank or generic preview imagery when the live website can be opened.
 
 ## Workflow
 
@@ -100,7 +104,55 @@ The `client.config.json` file is the machine-readable allowlist. Manager Site ca
    - important client-specific notes
    - deployment or verification notes
 
-6. Sync production config.
+6. Capture desktop and mobile website screenshots.
+
+   The client workspace first section uses saved screenshots from:
+
+   - `public/client-previews/<username>/desktop.png`
+   - `public/client-previews/<username>/mobile.png`
+
+   Capture them from the live website URL after the website is reachable. Use the same pattern used for Miryam Zelig:
+
+   - desktop viewport: `1440x1000`
+   - mobile viewport: `390x844`
+   - screenshot only the visible viewport, not the full page
+   - save PNG files under the exact username folder
+
+   Example Playwright workflow:
+
+   ```js
+   const fs = await import("node:fs/promises");
+   const path = await import("node:path");
+   const { chromium } = await import("playwright");
+
+   const username = "<username>";
+   const liveUrl = "<live website URL>";
+   const outDir = `C:/Users/liron/Sites_Manager/public/client-previews/${username}`;
+
+   await fs.mkdir(outDir, { recursive: true });
+   const browser = await chromium.launch({ headless: true });
+
+   const desktop = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 });
+   await desktop.goto(liveUrl, { waitUntil: "networkidle", timeout: 45000 });
+   await desktop.screenshot({ path: path.join(outDir, "desktop.png"), fullPage: false });
+
+   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true });
+   await mobile.goto(liveUrl, { waitUntil: "networkidle", timeout: 45000 });
+   await mobile.screenshot({ path: path.join(outDir, "mobile.png"), fullPage: false });
+
+   await browser.close();
+   ```
+
+   Verify the screenshots before committing:
+
+   - open both images visually
+   - confirm they are not blank, error pages, login pages, or placeholder pages
+   - confirm they show the real client website first viewport
+   - confirm desktop and mobile are different when the site is responsive
+
+   If the live website cannot be reached or screenshots fail, do not block the rest of setup. Leave a short note in `clients/<username>/AGENTS.md` explaining why screenshots are missing and that Manager Site will show its built-in fallback.
+
+7. Sync production config.
 
    After committing and deploying the repo, Manager Site may still prefer the runtime config under `data/clients`.
 
@@ -112,7 +164,7 @@ The `client.config.json` file is the machine-readable allowlist. Manager Site ca
    chmod 600 /root/Manager_Site/data/clients/<username>/client.config.json
    ```
 
-7. Verify through Manager Site API.
+8. Verify through Manager Site API.
 
    Log in as admin and check the assets endpoint:
 
@@ -142,7 +194,7 @@ The `client.config.json` file is the machine-readable allowlist. Manager Site ca
    - each required slot has `exists: true`
    - paths point to the intended live files
 
-8. Verify UI behavior.
+9. Verify UI behavior.
 
    Open:
 
@@ -152,6 +204,10 @@ The `client.config.json` file is the machine-readable allowlist. Manager Site ca
    Check:
 
    - Hebrew/RTL client UI
+   - the first client section is client-safe and does not show internal status/review/approval wording
+   - the first client section shows `ניהול תמונות האתר` or similarly clear client-facing wording
+   - desktop screenshot loads from `/Manager_Site/client-previews/<username>/desktop.png`
+   - mobile toggle loads `/Manager_Site/client-previews/<username>/mobile.png`
    - all slots appear under `תמונות להחלפה`
    - upload/replace targets are understandable
    - drag-and-drop works for reorderable existing images
@@ -191,8 +247,9 @@ Avoid:
 The setup is complete only when:
 
 - client files exist in `clients/<username>/`
+- desktop/mobile screenshots exist in `public/client-previews/<username>/`
 - runtime production config is synced when live
 - Manager Site API returns the expected slots
-- live UI shows those slots
+- live UI shows those slots and the saved desktop/mobile screenshots
 - uploads/replacements affect the intended live website files
 - changes are committed and pushed
