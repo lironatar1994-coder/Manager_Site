@@ -331,6 +331,15 @@ function renderClient() {
             <div class="browser-bar"><span></span><span></span><span></span><p>${escapeHtml(visibleWebsiteUrl)}</p></div>
             <div class="preview-canvas live-iframe-preview">
               <iframe src="${escapeAttr(clientLivePreviewUrl(visibleWebsiteUrl))}" title="תצוגת האתר החי" loading="lazy" data-live-preview></iframe>
+              <div class="preview-fallback" data-live-preview-fallback hidden>
+                <i data-lucide="panel-top-open"></i>
+                <strong>התצוגה החיה לא זמינה כרגע</strong>
+                <span>אפשר לפתוח את האתר בחלון חדש ולהמשיך לנהל את התמונות כאן.</span>
+                <div>
+                  <a class="primary-button" href="${escapeAttr(visibleWebsiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>פתיחת האתר</a>
+                  <button class="ghost-button" type="button" data-refresh-preview-inline><i data-lucide="refresh-cw"></i>ניסיון נוסף</button>
+                </div>
+              </div>
             </div>
           </div>
         </article>
@@ -370,6 +379,7 @@ function renderClient() {
     button.addEventListener("click", () => setPreviewMode(button.dataset.previewMode));
   });
   document.querySelector("[data-refresh-preview]")?.addEventListener("click", refreshSitePreview);
+  document.querySelector("[data-refresh-preview-inline]")?.addEventListener("click", refreshSitePreview);
   bindLivePreview();
   // The previous slot grid and standalone upload form are intentionally not rendered.
   // Image actions now live in the drag/drop rail to keep one clear workflow.
@@ -697,14 +707,39 @@ function refreshSitePreview() {
 function bindLivePreview() {
   const preview = document.querySelector("[data-live-preview]");
   const frame = preview?.closest(".live-iframe-preview");
-  const refreshButton = document.querySelector("[data-refresh-preview]");
+  const fallback = frame?.querySelector("[data-live-preview-fallback]");
+  const refreshButtons = document.querySelectorAll("[data-refresh-preview], [data-refresh-preview-inline]");
   if (!preview || !frame) return;
-  preview.addEventListener("load", () => {
+  let settled = false;
+  const setButtonsLoading = (loading) => {
+    refreshButtons.forEach((button) => button.classList.toggle("is-loading", loading));
+  };
+  const markLoaded = () => {
+    settled = true;
     frame.classList.remove("is-loading");
-    refreshButton?.classList.remove("is-loading");
-  });
+    frame.classList.remove("is-blocked");
+    if (fallback) fallback.hidden = true;
+    setButtonsLoading(false);
+  };
+  const markUnavailable = () => {
+    if (settled) return;
+    settled = true;
+    frame.classList.remove("is-loading");
+    frame.classList.add("is-blocked");
+    if (fallback) fallback.hidden = false;
+    setButtonsLoading(false);
+    icons();
+  };
+  const fallbackTimer = window.setTimeout(markUnavailable, 9000);
+  preview.addEventListener("load", () => {
+    window.clearTimeout(fallbackTimer);
+    markLoaded();
+  }, { once: true });
+  preview.addEventListener("error", markUnavailable, { once: true });
+  frame.classList.remove("is-blocked");
+  if (fallback) fallback.hidden = true;
   frame.classList.add("is-loading");
-  refreshButton?.classList.add("is-loading");
+  setButtonsLoading(true);
 }
 
 function setPreviewMode(mode) {
