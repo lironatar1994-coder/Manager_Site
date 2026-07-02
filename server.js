@@ -11,6 +11,7 @@ const SESSION_COOKIE = "manager_site_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 8;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const STORE_PATH = path.join(DATA_DIR, "store.json");
+const SESSION_STORE_PATH = path.join(DATA_DIR, "sessions.json");
 const UPLOAD_ROOT = process.env.UPLOAD_ROOT || path.join(DATA_DIR, "uploads");
 const INITIAL_ADMIN_PATH = path.join(DATA_DIR, "initial-admin.txt");
 const CLIENTS_DATA_DIR = process.env.CLIENTS_DIR || path.join(DATA_DIR, "clients");
@@ -56,7 +57,7 @@ const upload = multer({
 });
 
 const router = express.Router();
-router.use("/uploads", requireAuth, express.static(UPLOAD_ROOT, { fallthrough: false }));
+router.use("/uploads", requireAuth, express.static(UPLOAD_ROOT, { fallthrough: false, setHeaders: setManagedImageCacheHeaders }));
 router.get(["/", "/index.html"], sendSpaShell);
 router.get(["/login/app.js", "/admin-login/app.js", "/admin/app.js", "/client/app.js", "/client/:username/app.js"], sendPublicAsset("app.js"));
 router.get(["/login/styles.css", "/admin-login/styles.css", "/admin/styles.css", "/client/styles.css", "/client/:username/styles.css"], sendPublicAsset("styles.css"));
@@ -82,12 +83,13 @@ router.post("/api/auth/login", async (req, res) => {
 
   user.lastLoginAt = new Date().toISOString();
   await writeStore(store);
-  createSession(res, user.id);
+  await createSession(res, user.id);
   res.json({ user: publicUser(user), redirectTo: user.role === "admin" ? "/admin" : `/client/${user.username}` });
 });
 
-router.post("/api/auth/logout", requireAuth, (req, res) => {
+router.post("/api/auth/logout", requireAuth, async (req, res) => {
   sessions.delete(req.sessionId);
+  await writeSessions();
   clearSessionCookie(res);
   res.json({ ok: true });
 });
@@ -220,6 +222,7 @@ router.get("/api/sites/:siteId/assets/:slotId/content", requireSiteAccess, async
   }
   try {
     await assertFileReadable(slot.absolutePath);
+    setManagedImageCacheHeaders(res);
     res.sendFile(slot.absolutePath);
   } catch (error) {
     res.status(404).json({ error: "Asset file not found" });
@@ -470,6 +473,7 @@ app.use((err, req, res, next) => {
 
 async function startServer() {
   await initStore();
+  await loadSessions();
   return app.listen(PORT, "127.0.0.1", () => {
     console.log(`Manager Site listening on http://127.0.0.1:${PORT}${BASE_PATH || ""}`);
   });
@@ -1009,12 +1013,46 @@ function scrypt(password, salt) {
   });
 }
 
-function createSession(res, userId) {
+async function loadSessions() {
+  sessions.clear();
+  let saved = [];
+  try {
+    saved = JSON.parse(await fsp.readFile(SESSION_STORE_PATH, "utf8"));
+  } catch (error) {
+    saved = [];
+  }
+  const now = Date.now();
+  for (const session of Array.isArray(saved) ? saved : []) {
+    const id = String(session.id || "");
+    const userId = String(session.userId || "");
+    const expiresAt = Number(session.expiresAt || 0);
+    if (id && userId && expiresAt > now) {
+      sessions.set(id, { userId, expiresAt });
+    }
+  }
+  if (saved.length !== sessions.size) await writeSessions();
+}
+
+async function writeSessions() {
+  await fsp.mkdir(DATA_DIR, { recursive: true });
+  const now = Date.now();
+  const data = Array.from(sessions.entries())
+    .filter(([, session]) => session.expiresAt > now)
+    .map(([id, session]) => ({
+      id,
+      userId: session.userId,
+      expiresAt: session.expiresAt,
+    }));
+  await fsp.writeFile(SESSION_STORE_PATH, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o600 });
+}
+
+async function createSession(res, userId) {
   const sessionId = crypto.randomBytes(32).toString("base64url");
   sessions.set(sessionId, {
     userId,
     expiresAt: Date.now() + SESSION_TTL_MS,
   });
+  await writeSessions();
   res.cookie(SESSION_COOKIE, sessionId, {
     httpOnly: true,
     sameSite: "lax",
@@ -1034,11 +1072,20 @@ function clearSessionCookie(res) {
   });
 }
 
+function setManagedImageCacheHeaders(res) {
+  res.setHeader("Cache-Control", "private, no-cache, no-store, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+}
+
 async function requireAuth(req, res, next) {
   const sessionId = parseCookies(req.headers.cookie || "")[SESSION_COOKIE];
   const session = sessionId ? sessions.get(sessionId) : null;
   if (!session || session.expiresAt < Date.now()) {
-    if (sessionId) sessions.delete(sessionId);
+    if (sessionId) {
+      sessions.delete(sessionId);
+      await writeSessions();
+    }
     res.status(401).json({ error: "Login required" });
     return;
   }
@@ -1047,11 +1094,13 @@ async function requireAuth(req, res, next) {
   const user = store.users.find((item) => item.id === session.userId);
   if (!user || !user.active) {
     sessions.delete(sessionId);
+    await writeSessions();
     res.status(401).json({ error: "Login required" });
     return;
   }
 
   session.expiresAt = Date.now() + SESSION_TTL_MS;
+  await writeSessions();
   req.sessionId = sessionId;
   req.user = user;
   next();
