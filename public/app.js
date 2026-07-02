@@ -1025,6 +1025,7 @@ function showImageActionModal(slotId) {
         <h2>${escapeHtml(slotDisplayLabel(slot))}</h2>
         <p data-action-message>${image ? escapeHtml(image.name) : "אין עדיין תמונה באזור הזה."}</p>
       </div>
+      <div class="quality-panel" data-quality-panel hidden></div>
       <input class="modal-file-input" type="file" accept="image/*" data-modal-file ${can("canUpload") ? "" : "disabled"} />
       <div class="image-action-buttons">
         <button class="primary-button" type="button" data-replace-slot="${escapeAttr(slotId)}"><i data-lucide="${image ? "replace" : "image-plus"}"></i>${image ? "בחירת תמונה" : "הוספת תמונה"}</button>
@@ -1045,8 +1046,10 @@ function showImageActionModal(slotId) {
   const preview = modal.querySelector("[data-preview-zoom]");
   const fileInput = modal.querySelector("[data-modal-file]");
   const message = modal.querySelector("[data-action-message]");
+  const qualityPanel = modal.querySelector("[data-quality-panel]");
   const pendingActions = modal.querySelector(".pending-replace-actions");
   const replaceButton = modal.querySelector("[data-replace-slot]");
+  const cropButton = modal.querySelector("[data-crop-slot]");
   const cleanup = () => {
     if (selectedUrl) URL.revokeObjectURL(selectedUrl);
     modal.remove();
@@ -1059,8 +1062,7 @@ function showImageActionModal(slotId) {
   modal.querySelector("[data-replace-slot]").addEventListener("click", () => {
     fileInput.click();
   });
-  fileInput.addEventListener("change", () => {
-    const file = fileInput.files?.[0];
+  const setPendingFile = async (file) => {
     if (!file) return;
     if (selectedUrl) URL.revokeObjectURL(selectedUrl);
     selectedFile = file;
@@ -1071,8 +1073,20 @@ function showImageActionModal(slotId) {
     preview.innerHTML = `<img src="${escapeAttr(selectedUrl)}" alt="${escapeAttr(file.name)}" data-action-preview-media />`;
     message.textContent = `תצוגה לפני החלפה: ${file.name}`;
     pendingActions.hidden = false;
+    cropButton.disabled = false;
     replaceButton.innerHTML = `<i data-lucide="replace"></i>בחירה אחרת`;
+    try {
+      const metadata = await readImageMetadata(selectedUrl);
+      qualityPanel.hidden = false;
+      qualityPanel.innerHTML = renderQualityReport(slot, file, metadata);
+    } catch (error) {
+      qualityPanel.hidden = false;
+      qualityPanel.innerHTML = `<div class="quality-status warn"><i data-lucide="triangle-alert"></i><span>לא ניתן לקרוא את גודל התמונה לפני ההעלאה</span></div>`;
+    }
     icons();
+  };
+  fileInput.addEventListener("change", () => {
+    setPendingFile(fileInput.files?.[0]);
   });
   modal.querySelector("[data-clear-selection]").addEventListener("click", () => {
     if (selectedUrl) URL.revokeObjectURL(selectedUrl);
@@ -1084,7 +1098,10 @@ function showImageActionModal(slotId) {
     preview.disabled = !image;
     preview.innerHTML = image ? `<img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" data-action-preview-media />` : `<i data-lucide="image-plus"></i>`;
     message.textContent = image ? image.name : "אין עדיין תמונה באזור הזה.";
+    qualityPanel.hidden = true;
+    qualityPanel.innerHTML = "";
     pendingActions.hidden = true;
+    cropButton.disabled = !image;
     replaceButton.innerHTML = `<i data-lucide="${image ? "replace" : "image-plus"}"></i>${image ? "בחירת תמונה" : "הוספת תמונה"}`;
     icons();
   });
@@ -1094,9 +1111,21 @@ function showImageActionModal(slotId) {
     if (uploaded) cleanup();
   });
   modal.querySelector("[data-crop-slot]").addEventListener("click", () => {
-    if (!image) return;
-    cleanup();
-    showCropToolModal(slot, image);
+    const cropSource = selectedFile ? { url: selectedUrl, name: selectedFile.name || `${slot.id}.jpg` } : image;
+    if (!cropSource?.url) return;
+    showCropToolModal(slot, cropSource, {
+      saveLabel: selectedFile ? "אישור חיתוך" : "שמירה והחלפה",
+      onSave: async (blob) => {
+        const cropped = namedImageBlob(blob, cropFileName(selectedFile?.name, slot.id));
+        if (selectedFile) {
+          await setPendingFile(cropped);
+          return true;
+        }
+        const uploaded = await uploadImageToSlot(slot.id, cropped, cropped.name || `${slot.id}-crop.jpg`);
+        if (uploaded) cleanup();
+        return uploaded;
+      },
+    });
   });
   modal.querySelector("[data-delete-current]").addEventListener("click", () => {
     if (!image) return;
@@ -1110,9 +1139,10 @@ function showImageActionModal(slotId) {
   });
 }
 
-function showCropToolModal(slot, image) {
+function showCropToolModal(slot, image, options = {}) {
   const modal = document.createElement("div");
   const aspect = ratioToAspect(slot.ratio);
+  const saveLabel = options.saveLabel || "שמירה והחלפה";
   modal.className = "modal-backdrop";
   modal.innerHTML = `
     <div class="crop-modal" role="dialog" aria-modal="true" aria-label="כלי חיתוך">
@@ -1132,7 +1162,7 @@ function showCropToolModal(slot, image) {
       </div>
       <div class="modal-actions">
         <button class="ghost-button" type="button" data-cancel>ביטול</button>
-        <button class="primary-button" type="button" data-save-crop><i data-lucide="crop"></i>שמירה והחלפה</button>
+        <button class="primary-button" type="button" data-save-crop><i data-lucide="crop"></i>${escapeHtml(saveLabel)}</button>
       </div>
     </div>
   `;
@@ -1157,8 +1187,8 @@ function showCropToolModal(slot, image) {
         x: Number(modal.querySelector("[data-crop-x]").value),
         y: Number(modal.querySelector("[data-crop-y]").value),
       });
-      modal.remove();
-      await uploadImageToSlot(slot.id, blob, `${slot.id}-crop.jpg`);
+      const saved = options.onSave ? await options.onSave(blob) : await uploadImageToSlot(slot.id, blob, `${slot.id}-crop.jpg`);
+      if (saved !== false) modal.remove();
     } catch (error) {
       toast("לא ניתן לחתוך את התמונה הזו כרגע", "error");
     }
@@ -1177,6 +1207,65 @@ function ratioToAspect(ratio) {
   const match = String(ratio || "").match(/^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/);
   if (!match) return 1;
   return Number(match[1]) / Number(match[2]);
+}
+
+function readImageMetadata(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = () => reject(new Error("Image metadata failed"));
+    img.src = src;
+  });
+}
+
+function recommendedImageSize(slot) {
+  const aspect = ratioToAspect(slot.ratio);
+  if (slot.ratio === "free") return { width: 1200, height: 800, free: true };
+  if (Math.abs(aspect - 1) < 0.05) return { width: 900, height: 900 };
+  const width = aspect > 1 ? 1400 : 900;
+  return { width, height: Math.round(width / aspect) };
+}
+
+function renderQualityReport(slot, file, metadata) {
+  const recommended = recommendedImageSize(slot);
+  const tooSmall = metadata.width < recommended.width || metadata.height < recommended.height;
+  const tooHeavy = file.size > 5 * 1024 * 1024;
+  const status = tooSmall || tooHeavy ? "warn" : "ok";
+  const statusText = tooSmall
+    ? "התמונה קטנה מהמומלץ, אפשר להמשיך אבל ייתכן שתיראה פחות חדה באתר."
+    : tooHeavy
+      ? "הקובץ כבד. אפשר להמשיך, אבל העלאה ותצוגה באתר עלולות להיות איטיות יותר."
+      : "התמונה נראית מתאימה להעלאה.";
+  return `
+    <div class="quality-status ${status}">
+      <i data-lucide="${status === "ok" ? "badge-check" : "triangle-alert"}"></i>
+      <span>${escapeHtml(statusText)}</span>
+    </div>
+    <div class="quality-grid">
+      <span><strong>${metadata.width}×${metadata.height}</strong><small>גודל תמונה</small></span>
+      <span><strong>${formatFileSize(file.size)}</strong><small>משקל קובץ</small></span>
+      <span><strong>${recommended.free ? `מומלץ ${recommended.width}+` : `${recommended.width}×${recommended.height}+`}</strong><small>${escapeHtml(slotRatioLabel(slot.ratio) || "יחס חופשי")}</small></span>
+    </div>
+  `;
+}
+
+function formatFileSize(bytes = 0) {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(bytes > 10 * 1024 * 1024 ? 0 : 1)}MB`;
+}
+
+function cropFileName(originalName, slotId) {
+  const base = String(originalName || slotId || "image").replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
+  return `${base || slotId || "image"}-crop.jpg`;
+}
+
+function namedImageBlob(blob, name) {
+  try {
+    return new File([blob], name, { type: blob.type || "image/jpeg" });
+  } catch (error) {
+    blob.name = name;
+    return blob;
+  }
 }
 
 function cropImageToBlob(imageNode, options) {

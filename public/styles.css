@@ -2010,6 +2010,75 @@ select:disabled {
   color: var(--muted);
 }
 
+.quality-panel {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(246, 241, 232, 0.74);
+  border: 1px solid var(--line);
+}
+
+.quality-panel[hidden] {
+  display: none;
+}
+
+.quality-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.quality-status i {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.quality-status.ok i {
+  color: #3f8d62;
+}
+
+.quality-status.warn i {
+  color: #b88746;
+}
+
+.quality-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.quality-grid span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 9px 10px;
+  background: rgba(255, 253, 248, 0.86);
+  border: 1px solid rgba(25, 24, 21, 0.08);
+}
+
+.quality-grid strong,
+.quality-grid small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quality-grid strong {
+  font-size: 0.88rem;
+}
+
+.quality-grid small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
 .image-action-buttons {
   grid-column: 1 / -1;
   display: grid;
@@ -2765,6 +2834,7 @@ svg.lucide {
   }
 
   .image-action-buttons,
+  .quality-grid,
   .crop-controls {
     grid-template-columns: 1fr;
   }
