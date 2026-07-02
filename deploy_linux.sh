@@ -46,7 +46,7 @@ BASE_PATH=${ROUTE_BASE}
 DATA_DIR=${REMOTE_DIR}/data
 UPLOAD_ROOT=${REMOTE_DIR}/data/uploads
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH}
+ADMIN_PASSWORD_HASH='${ADMIN_PASSWORD_HASH}'
 EOF
   chmod 600 "${NODE_ENV_FILE}"
   cat > "${REMOTE_DIR}/data/initial-admin.txt" <<EOF
@@ -58,6 +58,27 @@ created: $(date -Iseconds)
 EOF
   chmod 600 "${REMOTE_DIR}/data/initial-admin.txt"
   echo "[SECURITY] Initial admin password saved to ${REMOTE_DIR}/data/initial-admin.txt"
+fi
+
+if grep -q "^ADMIN_PASSWORD_HASH=scrypt\\$" "${NODE_ENV_FILE}"; then
+  echo "[INFO] Repairing unquoted ADMIN_PASSWORD_HASH in ${NODE_ENV_FILE}..."
+  HASH_VALUE="$(grep "^ADMIN_PASSWORD_HASH=" "${NODE_ENV_FILE}" | head -n1 | cut -d= -f2-)"
+  python3 - "${NODE_ENV_FILE}" "${HASH_VALUE}" <<'PY'
+import sys
+from pathlib import Path
+
+env_path = Path(sys.argv[1])
+hash_value = sys.argv[2]
+lines = env_path.read_text().splitlines()
+updated = []
+for line in lines:
+    if line.startswith("ADMIN_PASSWORD_HASH="):
+        updated.append(f"ADMIN_PASSWORD_HASH='{hash_value}'")
+    else:
+        updated.append(line)
+env_path.write_text("\n".join(updated) + "\n")
+PY
+  chmod 600 "${NODE_ENV_FILE}"
 fi
 
 echo "[INFO] Starting PM2 process..."
