@@ -194,6 +194,12 @@ function renderAdmin() {
   document.querySelectorAll("[data-toggle-user]").forEach((button) => {
     button.addEventListener("click", () => toggleUser(button.dataset.toggleUser, button.dataset.active !== "true"));
   });
+  document.querySelectorAll("[data-reset-password]").forEach((button) => {
+    button.addEventListener("click", () => resetUserPassword(button.dataset.resetPassword));
+  });
+  document.querySelectorAll("[data-copy-value]").forEach((button) => {
+    button.addEventListener("click", () => copyText(button.dataset.copyValue, button.dataset.copyLabel || "Copied"));
+  });
   document.querySelectorAll("[data-admin-status]").forEach((button) => {
     button.addEventListener("click", () => updateSiteStatus(button.dataset.siteId, button.dataset.adminStatus));
   });
@@ -421,6 +427,16 @@ function userCard(user) {
       <div>
         <h3>${escapeHtml(user.displayName)}</h3>
         <p>${escapeHtml(site.name || "No site")} -> ${escapeHtml(`/client/${user.username}`)}</p>
+        <div class="credential-grid">
+          ${credentialLine("Username", user.username)}
+          ${credentialLine("User ID", user.id)}
+          ${credentialLine("Site ID", user.siteId || "")}
+          <div class="credential-line locked">
+            <span>Password</span>
+            <strong>Stored as secure hash</strong>
+            <button class="ghost-button small" type="button" data-reset-password="${user.id}"><i data-lucide="key-round"></i>Reset</button>
+          </div>
+        </div>
         <a href="${href(`/client/${user.username}`)}"><i data-lucide="eye"></i>Preview client workspace</a>
         <div class="permission-chips">${permissionChips(user.permissions)}</div>
       </div>
@@ -429,6 +445,20 @@ function userCard(user) {
         <span class="status ${user.active ? "live" : "paused"}">${user.active ? "Active" : "Paused"}</span>
         <button class="ghost-button small" type="button" data-toggle-user="${user.id}" data-active="${user.active}">${user.active ? "Pause" : "Activate"}</button>
       </div>
+    </div>
+  `;
+}
+
+function credentialLine(label, value) {
+  return `
+    <div class="credential-line">
+      <span>${escapeHtml(label)}</span>
+      <strong dir="ltr">${escapeHtml(value || "—")}</strong>
+      ${
+        value
+          ? `<button class="icon-action copy-action" type="button" data-copy-value="${escapeAttr(value)}" data-copy-label="${escapeAttr(label)}" aria-label="Copy ${escapeAttr(label)}"><i data-lucide="copy"></i></button>`
+          : ""
+      }
     </div>
   `;
 }
@@ -642,6 +672,23 @@ async function toggleUser(userId, active) {
   renderAdmin();
 }
 
+async function resetUserPassword(userId) {
+  const user = state.users.find((item) => item.id === userId);
+  if (!user) return;
+  confirmAction({
+    title: "Reset client password?",
+    body: `This will replace the current password for ${user.username}. The new temporary password will be shown once.`,
+    confirmText: "Reset password",
+    onConfirm: async () => {
+      const response = await api(`/api/admin/users/${userId}/reset-password`, { method: "POST" });
+      if (response?.error) return toast(response.error);
+      showTemporaryPassword(user, response.temporaryPassword);
+      await loadAdmin();
+      renderAdmin();
+    },
+  });
+}
+
 async function onUpdateSite(event) {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
@@ -779,6 +826,41 @@ function confirmAction({ title, body, confirmText, onConfirm }) {
     await onConfirm();
     modal.remove();
   });
+}
+
+function showTemporaryPassword(user, temporaryPassword) {
+  const modal = document.createElement("div");
+  modal.className = "modal-backdrop";
+  modal.innerHTML = `
+    <div class="confirm-modal credential-modal" role="dialog" aria-modal="true" aria-label="Temporary password">
+      <button class="icon-action modal-close" type="button" aria-label="Close"><i data-lucide="x"></i></button>
+      <h2>Temporary password</h2>
+      <p>${escapeHtml(user.username)} can sign in with this password now. It will not be shown again.</p>
+      <div class="secret-box">
+        <input value="${escapeAttr(temporaryPassword)}" readonly dir="ltr" />
+        <button class="ghost-button" type="button" data-copy-temp><i data-lucide="copy"></i>Copy</button>
+      </div>
+      <div class="modal-actions">
+        <button class="primary-button" type="button" data-done>Done</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  icons();
+  const close = () => modal.remove();
+  modal.querySelector(".modal-close").addEventListener("click", close);
+  modal.querySelector("[data-done]").addEventListener("click", close);
+  modal.querySelector("[data-copy-temp]").addEventListener("click", () => copyText(temporaryPassword, "Temporary password"));
+  modal.querySelector("input").select();
+}
+
+async function copyText(value, label = "Value") {
+  try {
+    await navigator.clipboard.writeText(value);
+    toast(`${label} copied`);
+  } catch (error) {
+    toast("Copy failed");
+  }
 }
 
 function interceptInternalLinks() {

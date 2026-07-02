@@ -580,6 +580,51 @@ select:disabled {
   font-size: 0.86rem;
 }
 
+.credential-grid {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.credential-line {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 34px;
+  gap: 8px;
+  align-items: center;
+  min-height: 36px;
+  padding: 6px 8px;
+  background: rgba(255, 253, 248, 0.68);
+  border: 1px solid rgba(222, 213, 198, 0.84);
+}
+
+.credential-line span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.credential-line strong {
+  overflow: hidden;
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.credential-line.locked {
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+}
+
+.copy-action {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  color: var(--blue);
+  background: #fffdf8;
+  border-color: rgba(37, 93, 115, 0.2);
+}
+
 .user-card a {
   display: inline-flex;
   align-items: center;
@@ -1517,6 +1562,18 @@ select:disabled {
 .confirm-modal p {
   color: var(--muted);
   line-height: 1.55;
+}
+
+.secret-box {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.secret-box input {
+  font-family: "IBM Plex Mono", "Consolas", monospace;
+  font-weight: 800;
 }
 
 .modal-close {

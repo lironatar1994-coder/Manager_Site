@@ -169,6 +169,21 @@ router.patch("/api/admin/users/:userId", requireAdmin, async (req, res) => {
   res.json({ user: publicUser(user), site });
 });
 
+router.post("/api/admin/users/:userId/reset-password", requireAdmin, async (req, res) => {
+  const store = await readStore();
+  const user = store.users.find((item) => item.id === req.params.userId);
+  if (!user || user.role === "admin") {
+    res.status(404).json({ error: "Client user not found" });
+    return;
+  }
+
+  const temporaryPassword = generateTemporaryPassword();
+  user.passwordHash = await hashPassword(temporaryPassword);
+  store.audit.push(audit(req.user, "user.password_reset", { username: user.username }));
+  await writeStore(store);
+  res.json({ user: publicUser(user), temporaryPassword });
+});
+
 router.get("/api/sites", requireAuth, async (req, res) => {
   const store = await readStore();
   const sites = req.user.role === "admin" ? store.sites : store.sites.filter((site) => site.id === req.user.siteId);
@@ -750,6 +765,10 @@ async function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString("base64url");
   const key = await scrypt(password, salt);
   return `scrypt$${salt}$${key}`;
+}
+
+function generateTemporaryPassword() {
+  return crypto.randomBytes(18).toString("base64url");
 }
 
 async function verifyPassword(password, hash) {
