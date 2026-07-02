@@ -1,9 +1,9 @@
 const DEFAULT_SLOTS = [
-  { id: "hero", label: "Hero image", ratio: "16:9", required: true },
-  { id: "logo", label: "Logo", ratio: "1:1", required: true },
-  { id: "about", label: "About section", ratio: "4:3", required: false },
-  { id: "service", label: "Service image", ratio: "4:3", required: false },
-  { id: "gallery", label: "Gallery", ratio: "free", required: false },
+  { id: "hero", label: "תמונת פתיחה", ratio: "16:9", required: true },
+  { id: "logo", label: "לוגו", ratio: "1:1", required: true },
+  { id: "about", label: "אזור אודות", ratio: "4:3", required: false },
+  { id: "service", label: "תמונת שירות", ratio: "4:3", required: false },
+  { id: "gallery", label: "גלריה", ratio: "חופשי", required: false },
 ];
 
 const STATUS_META = {
@@ -11,6 +11,21 @@ const STATUS_META = {
   waiting_review: { label: "Waiting review", icon: "clock-3" },
   published: { label: "Published", icon: "badge-check" },
   needs_attention: { label: "Needs attention", icon: "triangle-alert" },
+};
+
+const HEBREW_STATUS_META = {
+  draft: { label: "טיוטה", icon: "pencil-line" },
+  waiting_review: { label: "ממתין לבדיקה", icon: "clock-3" },
+  published: { label: "פורסם", icon: "badge-check" },
+  needs_attention: { label: "דורש תיקון", icon: "triangle-alert" },
+};
+
+const HEBREW_SLOT_LABELS = {
+  hero: "תמונת פתיחה",
+  logo: "לוגו",
+  about: "אזור אודות",
+  service: "תמונת שירות",
+  gallery: "גלריה",
 };
 
 const state = {
@@ -189,13 +204,13 @@ function renderClient() {
   const completedSlots = slots.filter((slot) => slot.id !== "gallery" && imagesForSlot(site, slot.id).length).length;
   const totalSlots = slots.filter((slot) => slot.id !== "gallery").length;
   const latestImage = site.images[0];
-  app.className = `app-view client-mode ${state.me.role === "admin" ? "admin-preview" : ""}`;
+  app.className = `app-view client-mode client-rtl ${state.me.role === "admin" ? "admin-preview" : ""}`;
   app.innerHTML = `
     ${shell("client")}
-    <main class="workspace client-workspace">
+    <main class="workspace client-workspace" dir="rtl" lang="he">
       ${
         state.me.role === "admin"
-          ? `<section class="preview-banner"><i data-lucide="eye"></i><span>Admin previewing ${escapeHtml(state.clientUsername)}</span><a href="${href("/admin")}">Back to admin</a></section>`
+          ? `<section class="preview-banner"><i data-lucide="eye"></i><span>תצוגת מנהל עבור ${escapeHtml(state.clientUsername)}</span><a href="${href("/admin")}">חזרה לניהול</a></section>`
           : ""
       }
 
@@ -204,13 +219,13 @@ function renderClient() {
           <p class="eyebrow">${escapeHtml(state.me.role === "admin" ? state.clientUsername : state.me.displayName)}</p>
           <h1>${escapeHtml(site.name)}</h1>
           <div class="hero-meta">
-            ${statusPill(site.status)}
+            ${statusPill(site.status, "he")}
             <a href="${escapeAttr(site.websiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>${escapeHtml(site.websiteUrl)}</a>
           </div>
         </div>
         <form id="siteLinkForm" class="site-link-form">
-          <label>Website link<input name="websiteUrl" value="${escapeAttr(site.websiteUrl)}" ${can("canEditLinks") ? "" : "disabled"} /></label>
-          <button class="ghost-button" type="submit" ${can("canEditLinks") ? "" : "disabled"}><i data-lucide="save"></i>Save</button>
+          <label>קישור לאתר<input name="websiteUrl" value="${escapeAttr(site.websiteUrl)}" ${can("canEditLinks") ? "" : "disabled"} /></label>
+          <button class="ghost-button" type="submit" ${can("canEditLinks") ? "" : "disabled"}><i data-lucide="save"></i>שמירה</button>
         </form>
       </header>
 
@@ -225,20 +240,20 @@ function renderClient() {
         </article>
         <article class="progress-panel">
           <div class="panel-title">
-            <h2>Website readiness</h2>
-            <span class="quiet">${completedSlots}/${totalSlots} key slots</span>
+            <h2>מוכנות האתר</h2>
+            <span class="quiet">${completedSlots}/${totalSlots} אזורים מרכזיים מוכנים</span>
           </div>
           ${statusTimeline(site.status)}
           <div class="confidence-note">
             <i data-lucide="${latestImage ? "history" : "sparkles"}"></i>
-            <span>${latestImage ? `${latestImage.name} updated by ${latestImage.changedBy}` : "Upload the first image to start the review flow."}</span>
+            <span>${latestImage ? `${latestImage.name} עודכנה על ידי ${latestImage.changedBy}` : "העלו תמונה ראשונה כדי להתחיל את תהליך הבדיקה."}</span>
           </div>
-          <button class="primary-button" id="reviewButton" type="button"><i data-lucide="send"></i>Send for review</button>
+          <button class="primary-button" id="reviewButton" type="button"><i data-lucide="send"></i>שליחה לבדיקה</button>
           ${
             state.me.role === "admin"
               ? `<div class="admin-status-actions">
-                  <button class="ghost-button small" type="button" data-admin-status="published" data-site-id="${site.id}">Mark published</button>
-                  <button class="ghost-button small" type="button" data-admin-status="needs_attention" data-site-id="${site.id}">Needs attention</button>
+                  <button class="ghost-button small" type="button" data-admin-status="published" data-site-id="${site.id}">סימון כפורסם</button>
+                  <button class="ghost-button small" type="button" data-admin-status="needs_attention" data-site-id="${site.id}">דורש תיקון</button>
                 </div>`
               : ""
           }
@@ -248,21 +263,21 @@ function renderClient() {
       <section class="slot-workspace">
         <article class="upload-panel refined">
           <div class="panel-title">
-            <h2>Edit image area</h2>
-            <span class="quiet">Replace known positions</span>
+            <h2>עריכת אזור תמונה</h2>
+            <span class="quiet">החלפה לפי אזורים מוגדרים באתר</span>
           </div>
           <form id="uploadForm" class="upload-drop">
-            <label>Website area
-              <select name="slotId" id="slotSelect">${slots.map((slot) => `<option value="${slot.id}">${escapeHtml(slot.label)}</option>`).join("")}</select>
+            <label>אזור באתר
+              <select name="slotId" id="slotSelect">${slots.map((slot) => `<option value="${slot.id}">${escapeHtml(slotDisplayLabel(slot))}</option>`).join("")}</select>
             </label>
             <input id="imageFile" name="image" type="file" accept="image/*" ${can("canUpload") ? "" : "disabled"} required />
             <label for="imageFile" class="drop-target">
               <i data-lucide="image-up"></i>
-              <strong>Choose image</strong>
-              <span>PNG, JPG, WEBP, GIF, SVG up to 8MB</span>
+              <strong>בחירת תמונה</strong>
+              <span>PNG, JPG, WEBP, GIF, SVG עד 8MB</span>
             </label>
-            <input name="name" placeholder="Optional label" />
-            <button class="primary-button" type="submit" ${can("canUpload") ? "" : "disabled"}><i data-lucide="upload-cloud"></i>Upload to slot</button>
+            <input name="name" placeholder="שם לתמונה - לא חובה" />
+            <button class="primary-button" type="submit" ${can("canUpload") ? "" : "disabled"}><i data-lucide="upload-cloud"></i>העלאה לאזור</button>
           </form>
         </article>
 
@@ -286,9 +301,9 @@ function renderClient() {
     button.addEventListener("click", () => {
       const image = site.images.find((item) => item.id === button.dataset.deleteImage);
       confirmAction({
-        title: "Remove image?",
-        body: image ? `${image.name} will be removed from this website workspace.` : "This image will be removed.",
-        confirmText: "Remove",
+        title: "להסיר את התמונה?",
+        body: image ? `${image.name} תוסר מאזור העריכה של האתר.` : "התמונה תוסר מאזור העריכה של האתר.",
+        confirmText: "הסרה",
         onConfirm: () => deleteImage(button.dataset.deleteImage),
       });
     });
@@ -308,10 +323,10 @@ function shell(active) {
         ${
           state.me?.role === "admin"
             ? `<a class="${active === "admin" ? "active" : ""}" href="${href("/admin")}"><i data-lucide="shield"></i><span>Admin</span></a>`
-            : `<a class="${active === "client" ? "active" : ""}" href="${href(`/client/${state.me.username}`)}"><i data-lucide="images"></i><span>Website</span></a>`
+            : `<a class="${active === "client" ? "active" : ""}" href="${href(`/client/${state.me.username}`)}"><i data-lucide="images"></i><span>האתר שלי</span></a>`
         }
       </nav>
-      <button class="logout-button" id="logoutButton" type="button"><i data-lucide="log-out"></i><span>Logout</span></button>
+      <button class="logout-button" id="logoutButton" type="button"><i data-lucide="log-out"></i><span>${state.me?.role === "admin" ? "Logout" : "יציאה"}</span></button>
     </aside>
   `;
 }
@@ -388,11 +403,11 @@ function slotCard(site, slot) {
     <article class="slot-card ${primary ? "filled" : "empty"}">
       <div class="slot-top">
         <span>
-          <strong>${escapeHtml(slot.label)}</strong>
-          <small>${slot.required ? "Required" : "Optional"} · ${escapeHtml(slot.ratio)}</small>
+          <strong>${escapeHtml(slotDisplayLabel(slot))}</strong>
+          <small>${slot.required ? "חובה" : "לא חובה"} · ${escapeHtml(slot.ratio)}</small>
         </span>
         <button class="ghost-button small" type="button" data-upload-slot="${slot.id}" ${can("canUpload") ? "" : "disabled"}>
-          <i data-lucide="${primary ? "replace" : "plus"}"></i>${primary && !gallery ? "Replace" : "Upload"}
+          <i data-lucide="${primary ? "replace" : "plus"}"></i>${primary && !gallery ? "החלפה" : "העלאה"}
         </button>
       </div>
       ${
@@ -405,13 +420,13 @@ function slotCard(site, slot) {
                       <img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" />
                       <figcaption>
                         <span>${escapeHtml(image.name)}</span>
-                        <button class="icon-action" type="button" data-delete-image="${image.id}" ${can("canDelete") ? "" : "disabled"} aria-label="Delete ${escapeAttr(image.name)}"><i data-lucide="trash-2"></i></button>
+                        <button class="icon-action" type="button" data-delete-image="${image.id}" ${can("canDelete") ? "" : "disabled"} aria-label="הסרת ${escapeAttr(image.name)}"><i data-lucide="trash-2"></i></button>
                       </figcaption>
                     </figure>`
                 )
                 .join("")}
             </div>`
-          : `<div class="slot-empty"><i data-lucide="image"></i><span>No image assigned</span></div>`
+          : `<div class="slot-empty"><i data-lucide="image"></i><span>עדיין לא שובצה תמונה</span></div>`
       }
     </article>
   `;
@@ -423,15 +438,16 @@ function statusTimeline(status) {
   return `
     <div class="status-timeline">
       ${order
-        .map((item, index) => `<span class="${index <= activeIndex ? "active" : ""}"><i data-lucide="${STATUS_META[item].icon}"></i>${STATUS_META[item].label}</span>`)
+        .map((item, index) => `<span class="${index <= activeIndex ? "active" : ""}"><i data-lucide="${HEBREW_STATUS_META[item].icon}"></i>${HEBREW_STATUS_META[item].label}</span>`)
         .join("")}
-      ${status === "needs_attention" ? `<span class="active attention"><i data-lucide="triangle-alert"></i>Needs attention</span>` : ""}
+      ${status === "needs_attention" ? `<span class="active attention"><i data-lucide="triangle-alert"></i>דורש תיקון</span>` : ""}
     </div>
   `;
 }
 
-function statusPill(status = "draft") {
-  const meta = STATUS_META[status] || STATUS_META.draft;
+function statusPill(status = "draft", locale = "en") {
+  const source = locale === "he" ? HEBREW_STATUS_META : STATUS_META;
+  const meta = source[status] || source.draft;
   return `<span class="site-status ${status}"><i data-lucide="${meta.icon}"></i>${meta.label}</span>`;
 }
 
@@ -450,7 +466,7 @@ function permissionChips(permissions = {}) {
 function slotPreview(site, slotId) {
   const image = imagesForSlot(site, slotId)[0];
   if (image) return `<img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" />`;
-  return `<span class="preview-placeholder">${escapeHtml((site.slots || DEFAULT_SLOTS).find((slot) => slot.id === slotId)?.label || "Image")}</span>`;
+  return `<span class="preview-placeholder">${escapeHtml(slotDisplayLabel((site.slots || DEFAULT_SLOTS).find((slot) => slot.id === slotId) || { id: slotId }))}</span>`;
 }
 
 function imagesForSlot(site, slotId) {
@@ -521,7 +537,7 @@ async function onUpdateSite(event) {
   const response = await api(`/api/sites/${state.clientSite.id}`, { method: "PATCH", body: { websiteUrl: form.get("websiteUrl") } });
   if (response?.error) return toast(response.error);
   state.clientSite = response.site;
-  toast("Website link saved");
+  toast("קישור האתר נשמר");
   renderClient();
 }
 
@@ -532,7 +548,7 @@ async function onUploadImage(event) {
   const response = await api(`/api/sites/${state.clientSite.id}/images`, { method: "POST", form });
   if (response?.error) return toast(response.error);
   state.clientSite = response.site;
-  toast(`${slotLabel(state.clientSite, selectedSlot)} updated`);
+  toast(`${slotLabel(state.clientSite, selectedSlot)} עודכן`);
   renderClient();
 }
 
@@ -540,7 +556,7 @@ async function deleteImage(imageId) {
   const response = await api(`/api/sites/${state.clientSite.id}/images/${imageId}`, { method: "DELETE" });
   if (response?.error) return toast(response.error);
   state.clientSite = response.site;
-  toast("Image removed");
+  toast("התמונה הוסרה");
   renderClient();
 }
 
@@ -548,7 +564,7 @@ async function updateSiteStatus(siteId, status) {
   const response = await api(`/api/sites/${siteId}/status`, { method: "POST", body: { status } });
   if (response?.error) return toast(response.error);
   if (state.clientSite?.id === siteId) state.clientSite = response.site;
-  toast(STATUS_META[status]?.label || "Status updated");
+  toast(isClientRoute() ? HEBREW_STATUS_META[status]?.label || "הסטטוס עודכן" : STATUS_META[status]?.label || "Status updated");
   if (stripBase(location.pathname) === "/admin") {
     await loadAdmin();
     renderAdmin();
@@ -658,7 +674,15 @@ function can(permission) {
 }
 
 function slotLabel(site, slotId) {
-  return (site.slots || DEFAULT_SLOTS).find((slot) => slot.id === slotId)?.label || "Image";
+  return slotDisplayLabel((site.slots || DEFAULT_SLOTS).find((slot) => slot.id === slotId) || { id: slotId });
+}
+
+function slotDisplayLabel(slot) {
+  return HEBREW_SLOT_LABELS[slot?.id] || slot?.label || "תמונה";
+}
+
+function isClientRoute() {
+  return stripBase(location.pathname).startsWith("/client/");
 }
 
 function renderForbidden() {

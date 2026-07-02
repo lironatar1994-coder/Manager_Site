@@ -648,6 +648,46 @@ select:disabled {
   margin-bottom: 16px;
 }
 
+.client-rtl .client-workspace {
+  direction: rtl;
+  text-align: right;
+}
+
+.client-rtl .side-rail {
+  direction: rtl;
+}
+
+.client-rtl .hero-meta,
+.client-rtl .preview-banner,
+.client-rtl .confidence-note,
+.client-rtl .status-timeline span,
+.client-rtl .route-preview,
+.client-rtl .slot-top,
+.client-rtl .modal-actions {
+  direction: rtl;
+}
+
+.client-rtl .hero-meta a,
+.client-rtl .browser-bar,
+.client-rtl input[name="websiteUrl"],
+.client-rtl .preview-banner a {
+  direction: ltr;
+  text-align: left;
+}
+
+.client-rtl .preview-banner a {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.client-rtl .slot-image figcaption {
+  direction: rtl;
+}
+
+.client-rtl .slot-image figcaption span {
+  text-align: right;
+}
+
 .client-hero.premium {
   align-items: flex-end;
 }
