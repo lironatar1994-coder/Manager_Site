@@ -782,6 +782,8 @@ function imagesForSlot(site, slotId) {
       changedBy: "production",
       source: "production",
       productionPath: asset.productionPath,
+      backupCount: asset.backupCount || 0,
+      latestBackupAt: asset.latestBackupAt || null,
     }));
 }
 
@@ -1044,9 +1046,27 @@ async function deleteAsset(slotId) {
   renderClient();
 }
 
+async function restoreAsset(slotId) {
+  const response = await api(`/api/sites/${state.clientSite.id}/assets/${slotId}/restore`, { method: "POST" });
+  if (response?.error) return toast(response.error, "error");
+  state.clientSite = response.site || state.clientSite;
+  state.clientAssets = { ...(state.clientAssets || {}), assets: response.assets || [] };
+  state.livePreviewVersion = Date.now();
+  state.lastProof = {
+    title: "התמונה שוחזרה",
+    imageText: "הגרסה הקודמת חזרה לאתר",
+    liveFileOk: true,
+    previewOk: true,
+    previewText: "התצוגה החיה רועננה בדפדפן",
+  };
+  toast("התמונה שוחזרה מהגיבוי האחרון", "success");
+  renderClient();
+}
+
 function showImageActionModal(slotId) {
   const slot = displaySlots(state.clientSite).find((item) => item.id === slotId) || { id: slotId };
   const image = imagesForSlot(state.clientSite, slotId)[0];
+  const canRestore = image?.source === "production" && Number(image.backupCount || 0) > 0 && can("canUpload");
   const modal = document.createElement("div");
   modal.className = "modal-backdrop";
   modal.innerHTML = `
@@ -1065,6 +1085,7 @@ function showImageActionModal(slotId) {
       <div class="image-action-buttons">
         <button class="primary-button" type="button" data-replace-slot="${escapeAttr(slotId)}"><i data-lucide="${image ? "replace" : "image-plus"}"></i>${image ? "בחירת תמונה" : "הוספת תמונה"}</button>
         <button class="ghost-button" type="button" data-crop-slot="${escapeAttr(slotId)}" ${image ? "" : "disabled"}><i data-lucide="crop"></i>חיתוך</button>
+        <button class="ghost-button" type="button" data-restore-current="${escapeAttr(slotId)}" ${canRestore ? "" : "disabled"}><i data-lucide="rotate-ccw"></i>שחזור</button>
         <button class="danger-button" type="button" data-delete-current="${escapeAttr(slotId)}" ${image && can("canDelete") ? "" : "disabled"}><i data-lucide="trash-2"></i>מחיקה</button>
       </div>
       <div class="pending-replace-actions" hidden>
@@ -1170,6 +1191,16 @@ function showImageActionModal(slotId) {
       body: `${slotDisplayLabel(slot)} תוסר מהאזור הזה לאחר גיבוי אם זו תמונת אתר חיה.`,
       confirmText: "הסרה",
       onConfirm: () => (image.source === "production" ? deleteAsset(image.slotId) : deleteImage(image.id)),
+    });
+  });
+  modal.querySelector("[data-restore-current]").addEventListener("click", () => {
+    if (!canRestore) return;
+    cleanup();
+    confirmAction({
+      title: "לשחזר את התמונה הקודמת?",
+      body: `${slotDisplayLabel(slot)} יוחזר מהגיבוי האחרון. התמונה הנוכחית תגובה לפני השחזור.`,
+      confirmText: "שחזור",
+      onConfirm: () => restoreAsset(slotId),
     });
   });
 }

@@ -99,6 +99,7 @@ Sites:
 - `GET /api/sites/:siteId/assets`
 - `GET /api/sites/:siteId/assets/:slotId/content`
 - `DELETE /api/sites/:siteId/assets/:slotId`
+- `POST /api/sites/:siteId/assets/:slotId/restore`
 
 ## Client Asset Configs
 
@@ -115,6 +116,8 @@ The server checks persistent runtime configs first:
 The app never lets clients choose filesystem paths. It reads and replaces only paths listed in `client.config.json`, and only when the configured path is inside `siteRoot`.
 
 When a configured production site root exists, uploading to a mapped slot copies the upload to that production path and first backs up the previous file under `.manager-site-backups`.
+
+Production asset restore uses only backups from the same slot directory under `.manager-site-backups`. Before restoring, the current live file is backed up again with a `before-restore` suffix.
 
 If a config exists but the production `siteRoot` does not exist yet, uploads remain inside Manager Site storage instead of creating random production folders.
 

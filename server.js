@@ -246,6 +246,32 @@ router.delete("/api/sites/:siteId/assets/:slotId", requireSiteAccess, requirePer
   res.json({ site, assets: await scanClientAssets(site || req.site, config) });
 });
 
+router.post("/api/sites/:siteId/assets/:slotId/restore", requireSiteAccess, requirePermission("canUpload"), async (req, res) => {
+  const config = await loadClientConfig(req.site.ownerUsername);
+  const slot = config ? findConfigSlot(config, req.params.slotId) : null;
+  if (!config || !slot?.absolutePath) {
+    res.status(404).json({ error: "Asset slot not configured" });
+    return;
+  }
+
+  let result;
+  try {
+    result = await restoreConfiguredAsset(slot);
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ error: error.message || "Could not restore image backup" });
+    return;
+  }
+  const store = await readStore();
+  const site = store.sites.find((item) => item.id === req.params.siteId);
+  if (site) {
+    site.status = "waiting_review";
+    site.updatedAt = new Date().toISOString();
+    store.audit.push(audit(req.user, "asset.restored", { siteId: site.id, slotId: slot.id, productionPath: slot.absolutePath, ...result }));
+    await writeStore(store);
+  }
+  res.json({ site, assets: await scanClientAssets(site || req.site, config), restore: result });
+});
+
 router.post("/api/sites/:siteId/assets/reorder", requireSiteAccess, requirePermission("canUpload"), async (req, res) => {
   const sourceSlotId = normalizeSlotId(req.body?.sourceSlotId);
   const targetSlotId = normalizeSlotId(req.body?.targetSlotId);
@@ -603,6 +629,7 @@ async function scanClientAssets(site, config) {
     } catch (error) {
       stats = null;
     }
+    const backups = await listConfiguredBackups(slot);
     assets.push({
       id: `asset-${slot.id}`,
       slotId: slot.id,
@@ -615,6 +642,8 @@ async function scanClientAssets(site, config) {
       productionPath: slot.absolutePath,
       size: stats?.isFile() ? stats.size : 0,
       mtime: stats?.isFile() ? stats.mtime.toISOString() : null,
+      backupCount: backups.length,
+      latestBackupAt: backups[0]?.mtime?.toISOString() || null,
       required: slot.required,
     });
   }
@@ -658,6 +687,28 @@ async function removeConfiguredAsset(slot) {
   return backupPath;
 }
 
+async function restoreConfiguredAsset(slot) {
+  const backups = await listConfiguredBackups(slot);
+  const latest = backups[0];
+  if (!latest) {
+    const error = new Error("No backup exists for this image slot");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  await fsp.mkdir(path.dirname(slot.absolutePath), { recursive: true });
+  let currentBackupPath = null;
+  if (await fileExists(slot.absolutePath)) {
+    currentBackupPath = await backupConfiguredFile(slot.absolutePath, "before-restore");
+  }
+  await fsp.copyFile(latest.path, slot.absolutePath);
+  return {
+    restoredBackupPath: latest.path,
+    currentBackupPath,
+    restoredBackupAt: latest.mtime.toISOString(),
+  };
+}
+
 async function reorderConfiguredAssets(sourceSlot, targetSlot) {
   await assertFileReadable(sourceSlot.absolutePath);
   await fsp.mkdir(path.dirname(targetSlot.absolutePath), { recursive: true });
@@ -687,6 +738,30 @@ async function backupConfiguredFile(filePath, suffix) {
   const backupPath = path.join(backupDir, `${path.basename(filePath)}.${stamp}.${suffix}.bak`);
   await fsp.copyFile(filePath, backupPath);
   return backupPath;
+}
+
+async function listConfiguredBackups(slot) {
+  const backupDir = path.join(path.dirname(slot.absolutePath), ".manager-site-backups");
+  const baseName = path.basename(slot.absolutePath);
+  let entries = [];
+  try {
+    entries = await fsp.readdir(backupDir, { withFileTypes: true });
+  } catch (error) {
+    return [];
+  }
+  const backups = [];
+  for (const entry of entries) {
+    if (!entry.isFile() || !entry.name.startsWith(`${baseName}.`)) continue;
+    const backupPath = path.join(backupDir, entry.name);
+    if (!isPathInside(backupDir, backupPath)) continue;
+    try {
+      const stats = await fsp.stat(backupPath);
+      if (stats.isFile()) backups.push({ name: entry.name, path: backupPath, mtime: stats.mtime, size: stats.size });
+    } catch (error) {
+      // Ignore unreadable stale backup entries.
+    }
+  }
+  return backups.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
 }
 
 async function assertFileReadable(filePath) {
