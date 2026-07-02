@@ -209,6 +209,7 @@ function renderClient() {
   const completedSlots = slots.filter((slot) => slot.id !== "gallery" && imagesForSlot(site, slot.id).length).length;
   const totalSlots = slots.filter((slot) => slot.id !== "gallery").length;
   const latestImage = site.images[0];
+  const latestActivity = latestImage ? `${latestImage.name} עודכנה על ידי ${latestImage.changedBy}` : "בחרו אזור בתצוגה או ברשימה והעלו תמונה ראשונה.";
   app.className = `app-view client-mode client-rtl ${state.me.role === "admin" ? "admin-preview" : ""}`;
   app.innerHTML = `
     ${shell("client")}
@@ -219,12 +220,13 @@ function renderClient() {
           : ""
       }
 
-      <header class="client-hero premium">
+      <header class="client-hero premium client-command">
         <div>
           <p class="eyebrow">${escapeHtml(state.me.role === "admin" ? state.clientUsername : state.me.displayName)}</p>
           <h1>${escapeHtml(site.name)}</h1>
           <div class="hero-meta">
             ${statusPill(site.status, "he")}
+            <span class="readiness-chip"><i data-lucide="list-checks"></i>${completedSlots}/${totalSlots} אזורים מוכנים</span>
             <a href="${escapeAttr(site.websiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>${escapeHtml(site.websiteUrl)}</a>
           </div>
         </div>
@@ -267,15 +269,20 @@ function renderClient() {
             </div>
           </div>
         </article>
-        <article class="progress-panel">
+        <article class="progress-panel client-control-panel">
           <div class="panel-title">
-            <h2>מוכנות האתר</h2>
+            <h2>תמונות להחלפה</h2>
+            <span class="quiet">לחיצה על אזור פותחת העלאה ישירה</span>
+          </div>
+          <div class="asset-queue">${slots.map((slot) => assetRailItem(site, slot)).join("")}</div>
+          <div class="panel-title compact-title">
+            <h2>סטטוס</h2>
             <span class="quiet">${completedSlots}/${totalSlots} אזורים מרכזיים מוכנים</span>
           </div>
           ${statusTimeline(site.status)}
           <div class="confidence-note">
             <i data-lucide="${latestImage ? "history" : "sparkles"}"></i>
-            <span>${latestImage ? `${latestImage.name} עודכנה על ידי ${latestImage.changedBy}` : "העלו תמונה ראשונה כדי להתחיל את תהליך הבדיקה."}</span>
+            <span>${escapeHtml(latestActivity)}</span>
           </div>
           <button class="primary-button" id="reviewButton" type="button"><i data-lucide="send"></i>שליחה לבדיקה</button>
           ${
@@ -290,6 +297,14 @@ function renderClient() {
       </section>
 
       <section class="slot-workspace">
+        <article class="image-panel slots-panel">
+          <div class="panel-title">
+            <h2>כל אזורי התמונה</h2>
+            <span class="quiet">תמונה קיימת, החלפה או הסרה לפי אזור באתר</span>
+          </div>
+          <div class="slot-grid">${slots.map((slot) => slotCard(site, slot)).join("")}</div>
+        </article>
+
         <article class="upload-panel refined">
           <div class="panel-title">
             <h2>עריכת אזור תמונה</h2>
@@ -308,10 +323,6 @@ function renderClient() {
             <input name="name" placeholder="שם לתמונה - לא חובה" />
             <button class="primary-button" type="submit" ${can("canUpload") ? "" : "disabled"}><i data-lucide="upload-cloud"></i>העלאה לאזור</button>
           </form>
-        </article>
-
-        <article class="image-panel slots-panel">
-          <div class="slot-grid">${slots.map((slot) => slotCard(site, slot)).join("")}</div>
         </article>
       </section>
     </main>
@@ -435,6 +446,24 @@ function reviewRow(site) {
         <button class="ghost-button small" type="button" data-admin-status="needs_attention" data-site-id="${site.id}">Flag</button>
       </div>
     </div>
+  `;
+}
+
+function assetRailItem(site, slot) {
+  const images = imagesForSlot(site, slot.id);
+  const primary = images[0];
+  const sourceLabel = primary?.source === "production" ? "מהאתר החי" : primary ? "עודכן במערכת" : "חסר";
+  return `
+    <button class="asset-queue-item ${primary ? "filled" : "missing"}" type="button" data-upload-slot="${slot.id}" ${can("canUpload") ? "" : "disabled"}>
+      <span class="asset-queue-thumb">
+        ${primary ? `<img src="${escapeAttr(primary.url)}" alt="${escapeAttr(primary.name)}" />` : `<i data-lucide="image-plus"></i>`}
+      </span>
+      <span class="asset-queue-copy">
+        <strong>${escapeHtml(slotDisplayLabel(slot))}</strong>
+        <small>${escapeHtml(sourceLabel)} · ${escapeHtml(slotRatioLabel(slot.ratio))}</small>
+      </span>
+      <i data-lucide="${primary ? "replace" : "plus"}"></i>
+    </button>
   `;
 }
 

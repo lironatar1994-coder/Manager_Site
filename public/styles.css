@@ -1183,6 +1183,291 @@ select:disabled {
   color: var(--gold);
 }
 
+.client-mode {
+  background:
+    linear-gradient(90deg, rgba(17, 17, 17, 0.035) 1px, transparent 1px) 0 0 / 56px 56px,
+    linear-gradient(rgba(17, 17, 17, 0.03) 1px, transparent 1px) 0 0 / 56px 56px,
+    #f2efe8;
+}
+
+.client-workspace {
+  max-width: 1500px;
+  width: 100%;
+}
+
+.client-command {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 440px);
+  gap: 24px;
+  align-items: center;
+  overflow: hidden;
+  margin-bottom: 18px;
+  padding: clamp(18px, 2.5vw, 26px);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(246, 241, 232, 0.84)),
+    var(--panel);
+  border-color: rgba(17, 17, 17, 0.12);
+  box-shadow: 0 24px 70px rgba(25, 24, 21, 0.1);
+}
+
+.client-command::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 7px;
+  content: "";
+  background: linear-gradient(180deg, var(--black), var(--blue), var(--gold));
+}
+
+.client-command h1 {
+  max-width: 760px;
+  margin-bottom: 12px;
+  font-size: clamp(1.85rem, 3.4vw, 3rem);
+  line-height: 1;
+}
+
+.readiness-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 11px;
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 800;
+  background: #ffffff;
+  border: 1px solid rgba(17, 17, 17, 0.1);
+}
+
+.client-command .site-link-form {
+  width: 100%;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid rgba(17, 17, 17, 0.1);
+}
+
+.client-command .site-link-form input {
+  min-height: 42px;
+}
+
+.client-command .site-link-form .ghost-button {
+  min-height: 42px;
+}
+
+.client-overview {
+  grid-template-columns: minmax(560px, 1fr) minmax(340px, 400px);
+  gap: 18px;
+  align-items: stretch;
+  margin-bottom: 18px;
+}
+
+.client-overview > * {
+  min-width: 0;
+}
+
+.website-preview.managed-preview {
+  background: #ffffff;
+  border-color: rgba(17, 17, 17, 0.12);
+  box-shadow: 0 22px 70px rgba(25, 24, 21, 0.12);
+}
+
+.managed-preview .preview-toolbar {
+  padding: 18px 20px;
+  background: #ffffff;
+}
+
+.managed-preview .preview-toolbar h2 {
+  font-size: clamp(1.25rem, 2vw, 1.75rem);
+}
+
+.managed-preview .preview-device {
+  padding: clamp(12px, 2.2vw, 24px);
+  background:
+    linear-gradient(135deg, rgba(37, 93, 115, 0.11), transparent 46%),
+    linear-gradient(315deg, rgba(184, 135, 70, 0.13), transparent 44%),
+    #e9e5dc;
+}
+
+.managed-preview .browser-bar {
+  border-radius: 12px 12px 0 0;
+}
+
+.managed-preview .managed-site {
+  border: 1px solid rgba(17, 17, 17, 0.1);
+  border-top: 0;
+  box-shadow: 0 24px 60px rgba(25, 24, 21, 0.13);
+}
+
+.client-control-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 100%;
+  padding: 18px;
+  color: #fffaf1;
+  background:
+    linear-gradient(145deg, rgba(25, 24, 21, 0.97), rgba(32, 43, 47, 0.96)),
+    var(--black);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 24px 70px rgba(25, 24, 21, 0.2);
+}
+
+.client-control-panel .panel-title,
+.client-control-panel .confidence-note,
+.client-control-panel .quiet {
+  color: rgba(255, 250, 241, 0.72);
+}
+
+.client-control-panel h2 {
+  color: #fffaf1;
+}
+
+.compact-title {
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.asset-queue {
+  display: grid;
+  gap: 9px;
+}
+
+.asset-queue-item {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 34px;
+  gap: 12px;
+  align-items: center;
+  min-height: 74px;
+  padding: 8px;
+  color: #fffaf1;
+  text-align: right;
+  background: rgba(255, 255, 255, 0.075);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.asset-queue-item:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 250, 241, 0.26);
+}
+
+.asset-queue-thumb {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  overflow: hidden;
+  color: rgba(255, 250, 241, 0.78);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.asset-queue-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.asset-queue-copy {
+  min-width: 0;
+}
+
+.asset-queue-copy strong,
+.asset-queue-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asset-queue-copy small {
+  margin-top: 4px;
+  color: rgba(255, 250, 241, 0.64);
+  font-size: 0.78rem;
+}
+
+.client-control-panel .status-timeline span {
+  color: rgba(255, 250, 241, 0.66);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.client-control-panel .status-timeline span.active {
+  color: #fffaf1;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 250, 241, 0.24);
+}
+
+.client-control-panel .primary-button {
+  min-height: 52px;
+  color: var(--black);
+  background: #fffaf1;
+  border-color: #fffaf1;
+}
+
+.slot-workspace {
+  grid-template-columns: minmax(560px, 1fr) minmax(300px, 380px);
+  gap: 18px;
+  align-items: start;
+}
+
+.slots-panel {
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(17, 17, 17, 0.12);
+}
+
+.slots-panel .panel-title {
+  margin-bottom: 14px;
+}
+
+.slot-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.slot-card {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  background: #fffdf8;
+  border-color: rgba(17, 17, 17, 0.11);
+  box-shadow: none;
+}
+
+.slot-card.filled {
+  background: #ffffff;
+  border-color: rgba(37, 93, 115, 0.26);
+}
+
+.slot-top {
+  align-items: flex-start;
+  margin-bottom: 0;
+}
+
+.slot-state {
+  color: var(--blue);
+  font-size: 0.76rem;
+}
+
+.slot-image img {
+  aspect-ratio: 16 / 9;
+}
+
+.upload-panel.refined {
+  top: 18px;
+  padding: 18px;
+  background: rgba(255, 250, 241, 0.88);
+  box-shadow: 0 18px 50px rgba(25, 24, 21, 0.08);
+}
+
+.upload-drop .drop-target {
+  min-height: 154px;
+  border-color: rgba(37, 93, 115, 0.32);
+}
+
 .icon-action {
   width: 38px;
   min-width: 38px;
@@ -1712,5 +1997,153 @@ svg.lucide {
 
   .page-head h1 {
     font-size: clamp(1.9rem, 9.5vw, 2.45rem);
+  }
+}
+
+@media (max-width: 1180px) {
+  .client-command,
+  .client-overview,
+  .slot-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .client-control-panel {
+    min-height: auto;
+  }
+
+  .asset-queue {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .client-workspace {
+    gap: 12px;
+    padding: 10px;
+  }
+
+  .client-command {
+    order: 1;
+    margin-bottom: 0;
+    padding: 18px 16px;
+    gap: 12px;
+  }
+
+  .client-command::before {
+    width: 5px;
+  }
+
+  .client-command h1 {
+    margin-bottom: 8px;
+    font-size: clamp(1.55rem, 7vw, 2.05rem);
+    line-height: 1.03;
+  }
+
+  .hero-meta {
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .client-command .eyebrow {
+    margin-bottom: 4px;
+  }
+
+  .client-command .site-status,
+  .client-command .readiness-chip {
+    min-height: 36px;
+    font-size: 0.8rem;
+  }
+
+  .readiness-chip {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .client-command .site-link-form {
+    grid-template-columns: minmax(0, 1fr) 50px;
+    gap: 8px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+  }
+
+  .client-overview {
+    order: 2;
+  }
+
+  .website-preview.managed-preview {
+    order: 1;
+  }
+
+  .client-control-panel {
+    order: 2;
+    padding: 16px;
+  }
+
+  .asset-queue {
+    grid-template-columns: 1fr;
+  }
+
+  .asset-queue-item {
+    grid-template-columns: 54px minmax(0, 1fr) 32px;
+    min-height: 70px;
+  }
+
+  .asset-queue-thumb {
+    width: 54px;
+    height: 54px;
+  }
+
+  .slot-workspace {
+    order: 3;
+  }
+
+  .slots-panel {
+    order: 1;
+    padding: 14px;
+  }
+
+  .upload-panel.refined {
+    order: 2;
+  }
+
+  .slot-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .slot-card {
+    padding: 12px;
+  }
+
+  .slot-top {
+    align-items: stretch;
+  }
+
+  .slot-image img {
+    aspect-ratio: 16 / 10;
+  }
+
+  .upload-drop .drop-target {
+    min-height: 120px;
+  }
+}
+
+@media (max-width: 430px) {
+  .client-command {
+    padding: 16px 14px;
+  }
+
+  .client-command .site-link-form {
+    padding: 10px;
+  }
+
+  .managed-preview .preview-toolbar {
+    padding: 13px;
+  }
+
+  .client-control-panel,
+  .slots-panel,
+  .upload-panel.refined {
+    padding: 13px;
   }
 }
