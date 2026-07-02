@@ -1,0 +1,20 @@
+{
+  "name": "manager-site",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Protected site manager for admin-created client website image editing.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "check": "node --check server.js && node --check public/app.js",
+    "hash-password": "node scripts/hash-password.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "multer": "^2.2.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

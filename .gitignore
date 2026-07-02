@@ -1,0 +1,7 @@
+node_modules/
+data/
+data-test*/
+.env
+npm-debug.log*
+*.log
+.agents/
