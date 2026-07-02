@@ -4,17 +4,14 @@ This file is for future agents to understand likely next improvements without gu
 
 ## Highest-Value Next Steps
 
-### 1. Persistent Sessions
+### 1. Better Admin Editing
 
-Sessions are currently in memory. A PM2 restart logs users out. For production polish, move sessions to a persistent store or signed stateless session strategy.
+Admin can create, pause, reset, share, filter audit activity, add per-image review notes, and edit client details/permissions. Future polish could add:
 
-### 2. Better Admin Editing
+- note search across audit/review history
+- bulk actions for multiple review images
 
-Admin can create, pause, reset, share, filter audit activity, and edit client details/permissions, but future polish could add:
-
-- per-image review notes inside the thumbnail queue
-
-### 3. Real Website Integration
+### 2. Real Website Integration
 
 The current app has a live desktop/mobile iframe preview inside Manager Site. A future version should define whether changed production assets need extra propagation steps for each actual client website:
 
@@ -26,7 +23,7 @@ The current app has a live desktop/mobile iframe preview inside Manager Site. A 
 
 The first safe integration layer now exists through `client.config.json`: Manager Site can scan allowlisted production image paths, serve them through authenticated asset URLs, and replace/remove them with backups when the configured `siteRoot` exists. The remaining work is to point each client config at the real website folders and decide how published changes should trigger cache clears or rebuilds.
 
-### 4. Image Quality Controls
+### 3. Image Quality Controls
 
 Useful additions:
 
@@ -37,7 +34,7 @@ Useful additions:
 - preview before upload
 - replace history
 
-### 5. Stronger Client Review Flow
+### 4. Stronger Client Review Flow
 
 Current statuses are simple. Future workflow could include:
 
@@ -47,11 +44,11 @@ Current statuses are simple. Future workflow could include:
 - email or WhatsApp notification
 - status history visible to clients
 
-### 6. Admin Localization Follow-Up
+### 5. Admin Localization Follow-Up
 
 Login, admin, and client views are Hebrew RTL. Future admin work should keep labels, dialogs, validation feedback, and audit text Hebrew while preserving usernames, URLs, IDs, and backend route examples in LTR.
 
-### 7. Accessibility Pass
+### 6. Accessibility Pass
 
 Recommended checks:
 

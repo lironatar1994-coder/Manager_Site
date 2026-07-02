@@ -295,6 +295,9 @@ function renderAdmin() {
   document.querySelectorAll("[data-admin-status]").forEach((button) => {
     button.addEventListener("click", () => updateSiteStatus(button.dataset.siteId, button.dataset.adminStatus));
   });
+  document.querySelectorAll("[data-review-note-image]").forEach((button) => {
+    button.addEventListener("click", () => showReviewNoteModal(button.dataset.reviewNoteSite, button.dataset.reviewNoteImage));
+  });
   document.querySelectorAll("[data-review-filter]").forEach((button) => {
     button.addEventListener("click", () => {
       state.adminReviewFilter = button.dataset.reviewFilter;
@@ -598,9 +601,10 @@ function reviewRow(site) {
             ? previewImages
                 .map(
                   (image, index) => `
-                    <span class="review-thumb ${index === 0 ? "primary" : ""}">
+                    <button class="review-thumb ${index === 0 ? "primary" : ""} ${image.reviewNote ? "has-note" : ""}" type="button" data-review-note-site="${site.id}" data-review-note-image="${image.id}" aria-label="הערת בדיקה עבור ${escapeAttr(image.name)}">
                       <img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" />
-                    </span>`
+                      ${image.reviewNote ? `<i data-lucide="message-square-text"></i>` : ""}
+                    </button>`
                 )
                 .join("")
             : `<span class="review-thumb empty"><i data-lucide="image"></i></span>`
@@ -1031,6 +1035,7 @@ function formatAuditAction(action) {
     "image.uploaded": "תמונה הועלתה",
     "image.deleted": "תמונה נמחקה",
     "image.reordered": "סדר תמונות עודכן",
+    "image.review_note": "הערת בדיקה עודכנה",
     "asset.deleted": "תמונת אתר נמחקה",
     "asset.restored": "תמונת אתר שוחזרה",
     "asset.reordered": "תמונות אתר הוחלפו",
@@ -1112,6 +1117,64 @@ async function toggleUser(userId, active) {
   if (response?.error) return toast(formatApiError(response.error), "error");
   await loadAdmin();
   renderAdmin();
+}
+
+function showReviewNoteModal(siteId, imageId) {
+  const site = state.sites.find((item) => item.id === siteId);
+  const image = site?.images?.find((item) => item.id === imageId);
+  if (!site || !image) return;
+  const modal = document.createElement("div");
+  modal.className = "modal-backdrop";
+  modal.innerHTML = `
+    <div class="confirm-modal review-note-modal" role="dialog" aria-modal="true" aria-label="הערת בדיקה" dir="rtl" lang="he">
+      <button class="icon-action modal-close" type="button" aria-label="סגירה"><i data-lucide="x"></i></button>
+      <div class="review-note-layout">
+        <figure>
+          <img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" />
+        </figure>
+        <form id="reviewNoteForm" class="review-note-form">
+          <p class="eyebrow">הערת בדיקה</p>
+          <h2>${escapeHtml(slotDisplayLabel({ id: image.slotId || "gallery" }))}</h2>
+          <p>${escapeHtml(site.name)} · <bdi>${escapeHtml(site.ownerUsername)}</bdi></p>
+          <label>הערה פנימית לתמונה
+            <textarea name="note" maxlength="500" placeholder="לדוגמה: להחליף לתמונה חדה יותר, לבדוק חיתוך במובייל...">${escapeHtml(image.reviewNote || "")}</textarea>
+          </label>
+          <small>${image.reviewNoteUpdatedAt ? `עודכן על ידי ${escapeHtml(image.reviewNoteBy || "מנהל")} · ${new Date(image.reviewNoteUpdatedAt).toLocaleString("he-IL")}` : "ההערה נשמרת למנהל ולא מוצגת ללקוח."}</small>
+          <div class="modal-actions">
+            <button class="ghost-button" type="button" data-clear-note ${image.reviewNote ? "" : "disabled"}>ניקוי הערה</button>
+            <button class="primary-button" type="submit"><i data-lucide="save"></i>שמירת הערה</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  icons();
+  const close = () => modal.remove();
+  modal.querySelector(".modal-close").addEventListener("click", close);
+  modal.querySelector("[data-clear-note]").addEventListener("click", async () => {
+    const saved = await saveReviewNote(siteId, imageId, "");
+    if (saved) close();
+  });
+  modal.querySelector("#reviewNoteForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const note = new FormData(event.currentTarget).get("note");
+    const saved = await saveReviewNote(siteId, imageId, note);
+    if (saved) close();
+  });
+  modal.querySelector("textarea").focus();
+}
+
+async function saveReviewNote(siteId, imageId, note) {
+  const response = await api(`/api/admin/sites/${siteId}/images/${imageId}/review-note`, { method: "PATCH", body: { note } });
+  if (response?.error) {
+    toast(formatApiError(response.error), "error");
+    return false;
+  }
+  toast(note ? "הערת הבדיקה נשמרה" : "הערת הבדיקה נמחקה", "success");
+  await loadAdmin();
+  renderAdmin();
+  return true;
 }
 
 function showEditUserModal(userId) {

@@ -426,6 +426,29 @@ router.patch("/api/sites/:siteId/images/:imageId/placement", requireSiteAccess, 
   res.json({ site });
 });
 
+router.patch("/api/admin/sites/:siteId/images/:imageId/review-note", requireAdmin, async (req, res) => {
+  const store = await readStore();
+  const site = store.sites.find((item) => item.id === req.params.siteId);
+  if (!site) {
+    res.status(404).json({ error: "Site not found" });
+    return;
+  }
+  const image = site.images.find((item) => item.id === req.params.imageId);
+  if (!image) {
+    res.status(404).json({ error: "Image not found" });
+    return;
+  }
+
+  const note = String(req.body?.note || "").trim().slice(0, 500);
+  image.reviewNote = note;
+  image.reviewNoteUpdatedAt = note ? new Date().toISOString() : null;
+  image.reviewNoteBy = note ? req.user.username : null;
+  site.updatedAt = new Date().toISOString();
+  store.audit.push(audit(req.user, "image.review_note", { siteId: site.id, imageId: image.id, slotId: image.slotId, hasNote: Boolean(note) }));
+  await writeStore(store);
+  res.json({ site, image });
+});
+
 router.delete(
   "/api/sites/:siteId/images/:imageId",
   requireSiteAccess,
@@ -997,6 +1020,9 @@ function normalizeSite(site) {
   site.images = site.images.map((image) => ({
     slotId: "gallery",
     status: "waiting_review",
+    reviewNote: "",
+    reviewNoteUpdatedAt: null,
+    reviewNoteBy: null,
     ...image,
   }));
   return site;

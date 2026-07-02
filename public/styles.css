@@ -265,7 +265,8 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   min-height: 46px;
   padding: 0 12px;
@@ -275,8 +276,16 @@ select {
   outline: 0;
 }
 
+textarea {
+  min-height: 132px;
+  padding: 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   border-color: var(--black);
   box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.08);
 }
@@ -996,9 +1005,21 @@ select:disabled {
   place-items: center;
   aspect-ratio: 1;
   overflow: hidden;
+  padding: 0;
   color: var(--muted);
   background: rgba(246, 241, 232, 0.9);
   border: 1px solid rgba(222, 213, 198, 0.9);
+}
+
+button.review-thumb {
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+button.review-thumb:hover {
+  transform: translateY(-1px);
+  border-color: rgba(184, 135, 70, 0.5);
+  box-shadow: 0 10px 24px rgba(34, 30, 24, 0.14);
 }
 
 .review-thumb.primary {
@@ -1010,6 +1031,24 @@ select:disabled {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.review-thumb > i {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: var(--black);
+  background: var(--gold);
+  border: 1px solid rgba(255, 250, 241, 0.72);
+  box-shadow: 0 8px 18px rgba(25, 24, 21, 0.18);
+}
+
+.review-thumb.has-note {
+  border-color: rgba(184, 135, 70, 0.66);
 }
 
 .review-thumb.more {
@@ -2204,6 +2243,44 @@ select:disabled {
   align-items: center;
 }
 
+.review-note-modal {
+  width: min(820px, 100%);
+}
+
+.review-note-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.78fr) minmax(0, 1.22fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.review-note-layout figure {
+  min-height: 320px;
+  overflow: hidden;
+  background: #11110f;
+  border: 1px solid var(--line);
+}
+
+.review-note-layout img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.review-note-form {
+  display: grid;
+  gap: 12px;
+}
+
+.review-note-form h2 {
+  margin-bottom: 0;
+}
+
+.review-note-form small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .image-action-modal.preview-expanded {
   width: min(820px, 100%);
   grid-template-columns: 1fr;
@@ -2817,6 +2894,14 @@ svg.lucide {
 
   .review-state {
     justify-items: stretch;
+  }
+
+  .review-note-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .review-note-layout figure {
+    min-height: 220px;
   }
 
   .audit-row {
