@@ -407,7 +407,7 @@ function slotCard(site, slot) {
       <div class="slot-top">
         <span>
           <strong>${escapeHtml(slotDisplayLabel(slot))}</strong>
-          <small>${slot.required ? "חובה" : "לא חובה"} · ${escapeHtml(slot.ratio)}</small>
+          <small>${slot.required ? "חובה" : "לא חובה"} · ${escapeHtml(slotRatioLabel(slot.ratio))}</small>
         </span>
         <button class="ghost-button small" type="button" data-upload-slot="${slot.id}" ${can("canUpload") ? "" : "disabled"}>
           <i data-lucide="${primary ? "replace" : "plus"}"></i>${primary && !gallery ? "החלפה" : "העלאה"}
@@ -687,6 +687,10 @@ function slotLabel(site, slotId) {
 
 function slotDisplayLabel(slot) {
   return HEBREW_SLOT_LABELS[slot?.id] || slot?.label || "תמונה";
+}
+
+function slotRatioLabel(ratio) {
+  return ratio === "free" ? "חופשי" : ratio || "";
 }
 
 function isClientRoute() {

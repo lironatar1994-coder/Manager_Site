@@ -895,6 +895,8 @@ select:disabled {
   position: absolute;
   width: 1px;
   height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
   opacity: 0;
 }
 
@@ -1096,24 +1098,37 @@ svg.lucide {
   }
 
   .side-rail {
-    position: static;
+    position: sticky;
+    z-index: 30;
     flex-direction: row;
     align-items: center;
+    justify-content: space-between;
     height: auto;
-    padding: 12px;
+    padding: 10px 12px;
+    gap: 8px;
+    box-shadow: 0 12px 32px rgba(17, 17, 17, 0.18);
   }
 
   .side-rail nav {
-    grid-auto-flow: column;
+    display: flex;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .side-rail a,
+  .logout-button {
+    min-height: 46px;
+    padding: 0 12px;
+    white-space: nowrap;
   }
 
   .logout-button {
-    margin: 0 0 0 auto;
+    margin: 0;
   }
 
   .workspace,
   .login-shell {
-    padding: 14px;
+    padding: 10px;
   }
 
   .login-shell,
@@ -1133,6 +1148,41 @@ svg.lucide {
     display: none;
   }
 
+  .login-shell {
+    min-height: 100dvh;
+  }
+
+  .login-panel {
+    min-height: calc(100dvh - 20px);
+    justify-content: start;
+    gap: clamp(24px, 6vh, 46px);
+    padding: 24px 22px;
+  }
+
+  .login-copy {
+    margin-top: clamp(20px, 8vh, 72px);
+  }
+
+  .login-copy h1 {
+    font-size: clamp(2.35rem, 13vw, 3.25rem);
+    line-height: 0.98;
+  }
+
+  .login-copy p {
+    font-size: 1rem;
+    line-height: 1.55;
+  }
+
+  .login-form {
+    gap: 14px;
+    margin-top: auto;
+  }
+
+  .login-form input,
+  .login-form .primary-button {
+    min-height: 56px;
+  }
+
   .page-head,
   .client-hero,
   .user-card,
@@ -1140,6 +1190,43 @@ svg.lucide {
   .slot-top {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .page-head h1 {
+    font-size: clamp(2.1rem, 10vw, 2.9rem);
+    line-height: 0.98;
+  }
+
+  .page-head .primary-button {
+    width: 100%;
+    min-height: 54px;
+  }
+
+  .metric-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .metric-strip article,
+  .admin-panel {
+    padding: 14px;
+  }
+
+  .metric-strip span {
+    font-size: 0.72rem;
+  }
+
+  .metric-strip strong {
+    font-size: 1.85rem;
+  }
+
+  .perm {
+    min-height: 44px;
+  }
+
+  .perm input {
+    width: 18px;
+    height: 18px;
   }
 
   .user-actions {
@@ -1154,5 +1241,221 @@ svg.lucide {
 
   .preview-hero {
     min-height: 220px;
+  }
+
+  .client-workspace {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .client-hero,
+  .client-overview,
+  .slot-workspace {
+    margin-bottom: 0;
+  }
+
+  .client-hero {
+    order: 1;
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .client-hero h1 {
+    margin-bottom: 8px;
+    font-size: clamp(1.85rem, 9vw, 2.45rem);
+    line-height: 1;
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: 8px;
+  }
+
+  .site-status {
+    min-height: 42px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.58);
+    border: 1px solid var(--line);
+  }
+
+  .hero-meta a {
+    display: none;
+  }
+
+  .site-link-form {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) 56px;
+    gap: 10px;
+  }
+
+  .site-link-form label {
+    gap: 6px;
+  }
+
+  .site-link-form input {
+    min-height: 50px;
+  }
+
+  .site-link-form .ghost-button {
+    width: 56px;
+    min-height: 50px;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .site-link-form .ghost-button i {
+    width: 20px;
+    height: 20px;
+  }
+
+  .upload-drop .primary-button,
+  #reviewButton {
+    width: 100%;
+    min-height: 54px;
+  }
+
+  .slot-workspace {
+    order: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .upload-panel.refined {
+    order: 1;
+    padding: 16px;
+  }
+
+  .image-panel {
+    order: 2;
+    padding: 10px;
+  }
+
+  .upload-drop .drop-target {
+    min-height: 118px;
+    padding: 16px;
+  }
+
+  .upload-drop i {
+    width: 28px;
+    height: 28px;
+  }
+
+  .slot-card {
+    padding: 12px;
+  }
+
+  .slot-top {
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .slot-top .ghost-button {
+    width: 100%;
+    min-height: 46px;
+  }
+
+  .slot-empty {
+    min-height: 124px;
+  }
+
+  .client-overview {
+    order: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .progress-panel {
+    order: 1;
+    padding: 16px;
+  }
+
+  .status-timeline {
+    gap: 6px;
+  }
+
+  .status-timeline span {
+    min-height: 42px;
+  }
+
+  .website-preview {
+    order: 2;
+  }
+
+  .browser-bar {
+    height: 40px;
+  }
+
+  .preview-canvas {
+    gap: 10px;
+    min-height: 0;
+    padding: 12px;
+  }
+
+  .preview-hero {
+    min-height: 200px;
+  }
+
+  .preview-copy {
+    padding: 12px;
+  }
+
+  .preview-copy strong {
+    font-size: 1.2rem;
+  }
+
+  .preview-tiles {
+    gap: 8px;
+  }
+
+  .preview-tiles > * {
+    min-height: 82px;
+  }
+
+  .toast {
+    right: 10px;
+    bottom: 10px;
+    max-width: calc(100vw - 20px);
+  }
+}
+
+@media (max-width: 430px) {
+  body {
+    background:
+      linear-gradient(90deg, rgba(17, 17, 17, 0.04) 1px, transparent 1px) 0 0 / 34px 34px,
+      linear-gradient(rgba(17, 17, 17, 0.035) 1px, transparent 1px) 0 0 / 34px 34px,
+      var(--paper);
+  }
+
+  .mark {
+    width: 40px;
+    height: 40px;
+  }
+
+  .side-rail a,
+  .logout-button {
+    gap: 7px;
+    padding: 0 10px;
+    font-size: 0.92rem;
+  }
+
+  .client-hero h1 {
+    font-size: clamp(1.72rem, 9.5vw, 2.25rem);
+  }
+
+  .panel-title {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .login-copy h1 {
+    font-size: clamp(1.92rem, 10.5vw, 2.55rem);
+  }
+
+  .page-head h1 {
+    font-size: clamp(1.9rem, 9.5vw, 2.45rem);
   }
 }
