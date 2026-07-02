@@ -13,6 +13,8 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const STORE_PATH = path.join(DATA_DIR, "store.json");
 const UPLOAD_ROOT = process.env.UPLOAD_ROOT || path.join(DATA_DIR, "uploads");
 const INITIAL_ADMIN_PATH = path.join(DATA_DIR, "initial-admin.txt");
+const CLIENTS_DATA_DIR = process.env.CLIENTS_DIR || path.join(DATA_DIR, "clients");
+const CLIENTS_REPO_DIR = path.join(__dirname, "clients");
 const IMAGE_SLOTS = [
   { id: "hero", label: "Hero image", ratio: "16:9", required: true },
   { id: "logo", label: "Logo", ratio: "1:1", required: true },
@@ -138,6 +140,7 @@ router.post("/api/admin/users", requireAdmin, async (req, res) => {
   store.users.push(user);
   store.audit.push(audit(req.user, "user.created", { username, siteId: site.id }));
   await writeStore(store);
+  await ensureClientWorkspace(user, site);
   res.status(201).json({ user: publicUser(user), site });
 });
 
@@ -174,6 +177,54 @@ router.get("/api/sites", requireAuth, async (req, res) => {
 
 router.get("/api/sites/:siteId", requireSiteAccess, async (req, res) => {
   res.json({ site: req.site });
+});
+
+router.get("/api/sites/:siteId/assets", requireSiteAccess, async (req, res) => {
+  const config = await loadClientConfig(req.site.ownerUsername);
+  if (!config) {
+    res.json({ configured: false, assets: [], message: "No client config found" });
+    return;
+  }
+  res.json({
+    configured: true,
+    client: publicClientConfig(config),
+    assets: await scanClientAssets(req.site, config),
+  });
+});
+
+router.get("/api/sites/:siteId/assets/:slotId/content", requireSiteAccess, async (req, res) => {
+  const config = await loadClientConfig(req.site.ownerUsername);
+  const slot = config ? findConfigSlot(config, req.params.slotId) : null;
+  if (!config || !slot?.absolutePath) {
+    res.status(404).json({ error: "Asset slot not configured" });
+    return;
+  }
+  try {
+    await assertFileReadable(slot.absolutePath);
+    res.sendFile(slot.absolutePath);
+  } catch (error) {
+    res.status(404).json({ error: "Asset file not found" });
+  }
+});
+
+router.delete("/api/sites/:siteId/assets/:slotId", requireSiteAccess, requirePermission("canDelete"), async (req, res) => {
+  const config = await loadClientConfig(req.site.ownerUsername);
+  const slot = config ? findConfigSlot(config, req.params.slotId) : null;
+  if (!config || !slot?.absolutePath) {
+    res.status(404).json({ error: "Asset slot not configured" });
+    return;
+  }
+  const backupPath = await removeConfiguredAsset(slot);
+  const store = await readStore();
+  const site = store.sites.find((item) => item.id === req.params.siteId);
+  if (site) {
+    site.images = (site.images || []).filter((image) => !(image.slotId === slot.id && image.source === "production"));
+    site.status = "waiting_review";
+    site.updatedAt = new Date().toISOString();
+    store.audit.push(audit(req.user, "asset.deleted", { siteId: site.id, slotId: slot.id, productionPath: slot.absolutePath, backupPath }));
+    await writeStore(store);
+  }
+  res.json({ site, assets: await scanClientAssets(site || req.site, config) });
 });
 
 router.patch("/api/sites/:siteId", requireSiteAccess, requirePermission("canEditLinks"), async (req, res) => {
@@ -221,6 +272,8 @@ router.post(
     const store = await readStore();
     const site = store.sites.find((item) => item.id === req.params.siteId);
     const slotId = normalizeSlotId(req.body.slotId);
+    const clientConfig = await loadClientConfig(site.ownerUsername);
+    const configSlot = clientConfig ? findConfigSlot(clientConfig, slotId) : null;
     if (slotId !== "gallery") {
       const replaced = site.images.filter((image) => image.slotId === slotId && image.fileName);
       for (const image of replaced) {
@@ -228,11 +281,15 @@ router.post(
       }
       site.images = site.images.filter((image) => image.slotId !== slotId);
     }
+    let productionAsset = null;
+    if (configSlot?.absolutePath && (await directoryExists(clientConfig.siteRoot))) {
+      productionAsset = await replaceConfiguredAsset(site, configSlot, req.file.path);
+    }
     const image = {
       id: crypto.randomUUID(),
       name: req.body.name || req.file.originalname,
       slotId,
-      url: `${BASE_PATH}/uploads/${site.id}/${req.file.filename}`,
+      url: productionAsset?.url || `${BASE_PATH}/uploads/${site.id}/${req.file.filename}`,
       fileName: req.file.filename,
       originalName: req.file.originalname,
       size: req.file.size,
@@ -240,6 +297,9 @@ router.post(
       status: "waiting_review",
       changedAt: new Date().toISOString(),
       changedBy: req.user.username,
+      source: productionAsset ? "production" : "manager",
+      productionPath: productionAsset?.path || null,
+      backupPath: productionAsset?.backupPath || null,
     };
     site.images.unshift(image);
     site.status = "waiting_review";
@@ -314,6 +374,216 @@ module.exports = { app, initStore, startServer };
 function normalizeBasePath(value) {
   if (!value || value === "/") return "";
   return `/${String(value).replace(/^\/+|\/+$/g, "")}`;
+}
+
+async function ensureClientWorkspace(user, site) {
+  const clientDir = path.join(CLIENTS_DATA_DIR, safeSegment(user.username));
+  await fsp.mkdir(clientDir, { recursive: true });
+  const agentsPath = path.join(clientDir, "AGENTS.md");
+  const configPath = path.join(clientDir, "client.config.json");
+  if (!fs.existsSync(agentsPath)) {
+    await fsp.writeFile(
+      agentsPath,
+      [
+        `# ${user.displayName} Client Agent File`,
+        "",
+        "This file is for future agents working on this client's website.",
+        "",
+        "## Client",
+        "",
+        `- Username: \`${user.username}\``,
+        `- Display name: ${user.displayName}`,
+        `- Website name: ${site.name}`,
+        `- Manager route: \`/client/${user.username}\``,
+        `- Public URL: ${site.websiteUrl}`,
+        "",
+        "## Production Asset Notes",
+        "",
+        "Update `client.config.json` with the real production `siteRoot` and allowed image slot paths before enabling direct production replacement.",
+        "",
+        "Only paths listed in `client.config.json` are allowed to be viewed or replaced by Manager Site.",
+        "",
+      ].join("\n")
+    );
+  }
+  if (!fs.existsSync(configPath)) {
+    await fsp.writeFile(
+      configPath,
+      `${JSON.stringify(defaultClientConfig(user, site), null, 2)}\n`
+    );
+  }
+}
+
+function defaultClientConfig(user, site) {
+  const siteRoot = `/root/client-sites/${safeSegment(user.username)}`;
+  return {
+    username: user.username,
+    displayName: user.displayName,
+    websiteName: site.name,
+    productionServer: "vee-app.co.il",
+    siteRoot,
+    publicUrl: site.websiteUrl,
+    notes: "Replace the example paths below with the real production website image paths.",
+    imageSlots: IMAGE_SLOTS.map((slot) => ({
+      id: slot.id,
+      labelHe: hebrewSlotLabel(slot.id),
+      required: slot.required,
+      currentPath: `${siteRoot}/public/images/${slot.id}.${slot.id === "logo" ? "png" : "jpg"}`,
+      publicPath: `/images/${slot.id}.${slot.id === "logo" ? "png" : "jpg"}`,
+    })),
+  };
+}
+
+async function loadClientConfig(username) {
+  const safeUsername = safeSegment(username);
+  const candidates = [
+    path.join(CLIENTS_DATA_DIR, safeUsername, "client.config.json"),
+    path.join(CLIENTS_REPO_DIR, safeUsername, "client.config.json"),
+  ];
+  for (const candidate of candidates) {
+    if (!fs.existsSync(candidate)) continue;
+    const raw = await fsp.readFile(candidate, "utf8");
+    return normalizeClientConfig(JSON.parse(raw), candidate);
+  }
+  return null;
+}
+
+function normalizeClientConfig(config, configPath) {
+  const username = normalizeUsername(config.username);
+  const siteRoot = path.resolve(String(config.siteRoot || ""));
+  const imageSlots = Array.isArray(config.imageSlots) ? config.imageSlots : [];
+  return {
+    username,
+    displayName: String(config.displayName || username),
+    websiteName: String(config.websiteName || ""),
+    productionServer: String(config.productionServer || ""),
+    siteRoot,
+    publicUrl: String(config.publicUrl || ""),
+    configPath,
+    imageSlots: imageSlots
+      .map((slot) => normalizeConfigSlot(siteRoot, slot))
+      .filter(Boolean),
+  };
+}
+
+function normalizeConfigSlot(siteRoot, slot) {
+  const id = normalizeSlotId(slot.id);
+  const absolutePath = slot.currentPath ? path.resolve(String(slot.currentPath)) : "";
+  if (!absolutePath || !isPathInside(siteRoot, absolutePath)) return null;
+  return {
+    id,
+    labelHe: String(slot.labelHe || hebrewSlotLabel(id)),
+    required: slot.required === true,
+    absolutePath,
+    publicPath: String(slot.publicPath || ""),
+  };
+}
+
+function publicClientConfig(config) {
+  return {
+    username: config.username,
+    displayName: config.displayName,
+    websiteName: config.websiteName,
+    productionServer: config.productionServer,
+    publicUrl: config.publicUrl,
+    siteRoot: config.siteRoot,
+    configPath: config.configPath,
+  };
+}
+
+async function scanClientAssets(site, config) {
+  const assets = [];
+  for (const slot of config.imageSlots) {
+    let stats = null;
+    try {
+      stats = await fsp.stat(slot.absolutePath);
+    } catch (error) {
+      stats = null;
+    }
+    assets.push({
+      id: `asset-${slot.id}`,
+      slotId: slot.id,
+      name: path.basename(slot.absolutePath),
+      label: slot.labelHe,
+      source: "production",
+      exists: Boolean(stats?.isFile()),
+      url: stats?.isFile() ? `${BASE_PATH}/api/sites/${site.id}/assets/${slot.id}/content?v=${stats.mtimeMs}` : "",
+      publicPath: slot.publicPath,
+      productionPath: slot.absolutePath,
+      size: stats?.isFile() ? stats.size : 0,
+      mtime: stats?.isFile() ? stats.mtime.toISOString() : null,
+      required: slot.required,
+    });
+  }
+  return assets;
+}
+
+function findConfigSlot(config, slotId) {
+  const normalized = normalizeSlotId(slotId);
+  return config.imageSlots.find((slot) => slot.id === normalized) || null;
+}
+
+async function replaceConfiguredAsset(site, slot, uploadedPath) {
+  await fsp.mkdir(path.dirname(slot.absolutePath), { recursive: true });
+  let backupPath = null;
+  try {
+    await assertFileReadable(slot.absolutePath);
+    const backupDir = path.join(path.dirname(slot.absolutePath), ".manager-site-backups");
+    await fsp.mkdir(backupDir, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    backupPath = path.join(backupDir, `${path.basename(slot.absolutePath)}.${stamp}.bak`);
+    await fsp.copyFile(slot.absolutePath, backupPath);
+  } catch (error) {
+    backupPath = null;
+  }
+  await fsp.copyFile(uploadedPath, slot.absolutePath);
+  return {
+    path: slot.absolutePath,
+    backupPath,
+    url: `${BASE_PATH}/api/sites/${site.id}/assets/${slot.id}/content?v=${Date.now()}`,
+  };
+}
+
+async function removeConfiguredAsset(slot) {
+  await assertFileReadable(slot.absolutePath);
+  const backupDir = path.join(path.dirname(slot.absolutePath), ".manager-site-backups");
+  await fsp.mkdir(backupDir, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const backupPath = path.join(backupDir, `${path.basename(slot.absolutePath)}.${stamp}.removed`);
+  await fsp.copyFile(slot.absolutePath, backupPath);
+  await fsp.rm(slot.absolutePath, { force: true });
+  return backupPath;
+}
+
+async function assertFileReadable(filePath) {
+  const stats = await fsp.stat(filePath);
+  if (!stats.isFile()) throw new Error("Not a file");
+  await fsp.access(filePath, fs.constants.R_OK);
+  return stats;
+}
+
+async function directoryExists(dirPath) {
+  try {
+    const stats = await fsp.stat(dirPath);
+    return stats.isDirectory();
+  } catch (error) {
+    return false;
+  }
+}
+
+function isPathInside(root, target) {
+  const relative = path.relative(root, target);
+  return Boolean(root) && relative && !relative.startsWith("..") && !path.isAbsolute(relative);
+}
+
+function hebrewSlotLabel(slotId) {
+  return {
+    hero: "תמונת פתיחה",
+    logo: "לוגו",
+    about: "אזור אודות",
+    service: "תמונת שירות",
+    gallery: "גלריה",
+  }[slotId] || "תמונה";
 }
 
 function normalizeUsername(value) {

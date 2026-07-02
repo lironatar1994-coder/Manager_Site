@@ -53,6 +53,11 @@ Do not commit or overwrite:
 - `/root/Manager_Site/data/store.json`
 - `/root/Manager_Site/data/uploads`
 - `/root/Manager_Site/data/initial-admin.txt`
+- `/root/Manager_Site/data/clients`
+
+Runtime-created client workspaces live under `data/clients` so they survive Git deploys.
+
+Repo-visible templates and starter examples live under `clients/`.
 
 The first production admin password is stored once at:
 

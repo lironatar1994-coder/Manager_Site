@@ -1,0 +1,46 @@
+{
+  "username": "miriam_zelig",
+  "displayName": "Miriam Zelig",
+  "websiteName": "Miriam Zelig Website",
+  "productionServer": "vee-app.co.il",
+  "siteRoot": "/root/client-sites/miriam_zelig",
+  "publicUrl": "https://example.com/miriam-zelig",
+  "notes": "Starter allowlist. Replace with Miriam's real production website paths when known.",
+  "imageSlots": [
+    {
+      "id": "hero",
+      "labelHe": "תמונת פתיחה",
+      "required": true,
+      "currentPath": "/root/client-sites/miriam_zelig/public/images/hero.jpg",
+      "publicPath": "/images/hero.jpg"
+    },
+    {
+      "id": "logo",
+      "labelHe": "לוגו",
+      "required": true,
+      "currentPath": "/root/client-sites/miriam_zelig/public/images/logo.png",
+      "publicPath": "/images/logo.png"
+    },
+    {
+      "id": "about",
+      "labelHe": "אזור אודות",
+      "required": false,
+      "currentPath": "/root/client-sites/miriam_zelig/public/images/about.jpg",
+      "publicPath": "/images/about.jpg"
+    },
+    {
+      "id": "service",
+      "labelHe": "תמונת שירות",
+      "required": false,
+      "currentPath": "/root/client-sites/miriam_zelig/public/images/service.jpg",
+      "publicPath": "/images/service.jpg"
+    },
+    {
+      "id": "gallery",
+      "labelHe": "גלריה",
+      "required": false,
+      "currentPath": "/root/client-sites/miriam_zelig/public/images/gallery.jpg",
+      "publicPath": "/images/gallery.jpg"
+    }
+  ]
+}

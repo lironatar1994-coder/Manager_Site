@@ -28,7 +28,7 @@ The current app has a managed desktop/mobile preview inside Manager Site. It is 
 - webhook
 - build trigger
 
-Do not assume this integration exists yet.
+The first safe integration layer now exists through `client.config.json`: Manager Site can scan allowlisted production image paths, serve them through authenticated asset URLs, and replace/remove them with backups when the configured `siteRoot` exists. The remaining work is to point each client config at the real website folders and decide how published changes should trigger cache clears or rebuilds.
 
 ### 4. Image Quality Controls
 

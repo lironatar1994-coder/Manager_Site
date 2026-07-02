@@ -22,6 +22,9 @@ Local:
 - `public/styles.css`
 - `scripts/hash-password.js`
 - `data/` for local development data
+- `clients/_template`
+- `clients/<username>/AGENTS.md`
+- `clients/<username>/client.config.json`
 
 Production:
 
@@ -30,6 +33,7 @@ Production:
 - `/root/Manager_Site/data/store.json`
 - `/root/Manager_Site/data/uploads`
 - `/root/Manager_Site/data/initial-admin.txt`
+- `/root/Manager_Site/data/clients` for runtime-created client workspace files
 
 ## Authentication
 
@@ -92,6 +96,27 @@ Sites:
 - `POST /api/sites/:siteId/status`
 - `POST /api/sites/:siteId/images`
 - `DELETE /api/sites/:siteId/images/:imageId`
+- `GET /api/sites/:siteId/assets`
+- `GET /api/sites/:siteId/assets/:slotId/content`
+- `DELETE /api/sites/:siteId/assets/:slotId`
+
+## Client Asset Configs
+
+Each client can have a human file and a machine config:
+
+- `AGENTS.md` explains the client and website goal.
+- `client.config.json` allowlists exact production image paths.
+
+The server checks persistent runtime configs first:
+
+1. `DATA_DIR/clients/<username>/client.config.json`
+2. repo fallback `clients/<username>/client.config.json`
+
+The app never lets clients choose filesystem paths. It reads and replaces only paths listed in `client.config.json`, and only when the configured path is inside `siteRoot`.
+
+When a configured production site root exists, uploading to a mapped slot copies the upload to that production path and first backs up the previous file under `.manager-site-backups`.
+
+If a config exists but the production `siteRoot` does not exist yet, uploads remain inside Manager Site storage instead of creating random production folders.
 
 ## Frontend Routing
 

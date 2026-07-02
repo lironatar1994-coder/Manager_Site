@@ -40,6 +40,8 @@ There is no public registration.
 - `deploy.ps1` - Windows deploy entrypoint.
 - `deploy_linux.sh` - remote Linux deployment, PM2, Nginx route snippet, production env setup.
 - `scripts/hash-password.js` - helper for production admin password hash.
+- `clients/<username>/AGENTS.md` - human notes for a specific client website.
+- `clients/<username>/client.config.json` - machine-readable allowlist for real production image paths.
 
 ## Safe Verification
 
@@ -82,6 +84,8 @@ curl.exe -I https://vee-app.co.il/Manager_Site/login
 - Prefer small patches anchored on stable ASCII/function names when editing Hebrew-heavy sections.
 - Do not commit `data/`, uploaded images, local test data, or production secrets.
 - Do not reset or remove production data during deploy.
+- Do not let clients choose arbitrary production paths. Only use `client.config.json` allowlisted paths.
+- Real production asset replacement must back up the old file before writing.
 
 ## More Docs
 

@@ -34,6 +34,7 @@ const state = {
   sites: [],
   audit: [],
   clientSite: null,
+  clientAssets: null,
   clientUsername: "",
   previewMode: "desktop",
 };
@@ -339,6 +340,17 @@ function renderClient() {
       });
     });
   });
+  document.querySelectorAll("[data-delete-asset]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const asset = (state.clientAssets?.assets || []).find((item) => item.slotId === button.dataset.deleteAsset);
+      confirmAction({
+        title: "להסיר את התמונה מהאתר?",
+        body: asset ? `${asset.label || asset.name} תוסר מקובץ האתר לאחר גיבוי.` : "התמונה תוסר מקובץ האתר לאחר גיבוי.",
+        confirmText: "הסרה",
+        onConfirm: () => deleteAsset(button.dataset.deleteAsset),
+      });
+    });
+  });
   document.querySelectorAll("[data-admin-status]").forEach((button) => {
     button.addEventListener("click", () => updateSiteStatus(button.dataset.siteId, button.dataset.adminStatus));
   });
@@ -452,7 +464,7 @@ function slotCard(site, slot) {
                       <img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" />
                       <figcaption>
                         <span>${escapeHtml(image.name)}</span>
-                        <button class="icon-action" type="button" data-delete-image="${image.id}" ${can("canDelete") ? "" : "disabled"} aria-label="הסרת ${escapeAttr(image.name)}"><i data-lucide="trash-2"></i></button>
+                        <button class="icon-action" type="button" ${image.source === "production" ? `data-delete-asset="${image.slotId}"` : `data-delete-image="${image.id}"`} ${can("canDelete") ? "" : "disabled"} aria-label="הסרת ${escapeAttr(image.name)}"><i data-lucide="trash-2"></i></button>
                       </figcaption>
                     </figure>`
                 )
@@ -526,7 +538,21 @@ function setPreviewMode(mode) {
 }
 
 function imagesForSlot(site, slotId) {
-  return (site.images || []).filter((image) => (image.slotId || "gallery") === slotId);
+  const managed = (site.images || []).filter((image) => (image.slotId || "gallery") === slotId);
+  if (managed.length) return managed;
+  return (state.clientAssets?.assets || [])
+    .filter((asset) => asset.exists && asset.slotId === slotId)
+    .map((asset) => ({
+      id: asset.id,
+      name: asset.name,
+      slotId: asset.slotId,
+      url: asset.url,
+      size: asset.size,
+      changedAt: asset.mtime,
+      changedBy: "production",
+      source: "production",
+      productionPath: asset.productionPath,
+    }));
 }
 
 function metric(label, value, note) {
@@ -604,6 +630,7 @@ async function onUploadImage(event) {
   const response = await api(`/api/sites/${state.clientSite.id}/images`, { method: "POST", form });
   if (response?.error) return toast(response.error);
   state.clientSite = response.site;
+  await loadClientAssets();
   toast(`${slotLabel(state.clientSite, selectedSlot)} עודכן`);
   renderClient();
 }
@@ -613,6 +640,15 @@ async function deleteImage(imageId) {
   if (response?.error) return toast(response.error);
   state.clientSite = response.site;
   toast("התמונה הוסרה");
+  renderClient();
+}
+
+async function deleteAsset(slotId) {
+  const response = await api(`/api/sites/${state.clientSite.id}/assets/${slotId}`, { method: "DELETE" });
+  if (response?.error) return toast(response.error);
+  state.clientSite = response.site || state.clientSite;
+  state.clientAssets = { ...(state.clientAssets || {}), assets: response.assets || [] };
+  toast("התמונה הוסרה מקובץ האתר");
   renderClient();
 }
 
@@ -649,6 +685,16 @@ async function loadClient(username) {
     state.clientSite = sites.find((site) => site.id === user?.siteId) || sites.find((site) => site.ownerUsername === state.clientUsername) || null;
   } else {
     state.clientSite = sites[0] || state.clientSite;
+  }
+  await loadClientAssets();
+}
+
+async function loadClientAssets() {
+  state.clientAssets = null;
+  if (!state.clientSite?.id) return;
+  const response = await api(`/api/sites/${state.clientSite.id}/assets`);
+  if (!response?.error) {
+    state.clientAssets = response;
   }
 }
 

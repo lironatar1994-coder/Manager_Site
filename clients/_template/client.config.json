@@ -1,0 +1,46 @@
+{
+  "username": "replace_username",
+  "displayName": "Replace Client Name",
+  "websiteName": "Replace Website Name",
+  "productionServer": "vee-app.co.il",
+  "siteRoot": "/root/client-sites/replace_username",
+  "publicUrl": "https://example.com",
+  "notes": "Replace these sample paths with real allowlisted production paths.",
+  "imageSlots": [
+    {
+      "id": "hero",
+      "labelHe": "תמונת פתיחה",
+      "required": true,
+      "currentPath": "/root/client-sites/replace_username/public/images/hero.jpg",
+      "publicPath": "/images/hero.jpg"
+    },
+    {
+      "id": "logo",
+      "labelHe": "לוגו",
+      "required": true,
+      "currentPath": "/root/client-sites/replace_username/public/images/logo.png",
+      "publicPath": "/images/logo.png"
+    },
+    {
+      "id": "about",
+      "labelHe": "אזור אודות",
+      "required": false,
+      "currentPath": "/root/client-sites/replace_username/public/images/about.jpg",
+      "publicPath": "/images/about.jpg"
+    },
+    {
+      "id": "service",
+      "labelHe": "תמונת שירות",
+      "required": false,
+      "currentPath": "/root/client-sites/replace_username/public/images/service.jpg",
+      "publicPath": "/images/service.jpg"
+    },
+    {
+      "id": "gallery",
+      "labelHe": "גלריה",
+      "required": false,
+      "currentPath": "/root/client-sites/replace_username/public/images/gallery.jpg",
+      "publicPath": "/images/gallery.jpg"
+    }
+  ]
+}
