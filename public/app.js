@@ -37,7 +37,6 @@ const state = {
   clientAssets: null,
   clientUsername: "",
   previewMode: "desktop",
-  pendingUploadSlot: "",
 };
 
 const app = document.querySelector("#app");
@@ -347,7 +346,6 @@ function renderClient() {
             <span class="quiet">גררו כדי לשנות מיקום, לחצו כדי להחליף, למחוק או לחתוך</span>
           </div>
           <div class="asset-queue">${slots.map((slot) => assetRailItem(site, slot)).join("")}</div>
-          <input id="quickImageFile" class="quick-image-input" type="file" accept="image/*" ${can("canUpload") ? "" : "disabled"} />
           <div class="panel-title compact-title">
             <h2>סטטוס</h2>
             <span class="quiet">${completedSlots}/${totalSlots} אזורים מרכזיים מוכנים</span>
@@ -372,7 +370,6 @@ function renderClient() {
   `;
   bindShell();
   document.querySelector("#siteLinkForm").addEventListener("submit", onUpdateSite);
-  document.querySelector("#quickImageFile").addEventListener("change", onQuickImageSelected);
   document.querySelector("#reviewButton").addEventListener("click", () => updateSiteStatus(site.id, "waiting_review"));
   document.querySelectorAll("button[data-preview-mode]").forEach((button) => {
     button.addEventListener("click", () => setPreviewMode(button.dataset.previewMode));
@@ -894,31 +891,21 @@ async function onUploadImage(event) {
   renderClient();
 }
 
-async function onQuickImageSelected(event) {
-  const file = event.currentTarget.files?.[0];
-  const slotId = state.pendingUploadSlot;
-  event.currentTarget.value = "";
-  state.pendingUploadSlot = "";
-  if (!file || !slotId) return;
-  await uploadImageToSlot(slotId, file, file.name);
-}
-
-function openQuickUpload(slotId) {
-  state.pendingUploadSlot = slotId;
-  document.querySelector("#quickImageFile")?.click();
-}
-
 async function uploadImageToSlot(slotId, file, name = "") {
   const form = new FormData();
   form.set("slotId", slotId);
   form.set("image", file, name || file.name || `${slotId}.jpg`);
   if (name) form.set("name", name);
   const response = await api(`/api/sites/${state.clientSite.id}/images`, { method: "POST", form });
-  if (response?.error) return toast(response.error);
+  if (response?.error) {
+    toast(response.error);
+    return false;
+  }
   state.clientSite = response.site;
   await loadClientAssets();
   toast(`${slotLabel(state.clientSite, slotId)} עודכן`);
   renderClient();
+  return true;
 }
 
 async function deleteImage(imageId) {
@@ -946,36 +933,90 @@ function showImageActionModal(slotId) {
   modal.innerHTML = `
     <div class="image-action-modal" role="dialog" aria-modal="true" aria-label="${escapeAttr(slotDisplayLabel(slot))}">
       <button class="icon-action modal-close" type="button" aria-label="Close"><i data-lucide="x"></i></button>
-      <div class="action-preview ${image ? "filled" : "empty"}">
-        ${image ? `<img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" />` : `<i data-lucide="image-plus"></i>`}
-      </div>
+      <button class="action-preview ${image ? "filled" : "empty"}" type="button" data-preview-zoom ${image ? "" : "disabled"}>
+        ${image ? `<img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" data-action-preview-media />` : `<i data-lucide="image-plus"></i>`}
+      </button>
       <div class="action-copy">
         <p class="eyebrow">אזור תמונה</p>
         <h2>${escapeHtml(slotDisplayLabel(slot))}</h2>
-        <p>${image ? escapeHtml(image.name) : "אין עדיין תמונה באזור הזה."}</p>
+        <p data-action-message>${image ? escapeHtml(image.name) : "אין עדיין תמונה באזור הזה."}</p>
       </div>
+      <input class="modal-file-input" type="file" accept="image/*" data-modal-file ${can("canUpload") ? "" : "disabled"} />
       <div class="image-action-buttons">
-        <button class="primary-button" type="button" data-replace-slot="${escapeAttr(slotId)}"><i data-lucide="${image ? "replace" : "image-plus"}"></i>${image ? "החלפה" : "הוספה"}</button>
+        <button class="primary-button" type="button" data-replace-slot="${escapeAttr(slotId)}"><i data-lucide="${image ? "replace" : "image-plus"}"></i>${image ? "בחירת תמונה" : "הוספת תמונה"}</button>
         <button class="ghost-button" type="button" data-crop-slot="${escapeAttr(slotId)}" ${image ? "" : "disabled"}><i data-lucide="crop"></i>חיתוך</button>
         <button class="danger-button" type="button" data-delete-current="${escapeAttr(slotId)}" ${image && can("canDelete") ? "" : "disabled"}><i data-lucide="trash-2"></i>מחיקה</button>
+      </div>
+      <div class="pending-replace-actions" hidden>
+        <button class="ghost-button" type="button" data-clear-selection>ביטול בחירה</button>
+        <button class="primary-button" type="button" data-confirm-replace><i data-lucide="check"></i>אישור החלפה</button>
       </div>
     </div>
   `;
   document.body.appendChild(modal);
   icons();
-  modal.querySelector(".modal-close").addEventListener("click", () => modal.remove());
-  modal.querySelector("[data-replace-slot]").addEventListener("click", () => {
+  let selectedFile = null;
+  let selectedUrl = "";
+  const dialog = modal.querySelector(".image-action-modal");
+  const preview = modal.querySelector("[data-preview-zoom]");
+  const fileInput = modal.querySelector("[data-modal-file]");
+  const message = modal.querySelector("[data-action-message]");
+  const pendingActions = modal.querySelector(".pending-replace-actions");
+  const replaceButton = modal.querySelector("[data-replace-slot]");
+  const cleanup = () => {
+    if (selectedUrl) URL.revokeObjectURL(selectedUrl);
     modal.remove();
-    openQuickUpload(slotId);
+  };
+  modal.querySelector(".modal-close").addEventListener("click", cleanup);
+  preview.addEventListener("click", () => {
+    if (!preview.querySelector("img")) return;
+    dialog.classList.toggle("preview-expanded");
+  });
+  modal.querySelector("[data-replace-slot]").addEventListener("click", () => {
+    fileInput.click();
+  });
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files?.[0];
+    if (!file) return;
+    if (selectedUrl) URL.revokeObjectURL(selectedUrl);
+    selectedFile = file;
+    selectedUrl = URL.createObjectURL(file);
+    preview.disabled = false;
+    preview.classList.remove("empty");
+    preview.classList.add("filled", "pending");
+    preview.innerHTML = `<img src="${escapeAttr(selectedUrl)}" alt="${escapeAttr(file.name)}" data-action-preview-media />`;
+    message.textContent = `תצוגה לפני החלפה: ${file.name}`;
+    pendingActions.hidden = false;
+    replaceButton.innerHTML = `<i data-lucide="replace"></i>בחירה אחרת`;
+    icons();
+  });
+  modal.querySelector("[data-clear-selection]").addEventListener("click", () => {
+    if (selectedUrl) URL.revokeObjectURL(selectedUrl);
+    selectedFile = null;
+    selectedUrl = "";
+    fileInput.value = "";
+    dialog.classList.remove("preview-expanded");
+    preview.className = `action-preview ${image ? "filled" : "empty"}`;
+    preview.disabled = !image;
+    preview.innerHTML = image ? `<img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" data-action-preview-media />` : `<i data-lucide="image-plus"></i>`;
+    message.textContent = image ? image.name : "אין עדיין תמונה באזור הזה.";
+    pendingActions.hidden = true;
+    replaceButton.innerHTML = `<i data-lucide="${image ? "replace" : "image-plus"}"></i>${image ? "בחירת תמונה" : "הוספת תמונה"}`;
+    icons();
+  });
+  modal.querySelector("[data-confirm-replace]").addEventListener("click", async () => {
+    if (!selectedFile) return;
+    const uploaded = await uploadImageToSlot(slotId, selectedFile, selectedFile.name);
+    if (uploaded) cleanup();
   });
   modal.querySelector("[data-crop-slot]").addEventListener("click", () => {
     if (!image) return;
-    modal.remove();
+    cleanup();
     showCropToolModal(slot, image);
   });
   modal.querySelector("[data-delete-current]").addEventListener("click", () => {
     if (!image) return;
-    modal.remove();
+    cleanup();
     confirmAction({
       title: "להסיר את התמונה?",
       body: `${slotDisplayLabel(slot)} תוסר מהאזור הזה לאחר גיבוי אם זו תמונת אתר חיה.`,
