@@ -10,9 +10,8 @@ Sessions are currently in memory. A PM2 restart logs users out. For production p
 
 ### 2. Better Admin Editing
 
-Admin can create, pause, reset, share, and edit client details/permissions, but future polish could add:
+Admin can create, pause, reset, share, filter audit activity, and edit client details/permissions, but future polish could add:
 
-- audit filters
 - per-image review notes inside the thumbnail queue
 
 ### 3. Real Website Integration

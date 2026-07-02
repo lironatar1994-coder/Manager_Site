@@ -38,6 +38,7 @@ const state = {
   clientUsername: "",
   previewMode: "desktop",
   adminReviewFilter: "all",
+  adminAuditFilter: "all",
   lastProof: null,
   livePreviewVersion: Date.now(),
 };
@@ -198,6 +199,9 @@ function renderAdmin() {
   const reviewFilter = state.adminReviewFilter || "all";
   const filteredReviewSites = reviewFilter === "all" ? state.sites : state.sites.filter((site) => site.status === reviewFilter);
   const reviewFilterCounts = reviewCountsByStatus(state.sites);
+  const auditFilter = state.adminAuditFilter || "all";
+  const filteredAuditRows = auditFilter === "all" ? state.audit : state.audit.filter((row) => auditCategory(row.action) === auditFilter);
+  const auditFilterCounts = auditCountsByCategory(state.audit);
   app.innerHTML = `
     ${shell("admin")}
     <main class="workspace admin-workspace" dir="rtl" lang="he">
@@ -253,9 +257,16 @@ function renderAdmin() {
         <article class="admin-panel audit-panel">
           <div class="panel-title">
             <h2>פעילות אחרונה</h2>
-            <span class="quiet">אירועים אחרונים מהשרת</span>
+            <span class="quiet">${filteredAuditRows.length} מוצגים · ${state.audit.length} אחרונים</span>
           </div>
-          <div class="audit-list">${state.audit.map(auditRow).join("") || `<p class="empty">עדיין אין פעילות.</p>`}</div>
+          <div class="audit-filter-bar" role="tablist" aria-label="סינון פעילות אחרונה">
+            ${auditFilterButton("all", "הכל", auditFilterCounts.all, auditFilter)}
+            ${auditFilterButton("user", "משתמשים", auditFilterCounts.user, auditFilter)}
+            ${auditFilterButton("site", "אתרים", auditFilterCounts.site, auditFilter)}
+            ${auditFilterButton("image", "תמונות", auditFilterCounts.image, auditFilter)}
+            ${auditFilterButton("asset", "קבצי אתר", auditFilterCounts.asset, auditFilter)}
+          </div>
+          <div class="audit-list">${filteredAuditRows.map(auditRow).join("") || `<p class="empty">אין פעילות בסינון הזה.</p>`}</div>
         </article>
       </section>
     </main>
@@ -287,6 +298,12 @@ function renderAdmin() {
   document.querySelectorAll("[data-review-filter]").forEach((button) => {
     button.addEventListener("click", () => {
       state.adminReviewFilter = button.dataset.reviewFilter;
+      renderAdmin();
+    });
+  });
+  document.querySelectorAll("[data-audit-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.adminAuditFilter = button.dataset.auditFilter;
       renderAdmin();
     });
   });
@@ -941,13 +958,67 @@ function metric(label, value, note) {
 }
 
 function auditRow(row) {
+  const category = auditCategory(row.action);
   return `
-    <div class="audit-row">
-      <span>${escapeHtml(formatAuditAction(row.action))}</span>
-      <strong>${escapeHtml(row.actor)}</strong>
+    <div class="audit-row ${category}">
+      <span class="audit-kind">${escapeHtml(auditCategoryLabel(category))}</span>
+      <div class="audit-copy">
+        <strong>${escapeHtml(formatAuditAction(row.action))}</strong>
+        ${formatAuditDetail(row) ? `<span>${escapeHtml(formatAuditDetail(row))}</span>` : ""}
+      </div>
+      <bdi>${escapeHtml(row.actor)}</bdi>
       <small>${new Date(row.at).toLocaleString("he-IL")}</small>
     </div>
   `;
+}
+
+function auditCategory(action = "") {
+  const prefix = String(action).split(".")[0];
+  return ["user", "site", "image", "asset"].includes(prefix) ? prefix : "other";
+}
+
+function auditCategoryLabel(category) {
+  const labels = {
+    user: "משתמש",
+    site: "אתר",
+    image: "תמונה",
+    asset: "קובץ אתר",
+    other: "מערכת",
+  };
+  return labels[category] || labels.other;
+}
+
+function auditCountsByCategory(rows = []) {
+  return rows.reduce(
+    (counts, row) => {
+      const category = auditCategory(row.action);
+      counts.all += 1;
+      counts[category] = (counts[category] || 0) + 1;
+      return counts;
+    },
+    { all: 0, user: 0, site: 0, image: 0, asset: 0, other: 0 }
+  );
+}
+
+function auditFilterButton(id, label, count, active) {
+  return `
+    <button class="audit-filter ${active === id ? "active" : ""}" type="button" data-audit-filter="${id}" role="tab" aria-selected="${active === id}">
+      <span>${escapeHtml(label)}</span>
+      <strong>${count || 0}</strong>
+    </button>
+  `;
+}
+
+function formatAuditDetail(row) {
+  const details = row.details || {};
+  const parts = [];
+  if (details.username) parts.push(`לקוח: ${details.username}`);
+  if (details.slotId) parts.push(`אזור: ${slotDisplayLabel({ id: details.slotId })}`);
+  if (details.sourceSlotId && details.targetSlotId) parts.push(`${slotDisplayLabel({ id: details.sourceSlotId })} → ${slotDisplayLabel({ id: details.targetSlotId })}`);
+  if (details.status) parts.push(`סטטוס: ${HEBREW_STATUS_META[details.status]?.label || details.status}`);
+  if (details.imageId && !details.slotId) parts.push(`תמונה: ${details.imageId}`);
+  if (details.siteId && !details.username) parts.push(`אתר: ${details.siteId}`);
+  return parts.join(" · ");
 }
 
 function formatAuditAction(action) {
