@@ -625,6 +625,105 @@ select:disabled {
   border-color: rgba(37, 93, 115, 0.2);
 }
 
+.share-cluster {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+}
+
+.share-trigger,
+.share-channel {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0;
+  border: 1px solid rgba(17, 17, 17, 0.14);
+  transition:
+    transform 220ms cubic-bezier(0.18, 0.9, 0.22, 1),
+    opacity 180ms ease,
+    background 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.share-trigger {
+  position: relative;
+  z-index: 3;
+  color: #fffaf1;
+  background: var(--black);
+  box-shadow: 0 12px 26px rgba(25, 24, 21, 0.16);
+}
+
+.share-actions {
+  position: absolute;
+  inset: 2px auto auto 2px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.share-channel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: var(--black);
+  opacity: 0;
+  background: #fffdf8;
+  transform: translateX(0) scale(0.72) rotate(-10deg);
+  box-shadow: 0 10px 24px rgba(25, 24, 21, 0.1);
+}
+
+.share-channel.whatsapp {
+  color: #176f4d;
+}
+
+.share-channel.gmail {
+  color: var(--red);
+}
+
+.share-cluster.open .share-actions {
+  pointer-events: auto;
+}
+
+.share-cluster.open .share-trigger {
+  transform: rotate(45deg) scale(0.96);
+}
+
+.share-cluster.open .share-channel {
+  opacity: 1;
+}
+
+.share-cluster.open .share-channel.whatsapp {
+  transform: translateX(-50px) scale(1) rotate(0deg);
+}
+
+.share-cluster.open .share-channel.gmail {
+  transform: translateX(-96px) scale(1) rotate(0deg);
+  transition-delay: 42ms;
+}
+
+.share-trigger:hover,
+.share-channel:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(25, 24, 21, 0.16);
+}
+
+.share-cluster.open .share-trigger:hover {
+  transform: rotate(45deg) scale(0.96) translateY(-1px);
+}
+
+.share-cluster.open .share-channel.whatsapp:hover {
+  transform: translateX(-50px) translateY(-1px);
+}
+
+.share-cluster.open .share-channel.gmail:hover {
+  transform: translateX(-96px) translateY(-1px);
+}
+
 .user-card a {
   display: inline-flex;
   align-items: center;
@@ -1574,6 +1673,34 @@ select:disabled {
 .secret-box input {
   font-family: "IBM Plex Mono", "Consolas", monospace;
   font-weight: 800;
+}
+
+.share-password-modal label {
+  margin: 14px 0;
+}
+
+.credential-preview {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 8px 10px;
+  margin: 14px 0 18px;
+  padding: 12px;
+  background: rgba(246, 241, 232, 0.7);
+  border: 1px solid var(--line);
+}
+
+.credential-preview span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.credential-preview strong {
+  overflow: hidden;
+  font-size: 0.86rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .modal-close {

@@ -197,6 +197,12 @@ function renderAdmin() {
   document.querySelectorAll("[data-reset-password]").forEach((button) => {
     button.addEventListener("click", () => resetUserPassword(button.dataset.resetPassword));
   });
+  document.querySelectorAll("[data-share-toggle]").forEach((button) => {
+    button.addEventListener("click", () => toggleShareMenu(button.dataset.shareToggle));
+  });
+  document.querySelectorAll("[data-share-channel]").forEach((button) => {
+    button.addEventListener("click", () => openCredentialShare(button.dataset.shareUser, button.dataset.shareChannel));
+  });
   document.querySelectorAll("[data-copy-value]").forEach((button) => {
     button.addEventListener("click", () => copyText(button.dataset.copyValue, button.dataset.copyLabel || "Copied"));
   });
@@ -443,8 +449,27 @@ function userCard(user) {
       <div class="user-actions">
         ${statusPill(site.status || "draft")}
         <span class="status ${user.active ? "live" : "paused"}">${user.active ? "Active" : "Paused"}</span>
+        ${shareCluster(user)}
         <button class="ghost-button small" type="button" data-toggle-user="${user.id}" data-active="${user.active}">${user.active ? "Pause" : "Activate"}</button>
       </div>
+    </div>
+  `;
+}
+
+function shareCluster(user) {
+  return `
+    <div class="share-cluster" data-share-menu="${user.id}">
+      <div class="share-actions" aria-label="Share credentials">
+        <button class="share-channel whatsapp" type="button" data-share-user="${user.id}" data-share-channel="whatsapp" aria-label="Share by WhatsApp" title="WhatsApp">
+          <i data-lucide="message-circle"></i>
+        </button>
+        <button class="share-channel gmail" type="button" data-share-user="${user.id}" data-share-channel="gmail" aria-label="Share by Gmail" title="Gmail">
+          <i data-lucide="mail"></i>
+        </button>
+      </div>
+      <button class="share-trigger" type="button" data-share-toggle="${user.id}" aria-label="Open share actions" title="Share credentials">
+        <i data-lucide="share-2"></i>
+      </button>
     </div>
   `;
 }
@@ -689,6 +714,20 @@ async function resetUserPassword(userId) {
   });
 }
 
+function toggleShareMenu(userId) {
+  document.querySelectorAll(".share-cluster.open").forEach((node) => {
+    if (node.dataset.shareMenu !== userId) node.classList.remove("open");
+  });
+  document.querySelector(`[data-share-menu="${CSS.escape(userId)}"]`)?.classList.toggle("open");
+}
+
+function openCredentialShare(userId, channel) {
+  const user = state.users.find((item) => item.id === userId);
+  if (!user || !["whatsapp", "gmail"].includes(channel)) return;
+  document.querySelector(`[data-share-menu="${CSS.escape(userId)}"]`)?.classList.remove("open");
+  showCredentialShareModal(user, channel);
+}
+
 async function onUpdateSite(event) {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
@@ -852,6 +891,75 @@ function showTemporaryPassword(user, temporaryPassword) {
   modal.querySelector("[data-done]").addEventListener("click", close);
   modal.querySelector("[data-copy-temp]").addEventListener("click", () => copyText(temporaryPassword, "Temporary password"));
   modal.querySelector("input").select();
+}
+
+function showCredentialShareModal(user, channel) {
+  const channelLabel = channel === "whatsapp" ? "WhatsApp" : "Gmail";
+  const modal = document.createElement("div");
+  modal.className = "modal-backdrop";
+  modal.innerHTML = `
+    <div class="confirm-modal credential-modal share-password-modal" role="dialog" aria-modal="true" aria-label="Share credentials">
+      <button class="icon-action modal-close" type="button" aria-label="Close"><i data-lucide="x"></i></button>
+      <h2>Share login details</h2>
+      <p>Enter the client password to include it in a ${escapeHtml(channelLabel)} message. You will confirm once more before the message opens.</p>
+      <label>Password to share
+        <input name="sharePassword" type="password" autocomplete="off" minlength="1" dir="ltr" required />
+      </label>
+      <div class="credential-preview">
+        <span>Username</span>
+        <strong dir="ltr">${escapeHtml(user.username)}</strong>
+        <span>Route</span>
+        <strong dir="ltr">${escapeHtml(href(`/client/${user.username}`))}</strong>
+      </div>
+      <div class="modal-actions">
+        <button class="ghost-button" type="button" data-cancel>Cancel</button>
+        <button class="primary-button" type="button" data-confirm-share><i data-lucide="${channel === "whatsapp" ? "message-circle" : "mail"}"></i>Open ${escapeHtml(channelLabel)}</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  icons();
+  const close = () => modal.remove();
+  modal.querySelector(".modal-close").addEventListener("click", close);
+  modal.querySelector("[data-cancel]").addEventListener("click", close);
+  modal.querySelector("[data-confirm-share]").addEventListener("click", () => {
+    const password = modal.querySelector("input[name='sharePassword']").value.trim();
+    if (!password) {
+      toast("Password is required");
+      return;
+    }
+    const confirmed = window.confirm(`Open ${channelLabel} with login details for ${user.username}?`);
+    if (!confirmed) return;
+    openCredentialShareTarget(user, channel, password);
+    close();
+  });
+  modal.querySelector("input[name='sharePassword']").focus();
+}
+
+function openCredentialShareTarget(user, channel, password) {
+  const site = state.sites.find((item) => item.id === user.siteId) || {};
+  const loginUrl = `${location.origin}${basePath}/login`;
+  const clientUrl = `${location.origin}${href(`/client/${user.username}`)}`;
+  const message = [
+    `Hi ${user.displayName},`,
+    "",
+    "Your website manager login details:",
+    `Login: ${loginUrl}`,
+    `Client route: ${clientUrl}`,
+    `Username: ${user.username}`,
+    `Password: ${password}`,
+    site.websiteUrl ? `Website: ${site.websiteUrl}` : "",
+    "",
+    "Please keep these details private.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+  const encodedMessage = encodeURIComponent(message);
+  const url =
+    channel === "whatsapp"
+      ? `https://wa.me/?text=${encodedMessage}`
+      : `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(`Website manager login - ${user.displayName}`)}&body=${encodedMessage}`;
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 async function copyText(value, label = "Value") {
