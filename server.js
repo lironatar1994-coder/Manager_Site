@@ -15,6 +15,7 @@ const UPLOAD_ROOT = process.env.UPLOAD_ROOT || path.join(DATA_DIR, "uploads");
 const INITIAL_ADMIN_PATH = path.join(DATA_DIR, "initial-admin.txt");
 const CLIENTS_DATA_DIR = process.env.CLIENTS_DIR || path.join(DATA_DIR, "clients");
 const CLIENTS_REPO_DIR = path.join(__dirname, "clients");
+const PUBLIC_DIR = path.join(__dirname, "public");
 const IMAGE_SLOTS = [
   { id: "hero", label: "Hero image", ratio: "16:9", required: true },
   { id: "logo", label: "Logo", ratio: "1:1", required: true },
@@ -56,7 +57,10 @@ const upload = multer({
 
 const router = express.Router();
 router.use("/uploads", requireAuth, express.static(UPLOAD_ROOT, { fallthrough: false }));
-router.use(express.static(path.join(__dirname, "public"), { extensions: ["html"] }));
+router.get(["/", "/index.html"], sendSpaShell);
+router.get(["/login/app.js", "/admin-login/app.js", "/admin/app.js", "/client/app.js", "/client/:username/app.js"], sendPublicAsset("app.js"));
+router.get(["/login/styles.css", "/admin-login/styles.css", "/admin/styles.css", "/client/styles.css", "/client/:username/styles.css"], sendPublicAsset("styles.css"));
+router.use(express.static(PUBLIC_DIR, { extensions: ["html"] }));
 
 router.get("/api/auth/me", requireAuth, async (req, res) => {
   res.json({ user: publicUser(req.user), site: await siteForUser(req.user) });
@@ -356,9 +360,7 @@ router.get("/api/admin/audit", requireAdmin, async (req, res) => {
   res.json({ audit: store.audit.slice(-80).reverse() });
 });
 
-router.get(["/", "/login", "/admin-login", "/admin", "/client/:username"], (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
+router.get(["/", "/login", "/admin-login", "/admin", "/client/:username"], sendSpaShell);
 
 app.use(BASE_PATH || "/", router);
 if (BASE_PATH) {
@@ -389,6 +391,25 @@ module.exports = { app, initStore, startServer };
 function normalizeBasePath(value) {
   if (!value || value === "/") return "";
   return `/${String(value).replace(/^\/+|\/+$/g, "")}`;
+}
+
+function sendSpaShell(req, res) {
+  res.setHeader("Cache-Control", "no-store");
+  fsp
+    .readFile(path.join(PUBLIC_DIR, "index.html"), "utf8")
+    .then((html) => {
+      res.type("html").send(html.replace(/%BASE_PATH%/g, BASE_PATH));
+    })
+    .catch((error) => {
+      res.status(500).json({ error: error.message || "Unable to load app shell" });
+    });
+}
+
+function sendPublicAsset(fileName) {
+  return (req, res) => {
+    res.setHeader("Cache-Control", "no-cache");
+    res.sendFile(path.join(PUBLIC_DIR, fileName));
+  };
 }
 
 async function ensureClientWorkspace(user, site) {
