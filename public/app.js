@@ -281,28 +281,31 @@ function renderClient() {
   const totalSlots = slots.length;
   const latestImage = site.images[0];
   const latestActivity = latestImage ? `${latestImage.name} עודכנה על ידי ${latestImage.changedBy}` : "בחרו אזור בתצוגה או ברשימה והעלו תמונה ראשונה.";
+  const isAdminPreview = state.me.role === "admin";
+  const clientName = isAdminPreview ? state.clientUsername : state.me.displayName;
+  const visibleWebsiteUrl = state.clientAssets?.client?.publicUrl || site.websiteUrl;
   app.className = `app-view client-mode client-rtl ${state.me.role === "admin" ? "admin-preview" : ""}`;
   app.innerHTML = `
     ${shell("client")}
     <main class="workspace client-workspace" dir="rtl" lang="he">
       ${
-        state.me.role === "admin"
+        isAdminPreview
           ? `<section class="preview-banner"><i data-lucide="eye"></i><span>תצוגת מנהל עבור ${escapeHtml(state.clientUsername)}</span><a href="${href("/admin")}">חזרה לניהול</a></section>`
           : ""
       }
 
       <header class="client-hero premium client-command">
         <div>
-          <p class="eyebrow">${escapeHtml(state.me.role === "admin" ? state.clientUsername : state.me.displayName)}</p>
-          <h1>${escapeHtml(site.name)}</h1>
+          <p class="eyebrow">${escapeHtml(clientName)}</p>
+          <h1>ניהול תמונות האתר</h1>
+          <p class="client-hero-subtitle">כאן מחליפים את התמונות שמופיעות באתר שלך. בוחרים תמונה מהרשימה, בודקים את התצוגה, ומאשרים שינוי.</p>
           <div class="hero-meta">
-            ${statusPill(site.status, "he")}
-            <span class="readiness-chip"><i data-lucide="list-checks"></i>${completedSlots}/${totalSlots} אזורים מוכנים</span>
-            <a href="${escapeAttr(site.websiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>${escapeHtml(site.websiteUrl)}</a>
+            <span class="readiness-chip"><i data-lucide="images"></i>${completedSlots}/${totalSlots} תמונות זמינות לעריכה</span>
+            <a href="${escapeAttr(visibleWebsiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>פתיחת האתר</a>
           </div>
         </div>
         <form id="siteLinkForm" class="site-link-form">
-          <label>קישור לאתר<input name="websiteUrl" value="${escapeAttr(site.websiteUrl)}" ${can("canEditLinks") ? "" : "disabled"} /></label>
+          <label>כתובת האתר<input name="websiteUrl" value="${escapeAttr(visibleWebsiteUrl)}" ${can("canEditLinks") ? "" : "disabled"} /></label>
           <button class="ghost-button" type="submit" ${can("canEditLinks") ? "" : "disabled"}><i data-lucide="save"></i>שמירה</button>
         </form>
       </header>
@@ -320,23 +323,14 @@ function renderClient() {
             </div>
           </div>
           <div class="preview-device">
-            <div class="browser-bar"><span></span><span></span><span></span><p>${escapeHtml(site.websiteUrl)}</p></div>
-            <div class="preview-canvas managed-site">
-              <section class="managed-hero">
-                ${previewEditableSlot(site, "hero", "hero")}
-                <div class="managed-copy">
-                  ${previewEditableSlot(site, "logo", "logo")}
-                  <strong>${escapeHtml(site.name)}</strong>
-                  <p>תצוגה מנוהלת של האתר עם התמונות שהועלו למערכת.</p>
-                </div>
-              </section>
-              <section class="managed-sections">
-                ${previewEditableSlot(site, "about", "section")}
-                ${previewEditableSlot(site, "service", "section")}
-              </section>
-              <section class="managed-gallery">
-                ${previewEditableSlot(site, "gallery", "gallery")}
-              </section>
+            <div class="browser-bar"><span></span><span></span><span></span><p>${escapeHtml(visibleWebsiteUrl)}</p></div>
+            <div class="preview-canvas live-screenshot-preview">
+              <img class="preview-screenshot" src="${escapeAttr(clientPreviewScreenshotUrl(site, state.previewMode))}" alt="תצוגת ${state.previewMode === "mobile" ? "נייד" : "מחשב"} של האתר" data-preview-shot />
+              <div class="screenshot-fallback">
+                <i data-lucide="image"></i>
+                <strong>תצוגת האתר תופיע כאן</strong>
+                <span>עדיין אין צילום שמור למצב הזה.</span>
+              </div>
             </div>
           </div>
         </article>
@@ -346,19 +340,19 @@ function renderClient() {
             <span class="quiet">גררו כדי לשנות מיקום, לחצו כדי להחליף, למחוק או לחתוך</span>
           </div>
           <div class="asset-queue">${slots.map((slot) => assetRailItem(site, slot)).join("")}</div>
-          <div class="panel-title compact-title">
-            <h2>סטטוס</h2>
-            <span class="quiet">${completedSlots}/${totalSlots} אזורים מרכזיים מוכנים</span>
-          </div>
-          ${statusTimeline(site.status)}
           <div class="confidence-note">
             <i data-lucide="${latestImage ? "history" : "sparkles"}"></i>
             <span>${escapeHtml(latestActivity)}</span>
           </div>
-          <button class="primary-button" id="reviewButton" type="button"><i data-lucide="send"></i>שליחה לבדיקה</button>
           ${
-            state.me.role === "admin"
-              ? `<div class="admin-status-actions">
+            isAdminPreview
+              ? `<div class="panel-title compact-title">
+                  <h2>סטטוס מנהל</h2>
+                  <span class="quiet">${completedSlots}/${totalSlots} אזורים מרכזיים מוכנים</span>
+                </div>
+                ${statusTimeline(site.status)}
+                <div class="admin-status-actions">
+                  <button class="ghost-button small" id="reviewButton" type="button"><i data-lucide="send"></i>שליחה לבדיקה</button>
                   <button class="ghost-button small" type="button" data-admin-status="published" data-site-id="${site.id}">סימון כפורסם</button>
                   <button class="ghost-button small" type="button" data-admin-status="needs_attention" data-site-id="${site.id}">דורש תיקון</button>
                 </div>`
@@ -370,10 +364,11 @@ function renderClient() {
   `;
   bindShell();
   document.querySelector("#siteLinkForm").addEventListener("submit", onUpdateSite);
-  document.querySelector("#reviewButton").addEventListener("click", () => updateSiteStatus(site.id, "waiting_review"));
+  document.querySelector("#reviewButton")?.addEventListener("click", () => updateSiteStatus(site.id, "waiting_review"));
   document.querySelectorAll("button[data-preview-mode]").forEach((button) => {
     button.addEventListener("click", () => setPreviewMode(button.dataset.previewMode));
   });
+  bindPreviewScreenshots();
   // The previous slot grid and standalone upload form are intentionally not rendered.
   // Image actions now live in the drag/drop rail to keep one clear workflow.
   document.querySelectorAll("[data-image-action-slot]").forEach((button) => {
@@ -655,11 +650,37 @@ function previewEditableSlot(site, slotId, variant = "section") {
   `;
 }
 
+function clientPreviewScreenshotUrl(site, mode) {
+  const username = site?.ownerUsername || state.clientUsername || state.me?.username || "client";
+  const version = encodeURIComponent(site?.updatedAt || "preview");
+  return `${href(`/client-previews/${encodeURIComponent(username)}/${mode}.png`)}?v=${version}`;
+}
+
+function bindPreviewScreenshots() {
+  document.querySelectorAll("[data-preview-shot]").forEach((image) => {
+    const frame = image.closest(".live-screenshot-preview");
+    if (!frame) return;
+    const markReady = () => {
+      frame.classList.toggle("is-missing", !image.naturalWidth);
+    };
+    image.addEventListener("load", markReady);
+    image.addEventListener("error", () => frame.classList.add("is-missing"));
+    if (image.complete) markReady();
+  });
+}
+
 function setPreviewMode(mode) {
   if (!["desktop", "mobile"].includes(mode)) return;
   state.previewMode = mode;
   const preview = document.querySelector(".managed-preview");
   if (preview) preview.dataset.previewMode = mode;
+  const image = document.querySelector("[data-preview-shot]");
+  if (image) {
+    const frame = image.closest(".live-screenshot-preview");
+    if (frame) frame.classList.remove("is-missing");
+    image.src = clientPreviewScreenshotUrl(state.clientSite, mode);
+    image.alt = `תצוגת ${mode === "mobile" ? "נייד" : "מחשב"} של האתר`;
+  }
   document.querySelectorAll("button[data-preview-mode]").forEach((button) => {
     button.classList.toggle("active", button.dataset.previewMode === mode);
   });
