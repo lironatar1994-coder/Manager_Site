@@ -37,6 +37,7 @@ const state = {
   clientAssets: null,
   clientUsername: "",
   previewMode: "desktop",
+  pendingUploadSlot: "",
 };
 
 const app = document.querySelector("#app");
@@ -343,9 +344,10 @@ function renderClient() {
         <article class="progress-panel client-control-panel">
           <div class="panel-title">
             <h2>תמונות להחלפה</h2>
-            <span class="quiet">גררו תמונה לאזור אחר כדי להחליף סדר בלי להעלות שוב</span>
+            <span class="quiet">גררו כדי לשנות מיקום, לחצו כדי להחליף, למחוק או לחתוך</span>
           </div>
           <div class="asset-queue">${slots.map((slot) => assetRailItem(site, slot)).join("")}</div>
+          <input id="quickImageFile" class="quick-image-input" type="file" accept="image/*" ${can("canUpload") ? "" : "disabled"} />
           <div class="panel-title compact-title">
             <h2>סטטוס</h2>
             <span class="quiet">${completedSlots}/${totalSlots} אזורים מרכזיים מוכנים</span>
@@ -366,49 +368,21 @@ function renderClient() {
           }
         </article>
       </section>
-
-      <section class="slot-workspace">
-        <article class="image-panel slots-panel">
-          <div class="panel-title">
-            <h2>כל אזורי התמונה</h2>
-            <span class="quiet">תמונה קיימת, החלפה או הסרה לפי אזור באתר</span>
-          </div>
-          <div class="slot-grid">${slots.map((slot) => slotCard(site, slot)).join("")}</div>
-        </article>
-
-        <article class="upload-panel refined">
-          <div class="panel-title">
-            <h2>עריכת אזור תמונה</h2>
-            <span class="quiet">החלפה לפי אזורים מוגדרים באתר</span>
-          </div>
-          <form id="uploadForm" class="upload-drop">
-            <label>אזור באתר
-              <select name="slotId" id="slotSelect">${slots.map((slot) => `<option value="${slot.id}">${escapeHtml(slotDisplayLabel(slot))}</option>`).join("")}</select>
-            </label>
-            <input id="imageFile" name="image" type="file" accept="image/*" ${can("canUpload") ? "" : "disabled"} required />
-            <label for="imageFile" class="drop-target">
-              <i data-lucide="image-up"></i>
-              <strong>בחירת תמונה</strong>
-              <span>PNG, JPG, WEBP, GIF, SVG עד 8MB</span>
-            </label>
-            <input name="name" placeholder="שם לתמונה - לא חובה" />
-            <button class="primary-button" type="submit" ${can("canUpload") ? "" : "disabled"}><i data-lucide="upload-cloud"></i>העלאה לאזור</button>
-          </form>
-        </article>
-      </section>
     </main>
   `;
   bindShell();
   document.querySelector("#siteLinkForm").addEventListener("submit", onUpdateSite);
-  document.querySelector("#uploadForm").addEventListener("submit", onUploadImage);
+  document.querySelector("#quickImageFile").addEventListener("change", onQuickImageSelected);
   document.querySelector("#reviewButton").addEventListener("click", () => updateSiteStatus(site.id, "waiting_review"));
   document.querySelectorAll("button[data-preview-mode]").forEach((button) => {
     button.addEventListener("click", () => setPreviewMode(button.dataset.previewMode));
   });
-  document.querySelectorAll("[data-upload-slot]").forEach((button) => {
+  // The previous slot grid and standalone upload form are intentionally not rendered.
+  // Image actions now live in the drag/drop rail to keep one clear workflow.
+  document.querySelectorAll("[data-image-action-slot]").forEach((button) => {
     button.addEventListener("click", () => {
-      document.querySelector("#slotSelect").value = button.dataset.uploadSlot;
-      document.querySelector("#imageFile").click();
+      if (button.dataset.justDragged === "true") return;
+      showImageActionModal(button.dataset.imageActionSlot);
     });
   });
   document.querySelectorAll("[data-delete-image]").forEach((button) => {
@@ -569,7 +543,7 @@ function assetRailItem(site, slot) {
   const primary = images[0];
   const sourceLabel = primary?.source === "production" ? "מהאתר החי" : primary ? "עודכן במערכת" : "חסר";
   return `
-    <button class="asset-queue-item ${primary ? "filled" : "missing"}" type="button" data-upload-slot="${slot.id}" data-drop-slot="${slot.id}" ${
+    <button class="asset-queue-item ${primary ? "filled" : "missing"}" type="button" data-image-action-slot="${slot.id}" data-drop-slot="${slot.id}" ${
       primary ? draggableAttrs(primary) : ""
     } ${can("canUpload") ? "" : "disabled"}>
       <span class="asset-queue-thumb">
@@ -607,7 +581,7 @@ function slotCard(site, slot) {
           <small>${slot.required ? "חובה" : "לא חובה"} · ${escapeHtml(slotRatioLabel(slot.ratio))}</small>
           <em class="slot-state">${primary ? "תמונה קיימת - אפשר להחליף או להסיר" : "אין תמונה - אפשר להוסיף"}</em>
         </span>
-        <button class="ghost-button small" type="button" data-upload-slot="${slot.id}" ${can("canUpload") ? "" : "disabled"}>
+        <button class="ghost-button small" type="button" data-image-action-slot="${slot.id}" ${can("canUpload") ? "" : "disabled"}>
           <i data-lucide="${primary ? "replace" : "plus"}"></i>${primary && !gallery ? "החלפה" : "העלאה"}
         </button>
       </div>
@@ -676,7 +650,7 @@ function previewEditableSlot(site, slotId, variant = "section") {
   return `
     <div class="editable-preview-slot ${variant} ${image ? "has-image" : "missing"}">
       ${image ? `<img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" />` : `<span>${escapeHtml(label)}</span>`}
-      <button class="slot-marker" type="button" data-upload-slot="${slotId}" ${can("canUpload") ? "" : "disabled"}>
+      <button class="slot-marker" type="button" data-image-action-slot="${slotId}" ${can("canUpload") ? "" : "disabled"}>
         <i data-lucide="${image ? "replace" : "plus"}"></i>
         <span>${escapeHtml(label)}</span>
       </button>
@@ -742,6 +716,10 @@ function bindImageDragAndDrop() {
     });
     node.addEventListener("dragend", () => {
       node.classList.remove("is-dragging");
+      node.dataset.justDragged = "true";
+      window.setTimeout(() => {
+        delete node.dataset.justDragged;
+      }, 180);
       document.querySelectorAll(".drop-ready").forEach((target) => target.classList.remove("drop-ready"));
     });
   });
@@ -916,6 +894,33 @@ async function onUploadImage(event) {
   renderClient();
 }
 
+async function onQuickImageSelected(event) {
+  const file = event.currentTarget.files?.[0];
+  const slotId = state.pendingUploadSlot;
+  event.currentTarget.value = "";
+  state.pendingUploadSlot = "";
+  if (!file || !slotId) return;
+  await uploadImageToSlot(slotId, file, file.name);
+}
+
+function openQuickUpload(slotId) {
+  state.pendingUploadSlot = slotId;
+  document.querySelector("#quickImageFile")?.click();
+}
+
+async function uploadImageToSlot(slotId, file, name = "") {
+  const form = new FormData();
+  form.set("slotId", slotId);
+  form.set("image", file, name || file.name || `${slotId}.jpg`);
+  if (name) form.set("name", name);
+  const response = await api(`/api/sites/${state.clientSite.id}/images`, { method: "POST", form });
+  if (response?.error) return toast(response.error);
+  state.clientSite = response.site;
+  await loadClientAssets();
+  toast(`${slotLabel(state.clientSite, slotId)} עודכן`);
+  renderClient();
+}
+
 async function deleteImage(imageId) {
   const response = await api(`/api/sites/${state.clientSite.id}/images/${imageId}`, { method: "DELETE" });
   if (response?.error) return toast(response.error);
@@ -931,6 +936,152 @@ async function deleteAsset(slotId) {
   state.clientAssets = { ...(state.clientAssets || {}), assets: response.assets || [] };
   toast("התמונה הוסרה מקובץ האתר");
   renderClient();
+}
+
+function showImageActionModal(slotId) {
+  const slot = displaySlots(state.clientSite).find((item) => item.id === slotId) || { id: slotId };
+  const image = imagesForSlot(state.clientSite, slotId)[0];
+  const modal = document.createElement("div");
+  modal.className = "modal-backdrop";
+  modal.innerHTML = `
+    <div class="image-action-modal" role="dialog" aria-modal="true" aria-label="${escapeAttr(slotDisplayLabel(slot))}">
+      <button class="icon-action modal-close" type="button" aria-label="Close"><i data-lucide="x"></i></button>
+      <div class="action-preview ${image ? "filled" : "empty"}">
+        ${image ? `<img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" />` : `<i data-lucide="image-plus"></i>`}
+      </div>
+      <div class="action-copy">
+        <p class="eyebrow">אזור תמונה</p>
+        <h2>${escapeHtml(slotDisplayLabel(slot))}</h2>
+        <p>${image ? escapeHtml(image.name) : "אין עדיין תמונה באזור הזה."}</p>
+      </div>
+      <div class="image-action-buttons">
+        <button class="primary-button" type="button" data-replace-slot="${escapeAttr(slotId)}"><i data-lucide="${image ? "replace" : "image-plus"}"></i>${image ? "החלפה" : "הוספה"}</button>
+        <button class="ghost-button" type="button" data-crop-slot="${escapeAttr(slotId)}" ${image ? "" : "disabled"}><i data-lucide="crop"></i>חיתוך</button>
+        <button class="danger-button" type="button" data-delete-current="${escapeAttr(slotId)}" ${image && can("canDelete") ? "" : "disabled"}><i data-lucide="trash-2"></i>מחיקה</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  icons();
+  modal.querySelector(".modal-close").addEventListener("click", () => modal.remove());
+  modal.querySelector("[data-replace-slot]").addEventListener("click", () => {
+    modal.remove();
+    openQuickUpload(slotId);
+  });
+  modal.querySelector("[data-crop-slot]").addEventListener("click", () => {
+    if (!image) return;
+    modal.remove();
+    showCropToolModal(slot, image);
+  });
+  modal.querySelector("[data-delete-current]").addEventListener("click", () => {
+    if (!image) return;
+    modal.remove();
+    confirmAction({
+      title: "להסיר את התמונה?",
+      body: `${slotDisplayLabel(slot)} תוסר מהאזור הזה לאחר גיבוי אם זו תמונת אתר חיה.`,
+      confirmText: "הסרה",
+      onConfirm: () => (image.source === "production" ? deleteAsset(image.slotId) : deleteImage(image.id)),
+    });
+  });
+}
+
+function showCropToolModal(slot, image) {
+  const modal = document.createElement("div");
+  const aspect = ratioToAspect(slot.ratio);
+  modal.className = "modal-backdrop";
+  modal.innerHTML = `
+    <div class="crop-modal" role="dialog" aria-modal="true" aria-label="כלי חיתוך">
+      <button class="icon-action modal-close" type="button" aria-label="Close"><i data-lucide="x"></i></button>
+      <div class="panel-title">
+        <h2>חיתוך תמונה</h2>
+        <span class="quiet">${escapeHtml(slotDisplayLabel(slot))}</span>
+      </div>
+      <div class="crop-stage" style="--crop-ratio:${aspect};">
+        <img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" data-crop-image />
+        <span class="crop-frame"></span>
+      </div>
+      <div class="crop-controls">
+        <label>זום<input type="range" min="1" max="3" step="0.05" value="1" data-crop-zoom /></label>
+        <label>ימין / שמאל<input type="range" min="-50" max="50" step="1" value="0" data-crop-x /></label>
+        <label>למעלה / למטה<input type="range" min="-50" max="50" step="1" value="0" data-crop-y /></label>
+      </div>
+      <div class="modal-actions">
+        <button class="ghost-button" type="button" data-cancel>ביטול</button>
+        <button class="primary-button" type="button" data-save-crop><i data-lucide="crop"></i>שמירה והחלפה</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  icons();
+  const imageNode = modal.querySelector("[data-crop-image]");
+  const updateCropPreview = () => {
+    const zoom = Number(modal.querySelector("[data-crop-zoom]").value);
+    const x = Number(modal.querySelector("[data-crop-x]").value);
+    const y = Number(modal.querySelector("[data-crop-y]").value);
+    imageNode.style.transform = `translate(${x * 0.45}%, ${y * 0.45}%) scale(${zoom})`;
+  };
+  modal.querySelectorAll("[data-crop-zoom], [data-crop-x], [data-crop-y]").forEach((input) => input.addEventListener("input", updateCropPreview));
+  modal.querySelector(".modal-close").addEventListener("click", () => modal.remove());
+  modal.querySelector("[data-cancel]").addEventListener("click", () => modal.remove());
+  modal.querySelector("[data-save-crop]").addEventListener("click", async () => {
+    try {
+      await waitForImageLoad(imageNode);
+      const blob = await cropImageToBlob(imageNode, {
+        aspect,
+        zoom: Number(modal.querySelector("[data-crop-zoom]").value),
+        x: Number(modal.querySelector("[data-crop-x]").value),
+        y: Number(modal.querySelector("[data-crop-y]").value),
+      });
+      modal.remove();
+      await uploadImageToSlot(slot.id, blob, `${slot.id}-crop.jpg`);
+    } catch (error) {
+      toast("לא ניתן לחתוך את התמונה הזו כרגע");
+    }
+  });
+}
+
+function waitForImageLoad(imageNode) {
+  if (imageNode.complete && imageNode.naturalWidth) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    imageNode.addEventListener("load", resolve, { once: true });
+    imageNode.addEventListener("error", () => reject(new Error("Image failed to load")), { once: true });
+  });
+}
+
+function ratioToAspect(ratio) {
+  const match = String(ratio || "").match(/^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/);
+  if (!match) return 1;
+  return Number(match[1]) / Number(match[2]);
+}
+
+function cropImageToBlob(imageNode, options) {
+  return new Promise((resolve, reject) => {
+    const naturalWidth = imageNode.naturalWidth;
+    const naturalHeight = imageNode.naturalHeight;
+    if (!naturalWidth || !naturalHeight) {
+      reject(new Error("Image is not ready"));
+      return;
+    }
+    const aspect = options.aspect || 1;
+    let cropWidth = naturalWidth;
+    let cropHeight = cropWidth / aspect;
+    if (cropHeight > naturalHeight) {
+      cropHeight = naturalHeight;
+      cropWidth = cropHeight * aspect;
+    }
+    cropWidth /= options.zoom || 1;
+    cropHeight /= options.zoom || 1;
+    const maxX = Math.max(0, naturalWidth - cropWidth);
+    const maxY = Math.max(0, naturalHeight - cropHeight);
+    const sourceX = Math.min(maxX, Math.max(0, maxX / 2 + (options.x / 100) * (maxX / 2)));
+    const sourceY = Math.min(maxY, Math.max(0, maxY / 2 + (options.y / 100) * (maxY / 2)));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(cropWidth);
+    canvas.height = Math.round(cropHeight);
+    const context = canvas.getContext("2d");
+    context.drawImage(imageNode, sourceX, sourceY, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("Crop failed"))), "image/jpeg", 0.92);
+  });
 }
 
 async function updateSiteStatus(siteId, status) {
@@ -1214,7 +1365,7 @@ function setDocumentLocale(lang, dir) {
 }
 
 function slotLabel(site, slotId) {
-  return slotDisplayLabel((site.slots || DEFAULT_SLOTS).find((slot) => slot.id === slotId) || { id: slotId });
+  return slotDisplayLabel(displaySlots(site).find((slot) => slot.id === slotId) || { id: slotId });
 }
 
 function slotDisplayLabel(slot) {
