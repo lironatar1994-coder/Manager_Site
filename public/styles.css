@@ -1544,6 +1544,15 @@ select:disabled {
   font-size: clamp(1.25rem, 2vw, 1.75rem);
 }
 
+.preview-refresh-button {
+  min-height: 38px;
+  white-space: nowrap;
+}
+
+.preview-refresh-button.is-loading i {
+  animation: spin 900ms linear infinite;
+}
+
 .managed-preview .preview-device {
   padding: clamp(12px, 2.2vw, 24px);
   background:
@@ -1760,6 +1769,67 @@ select:disabled {
   color: var(--black);
   background: #fffaf1;
   border-color: #fffaf1;
+}
+
+.update-proof {
+  display: grid;
+  gap: 11px;
+  padding: 13px;
+  color: #fffaf1;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 250, 241, 0.18);
+}
+
+.update-proof.ok {
+  border-color: rgba(107, 191, 139, 0.42);
+}
+
+.update-proof.warn {
+  border-color: rgba(232, 181, 102, 0.42);
+}
+
+.proof-title,
+.proof-list span,
+.update-proof a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.proof-title strong {
+  font-size: 0.94rem;
+}
+
+.proof-list {
+  display: grid;
+  gap: 7px;
+}
+
+.proof-list span {
+  color: rgba(255, 250, 241, 0.72);
+  font-size: 0.82rem;
+}
+
+.proof-list i,
+.update-proof a i {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.update-proof a {
+  width: fit-content;
+  color: #fffaf1;
+  font-size: 0.84rem;
+  font-weight: 800;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 250, 241, 0.42);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .slot-workspace {
@@ -2433,6 +2503,10 @@ svg.lucide {
     display: flex;
     flex-direction: column;
     gap: 12px;
+  }
+
+  .preview-refresh-button {
+    width: 100%;
   }
 
   .progress-panel {

@@ -31,6 +31,8 @@ Current slots:
 
 - Hero image: `gallery/img1.jpeg`
 - Gallery images: `gallery/img2.jpeg` through `gallery/img8.jpeg`
+- Before/after before image: `gallery/before-after-before.jpeg`
+- Before/after after image: `gallery/before-after-after.jpeg`
 - About portrait: `miryam.jpeg`
 
 ## Preview Screenshots

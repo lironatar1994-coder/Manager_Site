@@ -15,6 +15,7 @@ const UPLOAD_ROOT = process.env.UPLOAD_ROOT || path.join(DATA_DIR, "uploads");
 const INITIAL_ADMIN_PATH = path.join(DATA_DIR, "initial-admin.txt");
 const CLIENTS_DATA_DIR = process.env.CLIENTS_DIR || path.join(DATA_DIR, "clients");
 const CLIENTS_REPO_DIR = path.join(__dirname, "clients");
+const PREVIEW_ROOT = process.env.PREVIEW_ROOT || path.join(DATA_DIR, "client-previews");
 const PUBLIC_DIR = path.join(__dirname, "public");
 const IMAGE_SLOTS = [
   { id: "hero", label: "Hero image", ratio: "16:9", required: true },
@@ -60,6 +61,7 @@ router.use("/uploads", requireAuth, express.static(UPLOAD_ROOT, { fallthrough: f
 router.get(["/", "/index.html"], sendSpaShell);
 router.get(["/login/app.js", "/admin-login/app.js", "/admin/app.js", "/client/app.js", "/client/:username/app.js"], sendPublicAsset("app.js"));
 router.get(["/login/styles.css", "/admin-login/styles.css", "/admin/styles.css", "/client/styles.css", "/client/:username/styles.css"], sendPublicAsset("styles.css"));
+router.get("/client-previews/:username/:fileName", sendClientPreview);
 router.use(express.static(PUBLIC_DIR, { extensions: ["html"] }));
 
 router.get("/api/auth/me", requireAuth, async (req, res) => {
@@ -211,6 +213,19 @@ router.get("/api/sites/:siteId/assets", requireSiteAccess, async (req, res) => {
   });
 });
 
+router.post("/api/sites/:siteId/previews/refresh", requireSiteAccess, requirePermission("canUpload"), async (req, res) => {
+  const config = await loadClientConfig(req.site.ownerUsername);
+  const result = await refreshSitePreviewsSafe(req.site, config);
+  const store = await readStore();
+  const site = store.sites.find((item) => item.id === req.params.siteId);
+  if (site) {
+    site.updatedAt = new Date().toISOString();
+    store.audit.push(audit(req.user, "site.preview_refreshed", { siteId: site.id, ...result }));
+    await writeStore(store);
+  }
+  res.json({ site: site || req.site, previewRefresh: result });
+});
+
 router.get("/api/sites/:siteId/assets/:slotId/content", requireSiteAccess, async (req, res) => {
   const config = await loadClientConfig(req.site.ownerUsername);
   const slot = config ? findConfigSlot(config, req.params.slotId) : null;
@@ -243,7 +258,8 @@ router.delete("/api/sites/:siteId/assets/:slotId", requireSiteAccess, requirePer
     store.audit.push(audit(req.user, "asset.deleted", { siteId: site.id, slotId: slot.id, productionPath: slot.absolutePath, backupPath }));
     await writeStore(store);
   }
-  res.json({ site, assets: await scanClientAssets(site || req.site, config) });
+  const previewRefresh = await refreshSitePreviewsSafe(site || req.site, config);
+  res.json({ site, assets: await scanClientAssets(site || req.site, config), previewRefresh });
 });
 
 router.post("/api/sites/:siteId/assets/reorder", requireSiteAccess, requirePermission("canUpload"), async (req, res) => {
@@ -271,7 +287,8 @@ router.post("/api/sites/:siteId/assets/reorder", requireSiteAccess, requirePermi
     store.audit.push(audit(req.user, "asset.reordered", { siteId: site.id, sourceSlotId, targetSlotId, ...result }));
     await writeStore(store);
   }
-  res.json({ site, assets: await scanClientAssets(site || req.site, config) });
+  const previewRefresh = await refreshSitePreviewsSafe(site || req.site, config);
+  res.json({ site, assets: await scanClientAssets(site || req.site, config), previewRefresh });
 });
 
 router.patch("/api/sites/:siteId", requireSiteAccess, requirePermission("canEditLinks"), async (req, res) => {
@@ -353,7 +370,8 @@ router.post(
     site.updatedAt = new Date().toISOString();
     store.audit.push(audit(req.user, "image.uploaded", { siteId: site.id, imageId: image.id, slotId }));
     await writeStore(store);
-    res.status(201).json({ image, site });
+    const previewRefresh = productionAsset ? await refreshSitePreviewsSafe(site, clientConfig) : null;
+    res.status(201).json({ image, site, previewRefresh });
   }
 );
 
@@ -477,6 +495,99 @@ function sendPublicAsset(fileName) {
     res.setHeader("Cache-Control", "no-cache");
     res.sendFile(path.join(PUBLIC_DIR, fileName));
   };
+}
+
+async function sendClientPreview(req, res) {
+  const username = safeSegment(req.params.username);
+  const fileName = path.basename(req.params.fileName || "");
+  if (!/^(desktop|mobile)\.png$/.test(fileName)) {
+    res.status(404).json({ error: "Preview not found" });
+    return;
+  }
+  const runtimePath = path.join(PREVIEW_ROOT, username, fileName);
+  const fallbackPath = path.join(PUBLIC_DIR, "client-previews", username, fileName);
+  const targetPath = (await fileExists(runtimePath)) ? runtimePath : fallbackPath;
+  if (!(await fileExists(targetPath))) {
+    res.status(404).json({ error: "Preview not found" });
+    return;
+  }
+  res.setHeader("Cache-Control", "no-cache");
+  res.sendFile(targetPath);
+}
+
+async function refreshSitePreviewsSafe(site, config) {
+  try {
+    return await refreshSitePreviews(site, config);
+  } catch (error) {
+    return {
+      ok: false,
+      refreshed: false,
+      message: error.message || "Preview refresh failed",
+    };
+  }
+}
+
+async function refreshSitePreviews(site, config) {
+  const rawUrl = String(config?.publicUrl || site?.websiteUrl || "").trim();
+  let publicUrl;
+  try {
+    publicUrl = new URL(rawUrl);
+  } catch (error) {
+    throw new Error("Website URL is not valid");
+  }
+  if (!["http:", "https:"].includes(publicUrl.protocol)) {
+    throw new Error("Website URL must be http or https");
+  }
+
+  const username = safeSegment(site.ownerUsername || config?.username || "client");
+  const outputDir = path.join(PREVIEW_ROOT, username);
+  await fsp.mkdir(outputDir, { recursive: true });
+
+  let chromium;
+  try {
+    ({ chromium } = require("playwright"));
+  } catch (error) {
+    throw new Error("Preview engine is not installed");
+  }
+
+  const browser = await chromium.launch({
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  });
+  try {
+    await capturePreview(browser, publicUrl, path.join(outputDir, "desktop.png"), {
+      width: 1440,
+      height: 1000,
+    });
+    await capturePreview(browser, publicUrl, path.join(outputDir, "mobile.png"), {
+      width: 390,
+      height: 844,
+      isMobile: true,
+    });
+  } finally {
+    await browser.close();
+  }
+
+  return {
+    ok: true,
+    refreshed: true,
+    version: Date.now(),
+    publicUrl: publicUrl.toString(),
+    desktopPath: path.join(outputDir, "desktop.png"),
+    mobilePath: path.join(outputDir, "mobile.png"),
+  };
+}
+
+async function capturePreview(browser, publicUrl, outputPath, viewport) {
+  const page = await browser.newPage({ viewport, deviceScaleFactor: 1, isMobile: viewport.isMobile === true });
+  try {
+    const url = new URL(publicUrl.toString());
+    url.searchParams.set("manager_preview", Date.now().toString());
+    await page.goto(url.toString(), { waitUntil: "networkidle", timeout: 45000 });
+    await page.screenshot({ path: outputPath, fullPage: false });
+  } finally {
+    await page.close();
+  }
 }
 
 async function ensureClientWorkspace(user, site) {

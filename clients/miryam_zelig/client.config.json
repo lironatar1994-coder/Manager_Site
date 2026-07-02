@@ -32,15 +32,15 @@
       "id": "before_after_before",
       "labelHe": "לפני - לפני ואחרי",
       "required": false,
-      "currentPath": "/var/www/Miryam_Zelig/gallery/img2.jpeg",
-      "publicPath": "/Miryam_Zelig/gallery/img2.jpeg"
+      "currentPath": "/var/www/Miryam_Zelig/gallery/before-after-before.jpeg",
+      "publicPath": "/Miryam_Zelig/gallery/before-after-before.jpeg"
     },
     {
       "id": "before_after_after",
       "labelHe": "אחרי - לפני ואחרי",
       "required": false,
-      "currentPath": "/var/www/Miryam_Zelig/gallery/img3.jpeg",
-      "publicPath": "/Miryam_Zelig/gallery/img3.jpeg"
+      "currentPath": "/var/www/Miryam_Zelig/gallery/before-after-after.jpeg",
+      "publicPath": "/Miryam_Zelig/gallery/before-after-after.jpeg"
     },
     {
       "id": "gallery_3",
