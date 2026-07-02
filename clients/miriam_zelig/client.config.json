@@ -5,42 +5,42 @@
   "productionServer": "vee-app.co.il",
   "siteRoot": "/root/client-sites/miriam_zelig",
   "publicUrl": "https://example.com/miriam-zelig",
-  "notes": "Starter allowlist. Replace with Miriam's real production website paths when known.",
+  "notes": "Production allowlist with starter SVG assets. Replace these files with Miriam's real website images when ready.",
   "imageSlots": [
     {
       "id": "hero",
       "labelHe": "תמונת פתיחה",
       "required": true,
-      "currentPath": "/root/client-sites/miriam_zelig/public/images/hero.jpg",
-      "publicPath": "/images/hero.jpg"
+      "currentPath": "/root/client-sites/miriam_zelig/public/images/hero.svg",
+      "publicPath": "/images/hero.svg"
     },
     {
       "id": "logo",
       "labelHe": "לוגו",
       "required": true,
-      "currentPath": "/root/client-sites/miriam_zelig/public/images/logo.png",
-      "publicPath": "/images/logo.png"
+      "currentPath": "/root/client-sites/miriam_zelig/public/images/logo.svg",
+      "publicPath": "/images/logo.svg"
     },
     {
       "id": "about",
       "labelHe": "אזור אודות",
       "required": false,
-      "currentPath": "/root/client-sites/miriam_zelig/public/images/about.jpg",
-      "publicPath": "/images/about.jpg"
+      "currentPath": "/root/client-sites/miriam_zelig/public/images/about.svg",
+      "publicPath": "/images/about.svg"
     },
     {
       "id": "service",
       "labelHe": "תמונת שירות",
       "required": false,
-      "currentPath": "/root/client-sites/miriam_zelig/public/images/service.jpg",
-      "publicPath": "/images/service.jpg"
+      "currentPath": "/root/client-sites/miriam_zelig/public/images/service.svg",
+      "publicPath": "/images/service.svg"
     },
     {
       "id": "gallery",
       "labelHe": "גלריה",
       "required": false,
-      "currentPath": "/root/client-sites/miriam_zelig/public/images/gallery.jpg",
-      "publicPath": "/images/gallery.jpg"
+      "currentPath": "/root/client-sites/miriam_zelig/public/images/gallery.svg",
+      "publicPath": "/images/gallery.svg"
     }
   ]
 }

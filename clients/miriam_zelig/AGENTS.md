@@ -19,7 +19,7 @@ Miriam's website should be manageable through Manager Site. The client should be
 - Site root: `/root/client-sites/miriam_zelig`
 - Main image folder: `/root/client-sites/miriam_zelig/public/images`
 
-The paths above are starter paths. Update `client.config.json` when the real production website folder is known.
+The runtime production workspace has been created on `vee-app.co.il` with starter SVG assets. Update `client.config.json` when the real production website images are ready to replace these starter files.
 
 ## Editable Assets
 
