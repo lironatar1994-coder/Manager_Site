@@ -90,6 +90,7 @@ async function route() {
 
 function renderLogin(error = "") {
   setDocumentLocale("he", "rtl");
+  const loginPrefill = readLoginPrefill();
   app.className = "login-view login-rtl";
   app.innerHTML = `
     <main class="login-shell" dir="rtl" lang="he">
@@ -107,8 +108,8 @@ function renderLogin(error = "") {
           <p>הלקוחות נכנסים לאזור האישי שהוגדר להם, מעדכנים תמונות, בודקים סטטוס ומנהלים את הקישור לאתר.</p>
         </div>
         <form class="login-form" id="loginForm">
-          <label>שם משתמש<input name="username" autocomplete="username" placeholder="miryam_zelig" dir="ltr" required /></label>
-          <label>סיסמה<input name="password" type="password" autocomplete="current-password" dir="ltr" required /></label>
+          <label>שם משתמש<input name="username" autocomplete="username" placeholder="miryam_zelig" value="${escapeAttr(loginPrefill.username)}" dir="ltr" required /></label>
+          <label>סיסמה<input name="password" type="password" autocomplete="current-password" value="${escapeAttr(loginPrefill.password)}" dir="ltr" required /></label>
           ${error ? `<div class="form-error">${escapeHtml(error)}</div>` : ""}
           <button class="primary-button" type="submit"><i data-lucide="log-in"></i>כניסה למערכת</button>
         </form>
@@ -128,6 +129,7 @@ function renderLogin(error = "") {
     </main>
   `;
   document.querySelector("#loginForm").addEventListener("submit", onLogin);
+  clearLoginPrefillFromUrl(loginPrefill);
   icons();
 }
 
@@ -943,21 +945,21 @@ function showCredentialShareModal(user, channel) {
 
 function openCredentialShareTarget(user, channel, password) {
   const site = state.sites.find((item) => item.id === user.siteId) || {};
-  const loginUrl = `${location.origin}${basePath}/login`;
-  const clientUrl = `${location.origin}${href(`/client/${user.username}`)}`;
+  const loginUrl = buildPrefilledLoginUrl(user.username, password);
+  const greeting = user.username === "miryam_zelig" ? "שלום מרים," : "שלום,";
   const message = [
-    "שלום,",
+    greeting,
     "",
     "פרטי הכניסה שלך למערכת ניהול האתר:",
     `קישור כניסה: ${loginUrl}`,
-    `אזור הלקוח: ${clientUrl}`,
+    "",
     `שם משתמש: ${user.username}`,
     `סיסמה: ${password}`,
-    site.websiteUrl ? `האתר שלך: ${site.websiteUrl}` : "",
+    "",
+    ...(site.websiteUrl ? [`האתר שלך: ${site.websiteUrl}`] : []),
     "",
     "נא לשמור את הפרטים האלה באופן פרטי ולא להעביר אותם הלאה.",
   ]
-    .filter(Boolean)
     .join("\n");
   const encodedMessage = encodeURIComponent(message);
   const url =
@@ -965,6 +967,50 @@ function openCredentialShareTarget(user, channel, password) {
       ? `https://wa.me/?text=${encodedMessage}`
       : `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent("פרטי כניסה למערכת ניהול האתר")}&body=${encodedMessage}`;
   window.open(url, "_blank", "noopener,noreferrer");
+}
+
+function buildPrefilledLoginUrl(username, password) {
+  const payload = encodeBase64Url(JSON.stringify({ username, password }));
+  return `${location.origin}${basePath}/login#credentials=${encodeURIComponent(payload)}`;
+}
+
+function readLoginPrefill() {
+  const fallback = { username: "", password: "", fromUrl: false };
+  const hash = location.hash || "";
+  if (!hash.startsWith("#credentials=")) return fallback;
+  try {
+    const encoded = hash.slice("#credentials=".length);
+    const parsed = JSON.parse(decodeBase64Url(decodeURIComponent(encoded)));
+    return {
+      username: String(parsed.username || ""),
+      password: String(parsed.password || ""),
+      fromUrl: true,
+    };
+  } catch (error) {
+    return fallback;
+  }
+}
+
+function encodeBase64Url(value) {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function decodeBase64Url(value) {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+  const binary = atob(padded);
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+function clearLoginPrefillFromUrl(prefill) {
+  if (!prefill?.fromUrl) return;
+  history.replaceState(null, "", `${location.origin}${basePath}/login`);
 }
 
 async function copyText(value, label = "Value") {
