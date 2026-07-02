@@ -3,44 +3,72 @@
   "displayName": "Miryam Zelig",
   "websiteName": "Miryam Zelig Website",
   "productionServer": "vee-app.co.il",
-  "siteRoot": "/root/client-sites/miryam_zelig",
-  "publicUrl": "https://example.com/miryam-zelig",
-  "notes": "Production allowlist with starter SVG assets. Replace these files with Miryam's real website images when ready.",
+  "siteRoot": "/var/www/Miryam_Zelig",
+  "publicUrl": "https://vee-app.co.il/Miryam_Zelig/",
+  "notes": "Production allowlist for Miryam Zelig's real static website. These paths are the files served live by Nginx.",
   "imageSlots": [
     {
       "id": "hero",
       "labelHe": "תמונת פתיחה",
       "required": true,
-      "currentPath": "/root/client-sites/miryam_zelig/public/images/hero.svg",
-      "publicPath": "/images/hero.svg"
-    },
-    {
-      "id": "logo",
-      "labelHe": "לוגו",
-      "required": true,
-      "currentPath": "/root/client-sites/miryam_zelig/public/images/logo.svg",
-      "publicPath": "/images/logo.svg"
-    },
-    {
-      "id": "about",
-      "labelHe": "אזור אודות",
-      "required": false,
-      "currentPath": "/root/client-sites/miryam_zelig/public/images/about.svg",
-      "publicPath": "/images/about.svg"
-    },
-    {
-      "id": "service",
-      "labelHe": "תמונת שירות",
-      "required": false,
-      "currentPath": "/root/client-sites/miryam_zelig/public/images/service.svg",
-      "publicPath": "/images/service.svg"
+      "currentPath": "/var/www/Miryam_Zelig/gallery/img1.jpeg",
+      "publicPath": "/Miryam_Zelig/gallery/img1.jpeg"
     },
     {
       "id": "gallery",
-      "labelHe": "גלריה",
+      "labelHe": "גלריה 1",
+      "required": true,
+      "currentPath": "/var/www/Miryam_Zelig/gallery/img2.jpeg",
+      "publicPath": "/Miryam_Zelig/gallery/img2.jpeg"
+    },
+    {
+      "id": "gallery_2",
+      "labelHe": "גלריה 2",
       "required": false,
-      "currentPath": "/root/client-sites/miryam_zelig/public/images/gallery.svg",
-      "publicPath": "/images/gallery.svg"
+      "currentPath": "/var/www/Miryam_Zelig/gallery/img3.jpeg",
+      "publicPath": "/Miryam_Zelig/gallery/img3.jpeg"
+    },
+    {
+      "id": "gallery_3",
+      "labelHe": "גלריה 3",
+      "required": false,
+      "currentPath": "/var/www/Miryam_Zelig/gallery/img4.jpeg",
+      "publicPath": "/Miryam_Zelig/gallery/img4.jpeg"
+    },
+    {
+      "id": "gallery_4",
+      "labelHe": "גלריה 4",
+      "required": false,
+      "currentPath": "/var/www/Miryam_Zelig/gallery/img5.jpeg",
+      "publicPath": "/Miryam_Zelig/gallery/img5.jpeg"
+    },
+    {
+      "id": "gallery_5",
+      "labelHe": "גלריה 5",
+      "required": false,
+      "currentPath": "/var/www/Miryam_Zelig/gallery/img6.jpeg",
+      "publicPath": "/Miryam_Zelig/gallery/img6.jpeg"
+    },
+    {
+      "id": "gallery_6",
+      "labelHe": "גלריה 6",
+      "required": false,
+      "currentPath": "/var/www/Miryam_Zelig/gallery/img7.jpeg",
+      "publicPath": "/Miryam_Zelig/gallery/img7.jpeg"
+    },
+    {
+      "id": "gallery_7",
+      "labelHe": "גלריה 7",
+      "required": false,
+      "currentPath": "/var/www/Miryam_Zelig/gallery/img8.jpeg",
+      "publicPath": "/Miryam_Zelig/gallery/img8.jpeg"
+    },
+    {
+      "id": "about",
+      "labelHe": "תמונת אודות",
+      "required": true,
+      "currentPath": "/var/www/Miryam_Zelig/miryam.jpeg",
+      "publicPath": "/Miryam_Zelig/miryam.jpeg"
     }
   ]
 }
