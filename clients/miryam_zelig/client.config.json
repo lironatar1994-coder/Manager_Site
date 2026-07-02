@@ -29,6 +29,20 @@
       "publicPath": "/Miryam_Zelig/gallery/img3.jpeg"
     },
     {
+      "id": "before_after_before",
+      "labelHe": "לפני - לפני ואחרי",
+      "required": false,
+      "currentPath": "/var/www/Miryam_Zelig/gallery/img2.jpeg",
+      "publicPath": "/Miryam_Zelig/gallery/img2.jpeg"
+    },
+    {
+      "id": "before_after_after",
+      "labelHe": "אחרי - לפני ואחרי",
+      "required": false,
+      "currentPath": "/var/www/Miryam_Zelig/gallery/img3.jpeg",
+      "publicPath": "/Miryam_Zelig/gallery/img3.jpeg"
+    },
+    {
       "id": "gallery_3",
       "labelHe": "גלריה 3",
       "required": false,
