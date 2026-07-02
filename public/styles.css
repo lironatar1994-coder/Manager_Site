@@ -1609,6 +1609,26 @@ select:disabled {
   border-color: rgba(255, 250, 241, 0.26);
 }
 
+.asset-queue-item[draggable="true"],
+.slot-image figure[draggable="true"] {
+  cursor: grab;
+}
+
+.asset-queue-item.is-dragging,
+.slot-image figure.is-dragging {
+  opacity: 0.48;
+}
+
+.asset-queue-item.drop-ready,
+.slot-card.drop-ready {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(184, 135, 70, 0.18), var(--shadow);
+}
+
+.slot-card.drop-ready {
+  background: rgba(255, 250, 241, 0.88);
+}
+
 .asset-queue-thumb {
   display: grid;
   place-items: center;

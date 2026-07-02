@@ -276,9 +276,9 @@ function renderClient() {
   setDocumentLocale("he", "rtl");
   const site = state.clientSite;
   if (!site) return renderForbidden();
-  const slots = site.slots?.length ? site.slots : DEFAULT_SLOTS;
-  const completedSlots = slots.filter((slot) => slot.id !== "gallery" && imagesForSlot(site, slot.id).length).length;
-  const totalSlots = slots.filter((slot) => slot.id !== "gallery").length;
+  const slots = displaySlots(site);
+  const completedSlots = slots.filter((slot) => imagesForSlot(site, slot.id).length).length;
+  const totalSlots = slots.length;
   const latestImage = site.images[0];
   const latestActivity = latestImage ? `${latestImage.name} עודכנה על ידי ${latestImage.changedBy}` : "בחרו אזור בתצוגה או ברשימה והעלו תמונה ראשונה.";
   app.className = `app-view client-mode client-rtl ${state.me.role === "admin" ? "admin-preview" : ""}`;
@@ -343,7 +343,7 @@ function renderClient() {
         <article class="progress-panel client-control-panel">
           <div class="panel-title">
             <h2>תמונות להחלפה</h2>
-            <span class="quiet">לחיצה על אזור פותחת העלאה ישירה</span>
+            <span class="quiet">גררו תמונה לאזור אחר כדי להחליף סדר בלי להעלות שוב</span>
           </div>
           <div class="asset-queue">${slots.map((slot) => assetRailItem(site, slot)).join("")}</div>
           <div class="panel-title compact-title">
@@ -433,6 +433,7 @@ function renderClient() {
       });
     });
   });
+  bindImageDragAndDrop();
   document.querySelectorAll("[data-admin-status]").forEach((button) => {
     button.addEventListener("click", () => updateSiteStatus(button.dataset.siteId, button.dataset.adminStatus));
   });
@@ -568,7 +569,9 @@ function assetRailItem(site, slot) {
   const primary = images[0];
   const sourceLabel = primary?.source === "production" ? "מהאתר החי" : primary ? "עודכן במערכת" : "חסר";
   return `
-    <button class="asset-queue-item ${primary ? "filled" : "missing"}" type="button" data-upload-slot="${slot.id}" ${can("canUpload") ? "" : "disabled"}>
+    <button class="asset-queue-item ${primary ? "filled" : "missing"}" type="button" data-upload-slot="${slot.id}" data-drop-slot="${slot.id}" ${
+      primary ? draggableAttrs(primary) : ""
+    } ${can("canUpload") ? "" : "disabled"}>
       <span class="asset-queue-thumb">
         ${primary ? `<img src="${escapeAttr(primary.url)}" alt="${escapeAttr(primary.name)}" />` : `<i data-lucide="image-plus"></i>`}
       </span>
@@ -581,12 +584,23 @@ function assetRailItem(site, slot) {
   `;
 }
 
+function draggableAttrs(image) {
+  if (!image || !can("canUpload")) return "";
+  return [
+    'draggable="true"',
+    'data-draggable-image="true"',
+    `data-drag-image="${escapeAttr(image.id)}"`,
+    `data-drag-slot="${escapeAttr(image.slotId || "gallery")}"`,
+    `data-drag-source="${escapeAttr(image.source || "manager")}"`,
+  ].join(" ");
+}
+
 function slotCard(site, slot) {
   const images = imagesForSlot(site, slot.id);
   const primary = images[0];
   const gallery = slot.id === "gallery";
   return `
-    <article class="slot-card ${primary ? "filled" : "empty"}">
+    <article class="slot-card ${primary ? "filled" : "empty"}" data-drop-slot="${slot.id}">
       <div class="slot-top">
         <span>
           <strong>${escapeHtml(slotDisplayLabel(slot))}</strong>
@@ -603,7 +617,7 @@ function slotCard(site, slot) {
               ${images
                 .map(
                   (image) => `
-                    <figure>
+                    <figure ${draggableAttrs(image)} data-drop-image="${escapeAttr(image.id)}" data-drop-image-source="${escapeAttr(image.source || "manager")}">
                       <img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" />
                       <figcaption>
                         <span>${escapeHtml(image.name)}</span>
@@ -680,6 +694,21 @@ function setPreviewMode(mode) {
   });
 }
 
+function displaySlots(site) {
+  const fallbackSlots = site.slots?.length ? site.slots : DEFAULT_SLOTS;
+  const merged = new Map();
+  fallbackSlots.forEach((slot) => merged.set(slot.id, slot));
+  (state.clientAssets?.assets || []).forEach((asset) => {
+    merged.set(asset.slotId, {
+      id: asset.slotId,
+      label: asset.label,
+      ratio: asset.slotId.startsWith("gallery") ? "free" : "",
+      required: asset.required,
+    });
+  });
+  return Array.from(merged.values());
+}
+
 function imagesForSlot(site, slotId) {
   const managed = (site.images || []).filter((image) => (image.slotId || "gallery") === slotId);
   if (managed.length) return managed;
@@ -696,6 +725,78 @@ function imagesForSlot(site, slotId) {
       source: "production",
       productionPath: asset.productionPath,
     }));
+}
+
+function bindImageDragAndDrop() {
+  if (!can("canUpload")) return;
+  document.querySelectorAll("[data-draggable-image]").forEach((node) => {
+    node.addEventListener("dragstart", (event) => {
+      const payload = {
+        imageId: node.dataset.dragImage,
+        slotId: node.dataset.dragSlot,
+        source: node.dataset.dragSource || "manager",
+      };
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("application/json", JSON.stringify(payload));
+      node.classList.add("is-dragging");
+    });
+    node.addEventListener("dragend", () => {
+      node.classList.remove("is-dragging");
+      document.querySelectorAll(".drop-ready").forEach((target) => target.classList.remove("drop-ready"));
+    });
+  });
+
+  document.querySelectorAll("[data-drop-slot]").forEach((target) => {
+    target.addEventListener("dragover", (event) => {
+      if (!event.dataTransfer.types.includes("application/json")) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      target.classList.add("drop-ready");
+    });
+    target.addEventListener("dragleave", (event) => {
+      if (!target.contains(event.relatedTarget)) target.classList.remove("drop-ready");
+    });
+    target.addEventListener("drop", async (event) => {
+      event.preventDefault();
+      target.classList.remove("drop-ready");
+      const payload = readDragPayload(event);
+      if (!payload?.imageId) return;
+      const imageTarget = event.target.closest("[data-drop-image]");
+      await reorderDraggedImage({
+        ...payload,
+        targetSlotId: target.dataset.dropSlot,
+        targetImageId: imageTarget?.dataset.dropImage || "",
+        targetSource: imageTarget?.dataset.dropImageSource || "",
+      });
+    });
+  });
+}
+
+function readDragPayload(event) {
+  try {
+    return JSON.parse(event.dataTransfer.getData("application/json") || "{}");
+  } catch (error) {
+    return null;
+  }
+}
+
+async function reorderDraggedImage({ imageId, slotId, source, targetSlotId, targetImageId, targetSource }) {
+  if (!targetSlotId || (slotId === targetSlotId && (!targetImageId || targetImageId === imageId))) return;
+  const targetHasProductionAsset = (state.clientAssets?.assets || []).some((asset) => asset.slotId === targetSlotId && asset.exists);
+  if (targetHasProductionAsset && source !== "production" && !imageId.startsWith("asset-")) {
+    toast("גרירה לאזור חי זמינה בין תמונות האתר הקיימות. להחלפה עם קובץ חדש השתמשו בהעלאה.");
+    return;
+  }
+  const productionMove = source === "production" || targetSource === "production" || imageId.startsWith("asset-") || targetImageId.startsWith("asset-");
+  const response = productionMove
+    ? await api(`/api/sites/${state.clientSite.id}/assets/reorder`, { method: "POST", body: { sourceSlotId: slotId, targetSlotId } })
+    : await api(`/api/sites/${state.clientSite.id}/images/${imageId}/placement`, { method: "PATCH", body: { targetSlotId, targetImageId } });
+  if (response?.error) return toast(response.error);
+  state.clientSite = response.site || state.clientSite;
+  if (response.assets) state.clientAssets = { ...(state.clientAssets || {}), assets: response.assets };
+  else await loadClientAssets();
+  toast("סדר התמונות עודכן");
+  renderClient();
 }
 
 function metric(label, value, note) {

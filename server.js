@@ -246,6 +246,34 @@ router.delete("/api/sites/:siteId/assets/:slotId", requireSiteAccess, requirePer
   res.json({ site, assets: await scanClientAssets(site || req.site, config) });
 });
 
+router.post("/api/sites/:siteId/assets/reorder", requireSiteAccess, requirePermission("canUpload"), async (req, res) => {
+  const sourceSlotId = normalizeSlotId(req.body?.sourceSlotId);
+  const targetSlotId = normalizeSlotId(req.body?.targetSlotId);
+  if (!sourceSlotId || !targetSlotId || sourceSlotId === targetSlotId) {
+    res.status(400).json({ error: "Source and target image slots are required" });
+    return;
+  }
+
+  const config = await loadClientConfig(req.site.ownerUsername);
+  const sourceSlot = config ? findConfigSlot(config, sourceSlotId) : null;
+  const targetSlot = config ? findConfigSlot(config, targetSlotId) : null;
+  if (!config || !sourceSlot?.absolutePath || !targetSlot?.absolutePath) {
+    res.status(404).json({ error: "Configured image slot not found" });
+    return;
+  }
+
+  const result = await reorderConfiguredAssets(sourceSlot, targetSlot);
+  const store = await readStore();
+  const site = store.sites.find((item) => item.id === req.params.siteId);
+  if (site) {
+    site.status = "waiting_review";
+    site.updatedAt = new Date().toISOString();
+    store.audit.push(audit(req.user, "asset.reordered", { siteId: site.id, sourceSlotId, targetSlotId, ...result }));
+    await writeStore(store);
+  }
+  res.json({ site, assets: await scanClientAssets(site || req.site, config) });
+});
+
 router.patch("/api/sites/:siteId", requireSiteAccess, requirePermission("canEditLinks"), async (req, res) => {
   const store = await readStore();
   const site = store.sites.find((item) => item.id === req.params.siteId);
@@ -328,6 +356,45 @@ router.post(
     res.status(201).json({ image, site });
   }
 );
+
+router.patch("/api/sites/:siteId/images/:imageId/placement", requireSiteAccess, requirePermission("canUpload"), async (req, res) => {
+  const targetSlotId = normalizeSlotId(req.body?.targetSlotId);
+  const targetImageId = String(req.body?.targetImageId || "");
+  const store = await readStore();
+  const site = store.sites.find((item) => item.id === req.params.siteId);
+  const image = site.images.find((item) => item.id === req.params.imageId);
+  if (!image) {
+    res.status(404).json({ error: "Image not found" });
+    return;
+  }
+  if (image.source === "production") {
+    res.status(400).json({ error: "Production images must be reordered by slot" });
+    return;
+  }
+
+  const sourceSlotId = image.slotId || "gallery";
+  const targetImage = targetImageId ? site.images.find((item) => item.id === targetImageId) : null;
+  if (targetImage?.source === "production") {
+    res.status(400).json({ error: "Production images must be reordered by slot" });
+    return;
+  }
+
+  if (targetImage && targetImage.id !== image.id && (targetImage.slotId || "gallery") !== sourceSlotId) {
+    targetImage.slotId = sourceSlotId;
+    image.slotId = targetSlotId;
+    promoteImageInSlot(site.images, image.id, targetSlotId);
+    promoteImageInSlot(site.images, targetImage.id, sourceSlotId);
+  } else {
+    image.slotId = targetSlotId;
+    moveImageBefore(site.images, image.id, targetImage?.id || null, targetSlotId);
+  }
+
+  site.status = "waiting_review";
+  site.updatedAt = new Date().toISOString();
+  store.audit.push(audit(req.user, "image.reordered", { siteId: site.id, imageId: image.id, sourceSlotId, targetSlotId, targetImageId: targetImage?.id || null }));
+  await writeStore(store);
+  res.json({ site });
+});
 
 router.delete(
   "/api/sites/:siteId/images/:imageId",
@@ -591,11 +658,51 @@ async function removeConfiguredAsset(slot) {
   return backupPath;
 }
 
+async function reorderConfiguredAssets(sourceSlot, targetSlot) {
+  await assertFileReadable(sourceSlot.absolutePath);
+  await fsp.mkdir(path.dirname(targetSlot.absolutePath), { recursive: true });
+  const targetExists = await fileExists(targetSlot.absolutePath);
+  const sourceBackupPath = await backupConfiguredFile(sourceSlot.absolutePath, "reorder-source");
+  let targetBackupPath = null;
+
+  if (targetExists) {
+    targetBackupPath = await backupConfiguredFile(targetSlot.absolutePath, "reorder-target");
+    const tempPath = path.join(path.dirname(sourceSlot.absolutePath), `.manager-site-swap-${crypto.randomUUID()}${path.extname(sourceSlot.absolutePath)}`);
+    await fsp.copyFile(sourceSlot.absolutePath, tempPath);
+    await fsp.copyFile(targetSlot.absolutePath, sourceSlot.absolutePath);
+    await fsp.copyFile(tempPath, targetSlot.absolutePath);
+    await fsp.rm(tempPath, { force: true });
+  } else {
+    await fsp.copyFile(sourceSlot.absolutePath, targetSlot.absolutePath);
+  }
+
+  return { sourcePath: sourceSlot.absolutePath, targetPath: targetSlot.absolutePath, sourceBackupPath, targetBackupPath, swapped: targetExists };
+}
+
+async function backupConfiguredFile(filePath, suffix) {
+  await assertFileReadable(filePath);
+  const backupDir = path.join(path.dirname(filePath), ".manager-site-backups");
+  await fsp.mkdir(backupDir, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const backupPath = path.join(backupDir, `${path.basename(filePath)}.${stamp}.${suffix}.bak`);
+  await fsp.copyFile(filePath, backupPath);
+  return backupPath;
+}
+
 async function assertFileReadable(filePath) {
   const stats = await fsp.stat(filePath);
   if (!stats.isFile()) throw new Error("Not a file");
   await fsp.access(filePath, fs.constants.R_OK);
   return stats;
+}
+
+async function fileExists(filePath) {
+  try {
+    const stats = await fsp.stat(filePath);
+    return stats.isFile();
+  } catch (error) {
+    return false;
+  }
 }
 
 async function directoryExists(dirPath) {
@@ -775,6 +882,25 @@ function normalizeSite(site) {
     ...image,
   }));
   return site;
+}
+
+function promoteImageInSlot(images, imageId, slotId) {
+  moveImageBefore(images, imageId, images.find((item) => item.id !== imageId && (item.slotId || "gallery") === slotId)?.id || null, slotId);
+}
+
+function moveImageBefore(images, imageId, beforeImageId, slotId) {
+  const currentIndex = images.findIndex((item) => item.id === imageId);
+  if (currentIndex === -1) return;
+  const [image] = images.splice(currentIndex, 1);
+  image.slotId = slotId;
+  const beforeIndex = beforeImageId ? images.findIndex((item) => item.id === beforeImageId && (item.slotId || "gallery") === slotId) : -1;
+  if (beforeIndex >= 0) {
+    images.splice(beforeIndex, 0, image);
+    return;
+  }
+  const firstInSlot = images.findIndex((item) => (item.slotId || "gallery") === slotId);
+  if (firstInSlot >= 0) images.splice(firstInSlot, 0, image);
+  else images.unshift(image);
 }
 
 function normalizeSlotId(slotId) {
