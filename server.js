@@ -743,7 +743,7 @@ function normalizeSite(site) {
 
 function normalizeSlotId(slotId) {
   const value = String(slotId || "gallery").trim();
-  return IMAGE_SLOTS.some((slot) => slot.id === value) ? value : "gallery";
+  return /^[a-z0-9][a-z0-9_-]{0,63}$/i.test(value) ? value : "gallery";
 }
 
 async function hashPassword(password) {
