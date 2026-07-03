@@ -10,7 +10,8 @@ Current visual language:
 - strong typography
 - sharp cards and panels
 - dense but clean operational layout
-- no public landing page or marketing hero
+- no public landing page or marketing fluff
+- the client workspace may use a hero-style first section when it is functional: live preview, site identity, image readiness, and primary actions
 
 Avoid generic dashboard styling. The UI should feel custom, professional, and client-ready.
 
@@ -52,8 +53,8 @@ Most clients will use phones. Keep mobile flows fast:
 
 The current mobile order for clients is:
 
-1. clean Hebrew site header and link edit
-2. live desktop/mobile website preview
+1. hero-style client command section with live desktop/mobile preview
+2. site link edit and primary actions
 3. drag/drop image rail with task-style image cards
 4. image action modal for replace, delete, and crop
 
@@ -68,6 +69,8 @@ The client should immediately understand:
 - how to upload or replace an image
 
 Do not show internal review/status/approval language in the first client-facing section. Admin-only status controls may exist for admin preview, but the normal client experience should read like a simple website image manager.
+
+The first client section should be visual before explanatory. Keep copy short and make the live website preview the dominant element; avoid long paragraphs, internal process language, or empty dashboard metrics.
 
 Use explicit labels. Do not hide core actions behind unclear icons.
 

@@ -359,24 +359,26 @@ function renderClient() {
           : ""
       }
 
-      <header class="client-hero premium client-command">
-        <div>
+      <section class="client-hero-page">
+        <div class="client-hero-copy">
           <p class="eyebrow">${escapeHtml(clientName)}</p>
-          <h1>ניהול תמונות האתר</h1>
-          <p class="client-hero-subtitle">כאן מחליפים את התמונות שמופיעות באתר שלך. בוחרים תמונה מהרשימה, בודקים את התצוגה, ומאשרים שינוי.</p>
+          <h1>האתר שלך, מוכן לעריכת תמונות</h1>
+          <p class="client-hero-subtitle">רואים את האתר כמו לקוח, בוחרים אזור תמונה, מחליפים ומאשרים במקום אחד.</p>
           <div class="hero-meta">
-            <span class="readiness-chip"><i data-lucide="images"></i>${completedSlots}/${totalSlots} תמונות זמינות לעריכה</span>
-            <a href="${escapeAttr(visibleWebsiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>פתיחת האתר</a>
+            <span class="readiness-chip"><i data-lucide="wand-sparkles"></i>אזור עריכה פעיל</span>
+            <span class="readiness-chip"><i data-lucide="images"></i>${completedSlots}/${totalSlots} אזורי תמונה מוכנים</span>
           </div>
+          <div class="hero-actions">
+            <a class="primary-button" href="${escapeAttr(visibleWebsiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>פתיחת האתר</a>
+            <button class="ghost-button" type="button" data-refresh-preview><i data-lucide="refresh-cw"></i>רענון תצוגה</button>
+          </div>
+          <form id="siteLinkForm" class="site-link-form hero-link-form">
+            <label>כתובת האתר<input name="websiteUrl" value="${escapeAttr(visibleWebsiteUrl)}" ${can("canEditLinks") ? "" : "disabled"} /></label>
+            <button class="ghost-button" type="submit" ${can("canEditLinks") ? "" : "disabled"}><i data-lucide="save"></i>שמירה</button>
+          </form>
         </div>
-        <form id="siteLinkForm" class="site-link-form">
-          <label>כתובת האתר<input name="websiteUrl" value="${escapeAttr(visibleWebsiteUrl)}" ${can("canEditLinks") ? "" : "disabled"} /></label>
-          <button class="ghost-button" type="submit" ${can("canEditLinks") ? "" : "disabled"}><i data-lucide="save"></i>שמירה</button>
-        </form>
-      </header>
 
-      <section class="client-overview">
-        <article class="website-preview managed-preview" data-preview-mode="${state.previewMode}">
+        <article class="website-preview managed-preview hero-live-preview" data-preview-mode="${state.previewMode}">
           <div class="preview-toolbar">
             <div>
               <p class="eyebrow">תצוגה חיה</p>
@@ -386,9 +388,6 @@ function renderClient() {
               <button class="${state.previewMode === "desktop" ? "active" : ""}" type="button" data-preview-mode="desktop"><i data-lucide="monitor"></i>מחשב</button>
               <button class="${state.previewMode === "mobile" ? "active" : ""}" type="button" data-preview-mode="mobile"><i data-lucide="smartphone"></i>נייד</button>
             </div>
-            <button class="ghost-button small preview-refresh-button" type="button" data-refresh-preview>
-              <i data-lucide="refresh-cw"></i>רענון תצוגה
-            </button>
           </div>
           <div class="preview-device">
             <div class="browser-bar"><span></span><span></span><span></span><p>${escapeHtml(visibleWebsiteUrl)}</p></div>
@@ -406,6 +405,9 @@ function renderClient() {
             </div>
           </div>
         </article>
+      </section>
+
+      <section class="client-overview client-task-overview">
         <article class="progress-panel client-control-panel">
           <div class="panel-title">
             <h2>תמונות להחלפה</h2>

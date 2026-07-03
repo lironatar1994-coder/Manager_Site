@@ -1728,6 +1728,164 @@ button.review-thumb:hover {
   width: 100%;
 }
 
+.client-hero-page {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(320px, 0.44fr) minmax(520px, 0.56fr);
+  gap: clamp(18px, 2.5vw, 32px);
+  align-items: stretch;
+  min-height: min(760px, calc(100dvh - 72px));
+  margin-bottom: 18px;
+  padding: clamp(16px, 2.4vw, 30px);
+  overflow: hidden;
+  color: #fffaf1;
+  background:
+    linear-gradient(90deg, rgba(255, 250, 241, 0.05) 1px, transparent 1px) 0 0 / 56px 56px,
+    linear-gradient(rgba(255, 250, 241, 0.045) 1px, transparent 1px) 0 0 / 56px 56px,
+    linear-gradient(145deg, #181715, #263b40 58%, #10100f);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 28px 86px rgba(25, 24, 21, 0.24);
+}
+
+.client-hero-page::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  background:
+    linear-gradient(105deg, rgba(184, 135, 70, 0.22), transparent 30%),
+    linear-gradient(280deg, rgba(255, 250, 241, 0.08), transparent 34%);
+}
+
+.client-hero-copy,
+.hero-live-preview {
+  position: relative;
+  z-index: 1;
+}
+
+.client-hero-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: clamp(6px, 1.5vw, 18px) 0;
+}
+
+.client-hero-copy .eyebrow {
+  color: rgba(255, 250, 241, 0.68);
+}
+
+.client-hero-copy h1 {
+  max-width: 620px;
+  margin: 0 0 14px;
+  color: #fffaf1;
+  font-size: clamp(2.55rem, 5.4vw, 5.6rem);
+  line-height: 0.9;
+}
+
+.client-hero-copy .client-hero-subtitle {
+  max-width: 520px;
+  margin-bottom: 18px;
+  color: rgba(255, 250, 241, 0.72);
+  font-size: clamp(1rem, 1.35vw, 1.18rem);
+}
+
+.client-hero-copy .hero-meta {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.client-hero-copy .site-status,
+.client-hero-copy .readiness-chip {
+  color: #fffaf1;
+  background: rgba(255, 250, 241, 0.1);
+  border: 1px solid rgba(255, 250, 241, 0.18);
+}
+
+.client-hero-copy .readiness-chip {
+  min-height: 42px;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.hero-actions .primary-button {
+  min-height: 50px;
+  color: var(--black);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.hero-actions .ghost-button {
+  min-height: 50px;
+  color: #fffaf1;
+  background: rgba(255, 250, 241, 0.08);
+  border-color: rgba(255, 250, 241, 0.22);
+}
+
+.hero-link-form {
+  width: min(520px, 100%);
+  padding: 12px;
+  color: #fffaf1;
+  background: rgba(255, 250, 241, 0.08);
+  border: 1px solid rgba(255, 250, 241, 0.18);
+}
+
+.hero-link-form label {
+  color: rgba(255, 250, 241, 0.72);
+}
+
+.hero-link-form input {
+  color: #fffaf1;
+  background: rgba(255, 250, 241, 0.08);
+  border-color: rgba(255, 250, 241, 0.22);
+}
+
+.hero-link-form .ghost-button {
+  color: var(--black);
+  background: #fffaf1;
+  border-color: #fffaf1;
+}
+
+.hero-live-preview {
+  align-self: center;
+  overflow: hidden;
+  background: rgba(255, 250, 241, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.32);
+}
+
+.hero-live-preview .preview-toolbar {
+  padding: 14px 16px;
+  background: #fffdf8;
+}
+
+.hero-live-preview .preview-toolbar h2 {
+  font-size: clamp(1.05rem, 1.5vw, 1.35rem);
+}
+
+.hero-live-preview .preview-device {
+  padding: clamp(10px, 1.6vw, 18px);
+}
+
+.hero-live-preview .live-iframe-preview {
+  min-height: clamp(440px, 58vh, 640px);
+}
+
+.hero-live-preview .live-iframe-preview iframe {
+  height: clamp(520px, 68vh, 720px);
+  min-height: 520px;
+}
+
+.client-task-overview {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .client-command {
   position: relative;
   display: grid;
@@ -1827,6 +1985,7 @@ button.review-thumb:hover {
 }
 
 .preview-refresh-button.is-loading i,
+.hero-actions [data-refresh-preview].is-loading i,
 [data-refresh-preview-inline].is-loading i {
   animation: spin 900ms linear infinite;
 }
@@ -3346,10 +3505,15 @@ svg.lucide {
 }
 
 @media (max-width: 1180px) {
+  .client-hero-page,
   .client-command,
   .client-overview,
   .slot-workspace {
     grid-template-columns: 1fr;
+  }
+
+  .client-hero-page {
+    min-height: auto;
   }
 
   .client-control-panel {
@@ -3365,6 +3529,94 @@ svg.lucide {
   .client-workspace {
     gap: 12px;
     padding: 10px;
+  }
+
+  .client-hero-page {
+    gap: 14px;
+    min-height: auto;
+    margin-bottom: 0;
+    padding: 12px;
+    background:
+      linear-gradient(90deg, rgba(255, 250, 241, 0.05) 1px, transparent 1px) 0 0 / 40px 40px,
+      linear-gradient(rgba(255, 250, 241, 0.045) 1px, transparent 1px) 0 0 / 40px 40px,
+      linear-gradient(150deg, #181715, #243a3e 64%, #10100f);
+  }
+
+  .client-hero-copy {
+    padding: 4px;
+  }
+
+  .client-hero-copy h1 {
+    margin-bottom: 10px;
+    font-size: clamp(2.15rem, 12vw, 3.15rem);
+    line-height: 0.93;
+  }
+
+  .client-hero-copy .client-hero-subtitle {
+    margin-bottom: 12px;
+    font-size: 0.98rem;
+    line-height: 1.55;
+  }
+
+  .client-hero-copy .hero-meta,
+  .hero-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .hero-actions .primary-button,
+  .hero-actions .ghost-button {
+    width: 100%;
+    min-height: 52px;
+  }
+
+  .hero-link-form {
+    grid-template-columns: minmax(0, 1fr) 52px;
+    gap: 8px;
+    width: 100%;
+    padding: 0;
+    background: transparent;
+    border: 0;
+  }
+
+  .hero-link-form input {
+    min-height: 50px;
+  }
+
+  .hero-link-form .ghost-button {
+    width: 52px;
+    min-height: 50px;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .hero-link-form .ghost-button i {
+    width: 20px;
+    height: 20px;
+  }
+
+  .hero-live-preview {
+    align-self: stretch;
+  }
+
+  .hero-live-preview .preview-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 12px;
+  }
+
+  .hero-live-preview .preview-device {
+    padding: 8px;
+  }
+
+  .hero-live-preview .live-iframe-preview {
+    min-height: 430px;
+  }
+
+  .hero-live-preview .live-iframe-preview iframe {
+    height: 500px;
+    min-height: 500px;
   }
 
   .client-command {
