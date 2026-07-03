@@ -54,6 +54,8 @@ Desktop/mobile buttons resize the Manager Site preview frame. Do not add static 
 
 Miryam's public site is static HTML under `/var/www/Miryam_Zelig/index.html`.
 
+Miryam's website deploy must preserve Manager Site managed images. The website source repo may contain default image files, but after a client changes images through Manager Site, the live files under `/var/www/Miryam_Zelig` are the source of truth for the editable slots. Do not deploy Miryam's website with a script that deletes the web root and blindly copies `gallery`/`miryam.jpeg` from Git without first preserving and restoring the Manager-managed assets.
+
 After replacing any production image, especially the `before_after_before` and `before_after_after` slots, verify:
 
 - the target file changed on disk under `/var/www/Miryam_Zelig`
