@@ -362,27 +362,31 @@ function renderClient() {
       <section class="client-hero-page">
         <div class="client-hero-copy">
           <p class="eyebrow">${escapeHtml(clientName)}</p>
-          <h1>האתר שלך, מוכן לעריכת תמונות</h1>
-          <p class="client-hero-subtitle">רואים את האתר כמו לקוח, בוחרים אזור תמונה, מחליפים ומאשרים במקום אחד.</p>
+          <h1>ניהול תמונות האתר</h1>
+          <p class="client-hero-subtitle">תצוגה חיה של האתר, וכל התמונות שניתן להחליף, במקום אחד נקי.</p>
           <div class="hero-meta">
-            <span class="readiness-chip"><i data-lucide="wand-sparkles"></i>אזור עריכה פעיל</span>
-            <span class="readiness-chip"><i data-lucide="images"></i>${completedSlots}/${totalSlots} אזורי תמונה מוכנים</span>
+            <span class="readiness-chip"><i data-lucide="screen-share"></i>תצוגה חיה</span>
+            <span class="readiness-chip"><i data-lucide="shield-check"></i>שמירה ישירה באתר</span>
           </div>
           <div class="hero-actions">
-            <a class="primary-button" href="${escapeAttr(visibleWebsiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>פתיחת האתר</a>
-            <button class="ghost-button" type="button" data-refresh-preview><i data-lucide="refresh-cw"></i>רענון תצוגה</button>
+            <a class="primary-button" href="${escapeAttr(visibleWebsiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>פתיחה</a>
+            <button class="ghost-button" type="button" data-share-website="${escapeAttr(visibleWebsiteUrl)}"><i data-lucide="share-2"></i>שיתוף</button>
+            <button class="ghost-button icon-only" type="button" data-refresh-preview aria-label="רענון תצוגה" title="רענון תצוגה"><i data-lucide="refresh-cw"></i></button>
           </div>
-          <form id="siteLinkForm" class="site-link-form hero-link-form">
-            <label>כתובת האתר<input name="websiteUrl" value="${escapeAttr(visibleWebsiteUrl)}" ${can("canEditLinks") ? "" : "disabled"} /></label>
-            <button class="ghost-button" type="submit" ${can("canEditLinks") ? "" : "disabled"}><i data-lucide="save"></i>שמירה</button>
-          </form>
+          <details class="hero-link-details">
+            <summary><i data-lucide="link"></i><span>קישור האתר</span><bdi>${escapeHtml(shortUrlLabel(visibleWebsiteUrl))}</bdi></summary>
+            <form id="siteLinkForm" class="site-link-form hero-link-form">
+              <label>כתובת האתר<input name="websiteUrl" value="${escapeAttr(visibleWebsiteUrl)}" ${can("canEditLinks") ? "" : "disabled"} /></label>
+              <button class="ghost-button" type="submit" ${can("canEditLinks") ? "" : "disabled"}><i data-lucide="${can("canEditLinks") ? "save" : "lock"}"></i>${can("canEditLinks") ? "שמירה" : "נעול"}</button>
+            </form>
+          </details>
         </div>
 
         <article class="website-preview managed-preview hero-live-preview" data-preview-mode="${state.previewMode}">
           <div class="preview-toolbar">
             <div>
               <p class="eyebrow">תצוגה חיה</p>
-              <h2>כך האתר נראה עכשיו</h2>
+              <h2>האתר עכשיו</h2>
             </div>
             <div class="preview-toggle" role="tablist" aria-label="בחירת תצוגה">
               <button class="${state.previewMode === "desktop" ? "active" : ""}" type="button" data-preview-mode="desktop"><i data-lucide="monitor"></i>מחשב</button>
@@ -411,7 +415,7 @@ function renderClient() {
         <article class="progress-panel client-control-panel">
           <div class="panel-title">
             <h2>תמונות להחלפה</h2>
-            <span class="quiet">גררו כדי לשנות מיקום, לחצו כדי להחליף, למחוק או לחתוך</span>
+            <span class="quiet">לחיצה על תמונה פותחת החלפה, מחיקה וחיתוך</span>
           </div>
           <div class="asset-queue">${slots.map((slot) => assetRailItem(site, slot)).join("")}</div>
           <div class="confidence-note">
@@ -438,13 +442,16 @@ function renderClient() {
     </main>
   `;
   bindShell();
-  document.querySelector("#siteLinkForm").addEventListener("submit", onUpdateSite);
+  document.querySelector("#siteLinkForm")?.addEventListener("submit", onUpdateSite);
   document.querySelector("#reviewButton")?.addEventListener("click", () => updateSiteStatus(site.id, "waiting_review"));
   document.querySelectorAll("button[data-preview-mode]").forEach((button) => {
     button.addEventListener("click", () => setPreviewMode(button.dataset.previewMode));
   });
   document.querySelector("[data-refresh-preview]")?.addEventListener("click", refreshSitePreview);
   document.querySelector("[data-refresh-preview-inline]")?.addEventListener("click", refreshSitePreview);
+  document.querySelector("[data-share-website]")?.addEventListener("click", (event) => {
+    shareClientWebsite(event.currentTarget.dataset.shareWebsite, site.name || clientName);
+  });
   bindLivePreview();
   // The previous slot grid and standalone upload form are intentionally not rendered.
   // Image actions now live in the drag/drop rail to keep one clear workflow.
@@ -803,6 +810,34 @@ function renderUpdateProof(websiteUrl) {
       <a href="${escapeAttr(websiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>פתיחת האתר לבדיקה</a>
     </div>
   `;
+}
+
+function shortUrlLabel(websiteUrl) {
+  try {
+    const url = new URL(websiteUrl);
+    return `${url.host}${url.pathname}`.replace(/\/$/, "");
+  } catch (error) {
+    return websiteUrl || "לא הוגדר קישור";
+  }
+}
+
+async function shareClientWebsite(websiteUrl, siteName = "האתר") {
+  if (!websiteUrl) return toast("לא נמצא קישור לשיתוף", "error");
+  const shareData = {
+    title: siteName,
+    text: "קישור לאתר",
+    url: websiteUrl,
+  };
+  try {
+    if (navigator.share) {
+      await navigator.share(shareData);
+      return;
+    }
+    await copyText(websiteUrl, "קישור האתר");
+  } catch (error) {
+    if (error?.name === "AbortError") return;
+    await copyText(websiteUrl, "קישור האתר");
+  }
 }
 
 function clientLivePreviewUrl(websiteUrl) {
