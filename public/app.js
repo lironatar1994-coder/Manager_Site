@@ -1462,6 +1462,7 @@ function showImageActionModal(slotId) {
   const pendingActions = modal.querySelector(".pending-replace-actions");
   const replaceButton = modal.querySelector("[data-replace-slot]");
   const cropButton = modal.querySelector("[data-crop-slot]");
+  const confirmReplaceButton = modal.querySelector("[data-confirm-replace]");
   const cleanup = () => {
     if (selectedUrl) URL.revokeObjectURL(selectedUrl);
     modal.remove();
@@ -1484,6 +1485,7 @@ function showImageActionModal(slotId) {
     preview.classList.add("filled", "pending");
     preview.innerHTML = `<img src="${escapeAttr(selectedUrl)}" alt="${escapeAttr(file.name)}" data-action-preview-media />`;
     message.textContent = `תצוגה לפני החלפה: ${file.name}`;
+    dialog.classList.add("has-pending-replace");
     pendingActions.hidden = false;
     cropButton.disabled = false;
     replaceButton.innerHTML = `<i data-lucide="replace"></i>בחירה אחרת`;
@@ -1510,6 +1512,7 @@ function showImageActionModal(slotId) {
     preview.disabled = !image;
     preview.innerHTML = image ? `<img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" data-action-preview-media />` : `<i data-lucide="image-plus"></i>`;
     message.textContent = image ? image.name : "אין עדיין תמונה באזור הזה.";
+    dialog.classList.remove("has-pending-replace");
     qualityPanel.hidden = true;
     qualityPanel.innerHTML = "";
     pendingActions.hidden = true;
@@ -1517,10 +1520,18 @@ function showImageActionModal(slotId) {
     replaceButton.innerHTML = `<i data-lucide="${image ? "replace" : "image-plus"}"></i>${image ? "בחירת תמונה" : "הוספת תמונה"}`;
     icons();
   });
-  modal.querySelector("[data-confirm-replace]").addEventListener("click", async () => {
+  confirmReplaceButton.addEventListener("click", async () => {
     if (!selectedFile) return;
+    confirmReplaceButton.disabled = true;
+    confirmReplaceButton.innerHTML = `<i data-lucide="loader-circle"></i>מחליפים תמונה`;
+    icons();
     const uploaded = await uploadImageToSlot(slotId, selectedFile, selectedFile.name);
     if (uploaded) cleanup();
+    else {
+      confirmReplaceButton.disabled = false;
+      confirmReplaceButton.innerHTML = `<i data-lucide="check"></i>אישור החלפה`;
+      icons();
+    }
   });
   modal.querySelector("[data-crop-slot]").addEventListener("click", () => {
     const cropSource = selectedFile ? { url: selectedUrl, name: selectedFile.name || `${slot.id}.jpg` } : image;
