@@ -363,7 +363,7 @@ router.post(
     }
     let productionAsset = null;
     if (configSlot?.absolutePath && (await directoryExists(clientConfig.siteRoot))) {
-      productionAsset = await replaceConfiguredAsset(site, configSlot, req.file.path);
+      productionAsset = await replaceConfiguredAsset(site, configSlot, req.file.path, clientConfig);
     }
     const image = {
       id: crypto.randomUUID(),
@@ -746,7 +746,7 @@ function findConfigSlot(config, slotId) {
   return config.imageSlots.find((slot) => slot.id === normalized) || null;
 }
 
-async function replaceConfiguredAsset(site, slot, uploadedPath) {
+async function replaceConfiguredAsset(site, slot, uploadedPath, config = null) {
   await fsp.mkdir(path.dirname(slot.absolutePath), { recursive: true });
   let backupPath = null;
   try {
@@ -760,11 +760,50 @@ async function replaceConfiguredAsset(site, slot, uploadedPath) {
     backupPath = null;
   }
   await fsp.copyFile(uploadedPath, slot.absolutePath);
+  const version = Date.now();
+  if (config?.siteRoot && slot.publicPath) {
+    await refreshPublicAssetReferences(config.siteRoot, slot.publicPath, version);
+  }
   return {
     path: slot.absolutePath,
     backupPath,
-    url: `${BASE_PATH}/api/sites/${site.id}/assets/${slot.id}/content?v=${Date.now()}`,
+    url: `${BASE_PATH}/api/sites/${site.id}/assets/${slot.id}/content?v=${version}`,
   };
+}
+
+async function refreshPublicAssetReferences(siteRoot, publicPath, version) {
+  const normalizedRoot = path.resolve(siteRoot);
+  const htmlFiles = await listHtmlFiles(normalizedRoot);
+  const publicReference = String(publicPath || "");
+  if (!publicReference) return;
+
+  const escapedReference = escapeRegExp(publicReference);
+  const referencePattern = new RegExp(`${escapedReference}(?:\\?v=\\d+)?`, "g");
+  const nextReference = `${publicReference}?v=${version}`;
+
+  for (const htmlPath of htmlFiles) {
+    if (!isPathInside(normalizedRoot, htmlPath)) continue;
+    const html = await fsp.readFile(htmlPath, "utf8");
+    if (!referencePattern.test(html)) continue;
+    referencePattern.lastIndex = 0;
+    await fsp.writeFile(htmlPath, html.replace(referencePattern, nextReference));
+  }
+}
+
+async function listHtmlFiles(siteRoot) {
+  let entries = [];
+  try {
+    entries = await fsp.readdir(siteRoot, { withFileTypes: true });
+  } catch (error) {
+    return [];
+  }
+  return entries
+    .filter((entry) => entry.isFile() && /\.html?$/i.test(entry.name))
+    .map((entry) => path.join(siteRoot, entry.name));
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 async function removeConfiguredAsset(slot) {
