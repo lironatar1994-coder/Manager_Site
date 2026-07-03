@@ -17,6 +17,7 @@ const INITIAL_ADMIN_PATH = path.join(DATA_DIR, "initial-admin.txt");
 const CLIENTS_DATA_DIR = process.env.CLIENTS_DIR || path.join(DATA_DIR, "clients");
 const CLIENTS_REPO_DIR = path.join(__dirname, "clients");
 const PUBLIC_DIR = path.join(__dirname, "public");
+const UPLOAD_FILE_LIMIT_BYTES = 16 * 1024 * 1024;
 const IMAGE_SLOTS = [
   { id: "hero", label: "Hero image", ratio: "16:9", required: true },
   { id: "logo", label: "Logo", ratio: "1:1", required: true },
@@ -46,10 +47,12 @@ const upload = multer({
       callback(null, `${Date.now()}-${crypto.randomBytes(8).toString("hex")}${ext}`);
     },
   }),
-  limits: { fileSize: 8 * 1024 * 1024 },
+  limits: { fileSize: UPLOAD_FILE_LIMIT_BYTES },
   fileFilter(req, file, callback) {
     if (!["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"].includes(file.mimetype)) {
-      callback(new Error("Only image files are allowed"));
+      const error = new Error("Only JPG, PNG, WebP, GIF, or SVG images are allowed");
+      error.statusCode = 415;
+      callback(error);
       return;
     }
     callback(null, true);
@@ -491,7 +494,11 @@ if (BASE_PATH) {
 
 app.use((err, req, res, next) => {
   if (err) {
-    res.status(400).json({ error: err.message || "Request failed" });
+    if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+      res.status(413).json({ error: "Uploaded image is too large" });
+      return;
+    }
+    res.status(err.statusCode || 400).json({ error: err.message || "Request failed" });
     return;
   }
   next();

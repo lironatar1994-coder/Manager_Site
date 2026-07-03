@@ -109,6 +109,8 @@ location ^~ ${LOWER_ROUTE_BASE}/ {
 }
 
 location ^~ ${ROUTE_BASE}/ {
+    client_max_body_size 16m;
+
     proxy_pass http://127.0.0.1:${APP_PORT}${ROUTE_BASE}/;
     proxy_http_version 1.1;
     proxy_set_header Host \$host;

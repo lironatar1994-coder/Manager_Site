@@ -1094,6 +1094,8 @@ function formatApiError(error) {
     "Site not found": "האתר לא נמצא",
     "Site access denied": "אין גישה לאתר הזה",
     "Image file is required": "חובה לבחור קובץ תמונה",
+    "Only JPG, PNG, WebP, GIF, or SVG images are allowed": "אפשר להעלות רק תמונת JPG, PNG, WebP, GIF או SVG",
+    "Uploaded image is too large": "התמונה גדולה מדי. אפשר להעלות עד 16MB",
     "Image not found": "התמונה לא נמצאה",
     "Asset slot not configured": "אזור התמונה לא מוגדר",
     "Asset file not found": "קובץ התמונה לא נמצא",
@@ -1870,6 +1872,7 @@ async function api(path, options = {}) {
   }
   const contentType = response.headers.get("content-type") || "";
   const payload = contentType.includes("application/json") ? await response.json() : {};
+  if (response.status === 413) return { error: "Uploaded image is too large" };
   if (!response.ok && !options.allow401) return { error: payload.error || "Request failed" };
   return payload;
 }
