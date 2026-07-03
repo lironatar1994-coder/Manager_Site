@@ -35,6 +35,13 @@ Current slots:
 - Before/after after image: `gallery/before-after-after.jpeg`
 - About portrait: `miryam.jpeg`
 
+Important: the public gallery can still use `gallery/img2.jpeg` and `gallery/img3.jpeg`, but the before/after slider must not use those gallery files. The slider HTML must reference:
+
+- `/Miryam_Zelig/gallery/before-after-before.jpeg?v=<timestamp>`
+- `/Miryam_Zelig/gallery/before-after-after.jpeg?v=<timestamp>`
+
+If a future website edit reconnects the before/after slider to `gallery/img2.jpeg` or `gallery/img3.jpeg`, Manager Site will appear to replace the image successfully in admin while the live before/after section will not change.
+
 ## Live Preview
 
 The Manager Site client workspace uses the live public URL as an iframe preview:
@@ -53,6 +60,14 @@ After replacing any production image, especially the `before_after_before` and `
 - `index.html` references the same public path from `client.config.json`
 - the reference has a fresh `?v=<timestamp>` query so browser/Nginx cache does not keep the old image
 - the public URL `https://vee-app.co.il/Miryam_Zelig/` shows the new image, not only Manager Site
+
+For the before/after section, also grep both source and public HTML before closing the task:
+
+```bash
+grep -n 'ba-before\|ba-after\|before-after-before\|before-after-after\|gallery/img2\|gallery/img3' /root/Miryam_Zelig/index.html /var/www/Miryam_Zelig/index.html
+```
+
+Expected result: normal gallery frames may reference `gallery/img2.jpeg` and `gallery/img3.jpeg`; `.ba-before` and `.ba-after` must reference the dedicated `before-after-*` files.
 
 ## Agent Notes
 
