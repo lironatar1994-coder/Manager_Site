@@ -521,7 +521,11 @@ function sendSpaShell(req, res) {
   fsp
     .readFile(path.join(PUBLIC_DIR, "index.html"), "utf8")
     .then((html) => {
-      res.type("html").send(html.replace(/%BASE_PATH%/g, BASE_PATH));
+      res.type("html").send(
+        html
+          .replace(/%BASE_PATH%/g, BASE_PATH)
+          .replace(/%ASSET_VERSION%/g, publicAssetVersion())
+      );
     })
     .catch((error) => {
       res.status(500).json({ error: error.message || "Unable to load app shell" });
@@ -530,9 +534,21 @@ function sendSpaShell(req, res) {
 
 function sendPublicAsset(fileName) {
   return (req, res) => {
-    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Cache-Control", "no-cache, must-revalidate");
     res.sendFile(path.join(PUBLIC_DIR, fileName));
   };
+}
+
+function publicAssetVersion() {
+  const files = ["index.html", "boot.js", "app.js", "styles.css"];
+  const latest = files.reduce((max, fileName) => {
+    try {
+      return Math.max(max, fs.statSync(path.join(PUBLIC_DIR, fileName)).mtimeMs);
+    } catch (error) {
+      return max;
+    }
+  }, 0);
+  return String(Math.floor(latest || Date.now()));
 }
 
 async function ensureClientWorkspace(user, site) {

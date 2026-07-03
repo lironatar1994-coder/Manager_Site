@@ -46,6 +46,7 @@ const state = {
 const app = document.querySelector("#app");
 const basePath = getBasePath();
 
+renderBootLoading();
 init().catch((error) => {
   console.error("App failed to start", error);
   state.me = null;
@@ -60,6 +61,7 @@ async function init() {
     state.clientSite = me.site;
   }
   await route();
+  markBootReady();
   window.addEventListener("popstate", route);
 }
 
@@ -68,6 +70,7 @@ async function route() {
   const isLoginRoute = path === "/login" || path === "/admin-login";
   if (!state.me && path === "/admin") {
     navigate("/admin-login", true);
+    renderAdminLogin();
     return;
   }
   if (!state.me && path === "/admin-login") {
@@ -76,10 +79,12 @@ async function route() {
   }
   if (!state.me && path !== "/login") {
     navigate("/login", true);
+    renderLogin();
     return;
   }
   if (state.me && isLoginRoute) {
     navigate(state.me.role === "admin" ? "/admin" : `/client/${state.me.username}`, true);
+    await route();
     return;
   }
   if (path === "/admin") {
@@ -92,6 +97,7 @@ async function route() {
     const username = decodeURIComponent(path.split("/")[2] || "");
     if (state.me?.role !== "admin" && username !== state.me?.username) {
       navigate(`/client/${state.me.username}`, true);
+      await route();
       return;
     }
     await loadClient(username);
@@ -99,6 +105,20 @@ async function route() {
     return;
   }
   renderLogin();
+}
+
+function renderBootLoading() {
+  setDocumentLocale("he", "rtl");
+  app.className = "boot-screen boot-loading";
+  app.innerHTML = `
+    <main class="boot-card" dir="rtl" lang="he" aria-live="polite">
+      <div class="mark">MS</div>
+      <div>
+        <strong>טוענים את מערכת ניהול האתר</strong>
+        <span>בודקים חיבור והרשאות...</span>
+      </div>
+    </main>
+  `;
 }
 
 function renderAdminLogin(error = "") {
@@ -142,6 +162,7 @@ function renderAdminLogin(error = "") {
   `;
   document.querySelector("#loginForm").addEventListener("submit", onLogin);
   icons();
+  markBootReady();
 }
 
 function renderLogin(error = "") {
@@ -187,6 +208,7 @@ function renderLogin(error = "") {
   document.querySelector("#loginForm").addEventListener("submit", onLogin);
   clearLoginPrefillFromUrl(loginPrefill);
   icons();
+  markBootReady();
 }
 
 function renderAdmin() {
@@ -312,6 +334,7 @@ function renderAdmin() {
   });
   interceptInternalLinks();
   icons();
+  markBootReady();
 }
 
 function renderClient() {
@@ -457,6 +480,7 @@ function renderClient() {
   });
   interceptInternalLinks();
   icons();
+  markBootReady();
 }
 
 function shell(active) {
@@ -2068,6 +2092,7 @@ function renderForbidden() {
   setDocumentLocale("he", "rtl");
   app.className = "login-view login-rtl";
   app.innerHTML = `<main class="forbidden" dir="rtl" lang="he"><h1>אין גישה</h1><p>הנתיב הזה לא משויך לחשבון שלך.</p></main>`;
+  markBootReady();
 }
 
 function navigate(path, replace = false) {
@@ -2086,8 +2111,14 @@ function stripBase(path) {
 }
 
 function getBasePath() {
+  const configuredBase = document.querySelector("meta[name='manager-site-base']")?.getAttribute("content");
+  if (configuredBase) return configuredBase.replace(/\/+$/, "");
   const scriptPath = document.currentScript?.src ? new URL(document.currentScript.src).pathname : "";
   return scriptPath.replace(/\/app\.js$/, "");
+}
+
+function markBootReady() {
+  if (window.ManagerSiteBoot?.markReady) window.ManagerSiteBoot.markReady();
 }
 
 function toast(message, type = "info") {
