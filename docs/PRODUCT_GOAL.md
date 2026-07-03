@@ -15,7 +15,6 @@ The admin is responsible for:
 - assigning each client to a website
 - controlling permissions
 - previewing what the client sees
-- reviewing client updates
 - marking a site as published or needing attention
 
 ### Client
@@ -27,7 +26,6 @@ The client is responsible for:
 - reviewing a managed desktop/mobile preview of the website
 - changing the website link if permitted
 - uploading, replacing, or removing images if permitted
-- sending the website for review
 
 ## Core Product Rules
 
@@ -65,11 +63,10 @@ The managed preview should expose all five slots as editable markers so the clie
 ## Current Site Status Flow
 
 - Draft
-- Waiting review
 - Published
 - Needs attention
 
-The client UI shows these statuses in Hebrew.
+The old "waiting review" flow was removed. Image changes are tracked through activity and private admin notes, not a client-facing approval queue.
 
 ## Current Production URL
 

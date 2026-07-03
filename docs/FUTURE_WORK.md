@@ -6,10 +6,10 @@ This file is for future agents to understand likely next improvements without gu
 
 ### 1. Better Admin Editing
 
-Admin can create, pause, reset, share, filter audit activity, add per-image review notes, and edit client details/permissions. Future polish could add:
+Admin can create, pause, reset, share, filter audit activity, add private per-image admin notes, and edit client details/permissions. Future polish could add:
 
-- note search across audit/review history
-- bulk actions for multiple review images
+- note search across activity history
+- bulk actions for multiple managed images
 
 ### 2. Real Website Integration
 
@@ -31,15 +31,14 @@ Useful additions:
 - compression or conversion
 - replace history
 
-### 4. Stronger Client Review Flow
+### 4. Stronger Admin Notes
 
-Current statuses are simple. Future workflow could include:
+The review queue was intentionally removed to keep the product quiet and direct. Future workflow ideas should avoid bringing back a "waiting review" state unless the user explicitly asks for it. Useful alternatives:
 
 - admin comments
 - client notes per image
-- per-slot approval
 - email or WhatsApp notification
-- status history visible to clients
+- private activity history
 
 ### 5. Admin Localization Follow-Up
 
@@ -61,7 +60,7 @@ Recommended checks:
 - Do not add public registration.
 - Do not change `/client/:username` backend routing to Hebrew.
 - Do not expose uploads publicly without auth.
-- Do not remove the admin review/status model.
+- Do not reintroduce a "waiting review" queue or client approval flow without explicit approval.
 - Do not replace the current app with a marketing landing page.
 - Do not delete or reset production data.
 

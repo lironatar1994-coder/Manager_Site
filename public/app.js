@@ -8,14 +8,12 @@ const DEFAULT_SLOTS = [
 
 const STATUS_META = {
   draft: { label: "טיוטה", icon: "pencil-line" },
-  waiting_review: { label: "ממתין לבדיקה", icon: "clock-3" },
   published: { label: "פורסם", icon: "badge-check" },
   needs_attention: { label: "דורש תיקון", icon: "triangle-alert" },
 };
 
 const HEBREW_STATUS_META = {
   draft: { label: "טיוטה", icon: "pencil-line" },
-  waiting_review: { label: "ממתין לבדיקה", icon: "clock-3" },
   published: { label: "פורסם", icon: "badge-check" },
   needs_attention: { label: "דורש תיקון", icon: "triangle-alert" },
 };
@@ -197,7 +195,7 @@ function renderLogin(error = "") {
           <div class="client-card lifted">
             <small>אזור לקוח</small>
             <strong dir="ltr">/client/miryam_zelig</strong>
-            <p>אזורי תמונה מסודרים, תצוגת אתר וסטטוס בדיקה במקום אחד.</p>
+            <p>אזורי תמונה מסודרים, תצוגת אתר ופעולות פשוטות במקום אחד.</p>
           </div>
           <div class="image-rack"><span></span><span></span><span></span></div>
           <div class="admin-chip">המנהל שולט במשתמשים, הרשאות וגישה</div>
@@ -216,70 +214,60 @@ function renderAdmin() {
   app.className = "app-view admin-mode admin-rtl";
   const clientUsers = state.users.filter((user) => user.role === "client");
   const activeUsers = clientUsers.filter((user) => user.active).length;
-  const reviewSites = state.sites.filter((site) => site.status === "waiting_review").length;
+  const attentionSites = state.sites.filter((site) => site.status === "needs_attention").length;
+  const publishedSites = state.sites.filter((site) => site.status === "published").length;
   const totalImages = state.sites.reduce((sum, site) => sum + site.images.length, 0);
-  const reviewFilter = state.adminReviewFilter || "all";
-  const filteredReviewSites = reviewFilter === "all" ? state.sites : state.sites.filter((site) => site.status === reviewFilter);
-  const reviewFilterCounts = reviewCountsByStatus(state.sites);
   const auditFilter = state.adminAuditFilter || "all";
   const filteredAuditRows = auditFilter === "all" ? state.audit : state.audit.filter((row) => auditCategory(row.action) === auditFilter);
   const auditFilterCounts = auditCountsByCategory(state.audit);
+  const recentAuditRows = filteredAuditRows.slice(0, 10);
   app.innerHTML = `
     ${shell("admin")}
     <main class="workspace admin-workspace" dir="rtl" lang="he">
-      <header class="page-head admin-head">
-        <div>
+      <header class="admin-command">
+        <div class="admin-command-copy">
           <p class="eyebrow">לוח ניהול</p>
-          <h1>לקוחות, הרשאות, אתרים ותמונות במקום אחד.</h1>
+          <h1>ניהול לקוחות ואתרים</h1>
+          <p>מקום אחד לפתיחת לקוח, שליחת גישה, צפייה באתר ופעולות תחזוקה. מסודר, שקט ומהיר.</p>
         </div>
-        <button class="primary-button" id="createUserTop" type="button"><i data-lucide="user-plus"></i>יצירת משתמש</button>
+        <div class="admin-command-actions">
+          <button class="primary-button" id="createUserTop" type="button"><i data-lucide="user-plus"></i>לקוח חדש</button>
+        </div>
       </header>
 
-      <section class="metric-strip">
-        ${metric("לקוחות פעילים", activeUsers, "יכולים להתחבר")}
-        ${metric("בבדיקה", reviewSites, "ממתינים להחלטה")}
-        ${metric("אתרים מנוהלים", state.sites.length, "נתיבים משויכים")}
-        ${metric("תמונות", totalImages, "נכסי לקוחות")}
+      <section class="admin-summary-grid">
+        ${metric("לקוחות פעילים", activeUsers, "גישה פתוחה")}
+        ${metric("אתרים מנוהלים", state.sites.length, `${publishedSites} פורסמו`)}
+        ${metric("דורשים טיפול", attentionSites, "מסומנים ידנית")}
+        ${metric("תמונות", totalImages, "נכסים מנוהלים")}
       </section>
 
-      <section class="admin-grid upgraded">
-        <article class="admin-panel create-panel">
-          <div class="panel-title">
-            <h2>יצירת לקוח</h2>
-            <span class="quiet">ללא הרשמה ציבורית</span>
-          </div>
-          ${createUserForm()}
+      <section class="admin-grid upgraded premium-admin-grid">
+        <article class="admin-panel create-panel admin-create-panel">
+          <details id="createClientDetails" class="admin-create-details">
+            <summary>
+              <span>
+                <strong>יצירת לקוח</strong>
+                <small>משתמש, הרשאות ואתר משויך</small>
+              </span>
+              <i data-lucide="chevron-down"></i>
+            </summary>
+            ${createUserForm()}
+          </details>
         </article>
 
-        <article class="admin-panel users-panel">
+        <article class="admin-panel users-panel admin-clients-panel">
           <div class="panel-title">
-            <h2>נתיבי לקוחות</h2>
-            <span class="quiet">תצוגה של מה שכל לקוח רואה</span>
+            <h2>לקוחות</h2>
+            <span class="quiet">${clientUsers.length} נתיבים</span>
           </div>
           <div class="user-list route-list">${clientUsers.map(userCard).join("") || `<p class="empty">עדיין אין לקוחות.</p>`}</div>
         </article>
 
-        <article class="admin-panel review-panel">
-          <div class="panel-title">
-            <h2>תור בדיקה</h2>
-            <span class="quiet">${filteredReviewSites.length} מוצגים · ${reviewSites} ממתינים</span>
-          </div>
-          <div class="review-filter-bar" role="tablist" aria-label="סינון תור בדיקה">
-            ${reviewFilterButton("all", "הכל", reviewFilterCounts.all, reviewFilter)}
-            ${reviewFilterButton("waiting_review", HEBREW_STATUS_META.waiting_review.label, reviewFilterCounts.waiting_review, reviewFilter)}
-            ${reviewFilterButton("needs_attention", HEBREW_STATUS_META.needs_attention.label, reviewFilterCounts.needs_attention, reviewFilter)}
-            ${reviewFilterButton("published", HEBREW_STATUS_META.published.label, reviewFilterCounts.published, reviewFilter)}
-            ${reviewFilterButton("draft", HEBREW_STATUS_META.draft.label, reviewFilterCounts.draft, reviewFilter)}
-          </div>
-          <div class="review-list">
-            ${filteredReviewSites.map(reviewRow).join("") || `<p class="empty">אין אתרים בסינון הזה.</p>`}
-          </div>
-        </article>
-
-        <article class="admin-panel audit-panel">
+        <article class="admin-panel audit-panel admin-activity-panel">
           <div class="panel-title">
             <h2>פעילות אחרונה</h2>
-            <span class="quiet">${filteredAuditRows.length} מוצגים · ${state.audit.length} אחרונים</span>
+            <span class="quiet">${recentAuditRows.length} מתוך ${state.audit.length}</span>
           </div>
           <div class="audit-filter-bar" role="tablist" aria-label="סינון פעילות אחרונה">
             ${auditFilterButton("all", "הכל", auditFilterCounts.all, auditFilter)}
@@ -288,14 +276,19 @@ function renderAdmin() {
             ${auditFilterButton("image", "תמונות", auditFilterCounts.image, auditFilter)}
             ${auditFilterButton("asset", "קבצי אתר", auditFilterCounts.asset, auditFilter)}
           </div>
-          <div class="audit-list">${filteredAuditRows.map(auditRow).join("") || `<p class="empty">אין פעילות בסינון הזה.</p>`}</div>
+          <div class="audit-list">${recentAuditRows.map(auditRow).join("") || `<p class="empty">אין פעילות בסינון הזה.</p>`}</div>
         </article>
       </section>
     </main>
   `;
   bindShell();
   document.querySelector("#createUserForm").addEventListener("submit", onCreateUser);
-  document.querySelector("#createUserTop").addEventListener("click", () => document.querySelector("#newUsername").focus());
+  document.querySelector("#createUserTop").addEventListener("click", () => {
+    const panel = document.querySelector("#createClientDetails");
+    if (panel) panel.open = true;
+    panel?.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.setTimeout(() => document.querySelector("#newUsername")?.focus(), 220);
+  });
   document.querySelectorAll("[data-toggle-user]").forEach((button) => {
     button.addEventListener("click", () => toggleUser(button.dataset.toggleUser, button.dataset.active !== "true"));
   });
@@ -319,12 +312,6 @@ function renderAdmin() {
   });
   document.querySelectorAll("[data-review-note-image]").forEach((button) => {
     button.addEventListener("click", () => showReviewNoteModal(button.dataset.reviewNoteSite, button.dataset.reviewNoteImage));
-  });
-  document.querySelectorAll("[data-review-filter]").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.adminReviewFilter = button.dataset.reviewFilter;
-      renderAdmin();
-    });
   });
   document.querySelectorAll("[data-audit-filter]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -431,9 +418,9 @@ function renderClient() {
                 </div>
                 ${statusTimeline(site.status)}
                 <div class="admin-status-actions">
-                  <button class="ghost-button small" id="reviewButton" type="button"><i data-lucide="send"></i>שליחה לבדיקה</button>
-                  <button class="ghost-button small" type="button" data-admin-status="published" data-site-id="${site.id}">סימון כפורסם</button>
-                  <button class="ghost-button small" type="button" data-admin-status="needs_attention" data-site-id="${site.id}">דורש תיקון</button>
+                  <button class="ghost-button small" type="button" data-admin-status="draft" data-site-id="${site.id}">טיוטה</button>
+                  <button class="ghost-button small" type="button" data-admin-status="published" data-site-id="${site.id}">פורסם</button>
+                  <button class="ghost-button small" type="button" data-admin-status="needs_attention" data-site-id="${site.id}">דורש טיפול</button>
                 </div>`
               : ""
           }
@@ -443,7 +430,6 @@ function renderClient() {
   `;
   bindShell();
   document.querySelector("#siteLinkForm")?.addEventListener("submit", onUpdateSite);
-  document.querySelector("#reviewButton")?.addEventListener("click", () => updateSiteStatus(site.id, "waiting_review"));
   document.querySelectorAll("button[data-preview-mode]").forEach((button) => {
     button.addEventListener("click", () => setPreviewMode(button.dataset.previewMode));
   });
@@ -538,12 +524,37 @@ function permissionBox(name, label, checked) {
 
 function userCard(user) {
   const site = state.sites.find((item) => item.id === user.siteId) || {};
+  const imageCount = (site.images || []).length;
+  const updatedLabel = site.updatedAt ? formatHebrewDateTime(site.updatedAt) : "עוד לא עודכן";
   return `
-    <div class="user-card route-card">
-      <span class="avatar">${escapeHtml(user.displayName.slice(0, 2).toUpperCase())}</span>
-      <div>
-        <h3>${escapeHtml(user.displayName)}</h3>
-        <p><span>${escapeHtml(site.name || "לא הוגדר אתר")}</span> <strong dir="ltr">${escapeHtml(`/client/${user.username}`)}</strong></p>
+    <article class="user-card route-card premium-user-card">
+      <div class="client-card-main">
+        <span class="avatar">${escapeHtml(user.displayName.slice(0, 2).toUpperCase())}</span>
+        <div class="client-card-copy">
+          <div class="client-card-title">
+            <h3>${escapeHtml(user.displayName)}</h3>
+            <span class="status ${user.active ? "live" : "paused"}">${user.active ? "פעיל" : "מושהה"}</span>
+          </div>
+          <p>${escapeHtml(site.name || "לא הוגדר אתר")}</p>
+          <a class="client-route-link" href="${href(`/client/${user.username}`)}"><i data-lucide="route"></i><bdi>${escapeHtml(`/client/${user.username}`)}</bdi></a>
+          <div class="client-card-facts">
+            <span><i data-lucide="image"></i>${imageCount} תמונות</span>
+            <span><i data-lucide="clock-3"></i>${escapeHtml(updatedLabel)}</span>
+            ${site.websiteUrl ? `<span><i data-lucide="globe"></i><bdi>${escapeHtml(shortUrlLabel(site.websiteUrl))}</bdi></span>` : ""}
+          </div>
+        </div>
+      </div>
+
+      <div class="user-actions premium-user-actions">
+        ${statusPill(site.status || "draft", "he")}
+        ${shareCluster(user)}
+        <a class="ghost-button small" href="${href(`/client/${user.username}`)}"><i data-lucide="eye"></i>פתיחה</a>
+        <button class="ghost-button small" type="button" data-edit-user="${user.id}" title="עריכה"><i data-lucide="settings-2"></i>עריכה</button>
+        <button class="ghost-button small" type="button" data-toggle-user="${user.id}" data-active="${user.active}"><i data-lucide="${user.active ? "pause" : "play"}"></i>${user.active ? "השהיה" : "הפעלה"}</button>
+      </div>
+
+      <details class="credential-details">
+        <summary><i data-lucide="key-round"></i><span>פרטי גישה והרשאות</span><i data-lucide="chevron-down"></i></summary>
         <div class="credential-grid">
           ${credentialLine("שם משתמש", user.username)}
           ${credentialLine("מזהה משתמש", user.id)}
@@ -554,17 +565,9 @@ function userCard(user) {
             <button class="ghost-button small" type="button" data-reset-password="${user.id}"><i data-lucide="key-round"></i>איפוס</button>
           </div>
         </div>
-        <a href="${href(`/client/${user.username}`)}"><i data-lucide="eye"></i>תצוגת סביבת הלקוח</a>
         <div class="permission-chips">${permissionChips(user.permissions)}</div>
-      </div>
-      <div class="user-actions">
-        ${statusPill(site.status || "draft", "he")}
-        <span class="status ${user.active ? "live" : "paused"}">${user.active ? "פעיל" : "מושהה"}</span>
-        ${shareCluster(user)}
-        <button class="ghost-button small" type="button" data-edit-user="${user.id}"><i data-lucide="settings-2"></i>עריכה</button>
-        <button class="ghost-button small" type="button" data-toggle-user="${user.id}" data-active="${user.active}">${user.active ? "השהיה" : "הפעלה"}</button>
-      </div>
-    </div>
+      </details>
+    </article>
   `;
 }
 
@@ -608,7 +611,7 @@ function reviewCountsByStatus(sites = []) {
       counts[status] = (counts[status] || 0) + 1;
       return counts;
     },
-    { all: 0, draft: 0, waiting_review: 0, published: 0, needs_attention: 0 }
+    { all: 0, draft: 0, published: 0, needs_attention: 0 }
   );
 }
 
@@ -636,7 +639,7 @@ function reviewRow(site) {
             ? previewImages
                 .map(
                   (image, index) => `
-                    <button class="review-thumb ${index === 0 ? "primary" : ""} ${image.reviewNote ? "has-note" : ""}" type="button" data-review-note-site="${site.id}" data-review-note-image="${image.id}" aria-label="הערת בדיקה עבור ${escapeAttr(image.name)}">
+                    <button class="review-thumb ${index === 0 ? "primary" : ""} ${image.reviewNote ? "has-note" : ""}" type="button" data-review-note-site="${site.id}" data-review-note-image="${image.id}" aria-label="הערת מנהל עבור ${escapeAttr(image.name)}">
                       <img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" />
                       ${image.reviewNote ? `<i data-lucide="message-square-text"></i>` : ""}
                     </button>`
@@ -743,22 +746,23 @@ function slotCard(site, slot) {
 }
 
 function statusTimeline(status) {
-  const order = ["draft", "waiting_review", "published"];
+  const order = ["draft", "published"];
   const activeIndex = Math.max(0, order.indexOf(status));
   return `
     <div class="status-timeline">
       ${order
         .map((item, index) => `<span class="${index <= activeIndex ? "active" : ""}"><i data-lucide="${HEBREW_STATUS_META[item].icon}"></i>${HEBREW_STATUS_META[item].label}</span>`)
         .join("")}
-      ${status === "needs_attention" ? `<span class="active attention"><i data-lucide="triangle-alert"></i>דורש תיקון</span>` : ""}
+      ${status === "needs_attention" ? `<span class="active attention"><i data-lucide="triangle-alert"></i>דורש טיפול</span>` : ""}
     </div>
   `;
 }
 
 function statusPill(status = "draft", locale = "en") {
   const source = locale === "he" ? HEBREW_STATUS_META : STATUS_META;
-  const meta = source[status] || source.draft;
-  return `<span class="site-status ${status}"><i data-lucide="${meta.icon}"></i>${meta.label}</span>`;
+  const normalizedStatus = source[status] ? status : "draft";
+  const meta = source[normalizedStatus] || source.draft;
+  return `<span class="site-status ${normalizedStatus}"><i data-lucide="${meta.icon}"></i>${meta.label}</span>`;
 }
 
 function permissionChips(permissions = {}) {
@@ -807,7 +811,7 @@ function renderUpdateProof(websiteUrl) {
         <span><i data-lucide="${proof.liveFileOk ? "check" : "info"}"></i>${escapeHtml(proof.liveFileOk ? "קובץ האתר החי עודכן" : "נשמר במערכת הניהול")}</span>
         <span><i data-lucide="${proof.previewOk ? "check" : "triangle-alert"}"></i>${escapeHtml(proof.previewText || "התצוגה עודכנה")}</span>
       </div>
-      <a href="${escapeAttr(websiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>פתיחת האתר לבדיקה</a>
+      <a href="${escapeAttr(websiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>פתיחת האתר</a>
     </div>
   `;
 }
@@ -1108,7 +1112,7 @@ function formatAuditAction(action) {
     "image.uploaded": "תמונה הועלתה",
     "image.deleted": "תמונה נמחקה",
     "image.reordered": "סדר תמונות עודכן",
-    "image.review_note": "הערת בדיקה עודכנה",
+    "image.review_note": "הערת מנהל עודכנה",
     "asset.deleted": "תמונת אתר נמחקה",
     "asset.restored": "תמונת אתר שוחזרה",
     "asset.reordered": "תמונות אתר הוחלפו",
@@ -1201,14 +1205,14 @@ function showReviewNoteModal(siteId, imageId) {
   const modal = document.createElement("div");
   modal.className = "modal-backdrop";
   modal.innerHTML = `
-    <div class="confirm-modal review-note-modal" role="dialog" aria-modal="true" aria-label="הערת בדיקה" dir="rtl" lang="he">
+    <div class="confirm-modal review-note-modal" role="dialog" aria-modal="true" aria-label="הערת מנהל" dir="rtl" lang="he">
       <button class="icon-action modal-close" type="button" aria-label="סגירה"><i data-lucide="x"></i></button>
       <div class="review-note-layout">
         <figure>
           <img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" />
         </figure>
         <form id="reviewNoteForm" class="review-note-form">
-          <p class="eyebrow">הערת בדיקה</p>
+          <p class="eyebrow">הערת מנהל</p>
           <h2>${escapeHtml(slotDisplayLabel({ id: image.slotId || "gallery" }))}</h2>
           <p>${escapeHtml(site.name)} · <bdi>${escapeHtml(site.ownerUsername)}</bdi></p>
           <label>הערה פנימית לתמונה
@@ -1246,7 +1250,7 @@ async function saveReviewNote(siteId, imageId, note) {
     toast(formatApiError(response.error), "error");
     return false;
   }
-  toast(note ? "הערת הבדיקה נשמרה" : "הערת הבדיקה נמחקה", "success");
+      toast(note ? "הערת המנהל נשמרה" : "הערת המנהל נמחקה", "success");
   await loadAdmin();
   renderAdmin();
   return true;

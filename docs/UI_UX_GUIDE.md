@@ -82,14 +82,16 @@ On mobile, image modals must be tap-first and minimal: image preview, short titl
 
 The admin should quickly:
 
-- see active clients, review queue, sites, and images
+- see active clients, sites, image volume, and activity
 - create a client
 - assign permissions
 - preview a client workspace
 - pause users
-- mark publish or needs attention
+- mark published or needs attention
 
-Admin mobile should remain usable, but client mobile is the higher-priority UX.
+The admin workspace should not revolve around a review queue. Keep it quiet: client records first, creation flow second, recent activity compressed below. Technical IDs, passwords, and permissions should be accessible but not dominate the default card view.
+
+Admin mobile should feel deliberate and premium: stacked sections, clear client cards, comfortable action buttons, and no crumbled rows.
 
 ## Visual QA Checklist
 

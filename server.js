@@ -25,7 +25,7 @@ const IMAGE_SLOTS = [
   { id: "service", label: "Service image", ratio: "4:3", required: false },
   { id: "gallery", label: "Gallery", ratio: "free", required: false },
 ];
-const SITE_STATUSES = ["draft", "waiting_review", "published", "needs_attention"];
+const SITE_STATUSES = ["draft", "published", "needs_attention"];
 
 const app = express();
 const sessions = new Map();
@@ -245,7 +245,6 @@ router.delete("/api/sites/:siteId/assets/:slotId", requireSiteAccess, requirePer
   const site = store.sites.find((item) => item.id === req.params.siteId);
   if (site) {
     site.images = (site.images || []).filter((image) => !(image.slotId === slot.id && image.source === "production"));
-    site.status = "waiting_review";
     site.updatedAt = new Date().toISOString();
     store.audit.push(audit(req.user, "asset.deleted", { siteId: site.id, slotId: slot.id, productionPath: slot.absolutePath, backupPath }));
     await writeStore(store);
@@ -271,7 +270,6 @@ router.post("/api/sites/:siteId/assets/:slotId/restore", requireSiteAccess, requ
   const store = await readStore();
   const site = store.sites.find((item) => item.id === req.params.siteId);
   if (site) {
-    site.status = "waiting_review";
     site.updatedAt = new Date().toISOString();
     store.audit.push(audit(req.user, "asset.restored", { siteId: site.id, slotId: slot.id, productionPath: slot.absolutePath, ...result }));
     await writeStore(store);
@@ -299,7 +297,6 @@ router.post("/api/sites/:siteId/assets/reorder", requireSiteAccess, requirePermi
   const store = await readStore();
   const site = store.sites.find((item) => item.id === req.params.siteId);
   if (site) {
-    site.status = "waiting_review";
     site.updatedAt = new Date().toISOString();
     store.audit.push(audit(req.user, "asset.reordered", { siteId: site.id, sourceSlotId, targetSlotId, ...result }));
     await writeStore(store);
@@ -324,7 +321,7 @@ router.post("/api/sites/:siteId/status", requireSiteAccess, async (req, res) => 
     res.status(400).json({ error: "Invalid site status" });
     return;
   }
-  if (req.user.role !== "admin" && nextStatus !== "waiting_review" && !req.user.permissions?.canPublish) {
+  if (req.user.role !== "admin" && !req.user.permissions?.canPublish) {
     res.status(403).json({ error: "Permission denied" });
     return;
   }
@@ -376,7 +373,7 @@ router.post(
       mimeType: req.file.mimetype,
       width: positiveInteger(req.body.width),
       height: positiveInteger(req.body.height),
-      status: "waiting_review",
+      status: "active",
       changedAt: new Date().toISOString(),
       changedBy: req.user.username,
       source: productionAsset ? "production" : "manager",
@@ -384,7 +381,6 @@ router.post(
       backupPath: productionAsset?.backupPath || null,
     };
     site.images.unshift(image);
-    site.status = "waiting_review";
     site.updatedAt = new Date().toISOString();
     store.audit.push(audit(req.user, "image.uploaded", { siteId: site.id, imageId: image.id, slotId }));
     await writeStore(store);
@@ -424,7 +420,6 @@ router.patch("/api/sites/:siteId/images/:imageId/placement", requireSiteAccess, 
     moveImageBefore(site.images, image.id, targetImage?.id || null, targetSlotId);
   }
 
-  site.status = "waiting_review";
   site.updatedAt = new Date().toISOString();
   store.audit.push(audit(req.user, "image.reordered", { siteId: site.id, imageId: image.id, sourceSlotId, targetSlotId, targetImageId: targetImage?.id || null }));
   await writeStore(store);
@@ -472,7 +467,6 @@ router.delete(
       const imagePath = path.join(UPLOAD_ROOT, safeSegment(site.id), path.basename(image.fileName));
       await fsp.rm(imagePath, { force: true });
     }
-    site.status = "waiting_review";
     site.updatedAt = new Date().toISOString();
     store.audit.push(audit(req.user, "image.deleted", { siteId: site.id, imageId: req.params.imageId, slotId: image?.slotId }));
     await writeStore(store);
@@ -1084,7 +1078,7 @@ function normalizeSite(site) {
   site.images = site.images.map((image) => {
     const normalizedImage = {
       slotId: "gallery",
-      status: "waiting_review",
+      status: "active",
       width: null,
       height: null,
       reviewNote: "",
