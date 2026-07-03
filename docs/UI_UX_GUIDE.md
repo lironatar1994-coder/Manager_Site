@@ -76,6 +76,8 @@ Use explicit labels. Do not hide core actions behind unclear icons.
 
 The client image rail should read as a practical task list. Each image area should show current/missing state, recommended size, and one obvious primary action; advanced choices stay inside the image modal.
 
+On mobile, image modals must be tap-first and minimal: image preview, short title, primary action, crop/replace controls, and sticky confirmation. File size, dimensions, backup state, and quality checks belong inside collapsed details, not in the main flow.
+
 ## Admin Workflow
 
 The admin should quickly:

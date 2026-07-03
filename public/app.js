@@ -1432,11 +1432,16 @@ function showImageActionModal(slotId) {
       <div class="action-copy">
         <p class="eyebrow">אזור תמונה</p>
         <h2>${escapeHtml(slotDisplayLabel(slot))}</h2>
-        <p data-action-message>${image ? escapeHtml(image.name) : "אין עדיין תמונה באזור הזה."}</p>
-        ${image ? imageQualityChips(image, slot) : `<span class="image-meta-chips"><small><i data-lucide="scan"></i>מומלץ ${escapeHtml(recommendedSizeText(slot))}</small></span>`}
-        ${renderBackupStatus(image)}
+        <p data-action-message>${image ? "בחרו תמונה חדשה או חתכו את התמונה הקיימת." : "בחרו תמונה שתופיע באזור הזה באתר."}</p>
       </div>
-      <div class="quality-panel" data-quality-panel hidden></div>
+      <details class="modal-details">
+        <summary><i data-lucide="info"></i>פרטים</summary>
+        <div class="modal-details-body">
+          ${image ? imageQualityChips(image, slot) : `<span class="image-meta-chips"><small><i data-lucide="scan"></i>מומלץ ${escapeHtml(recommendedSizeText(slot))}</small></span>`}
+          ${renderBackupStatus(image)}
+          <div class="quality-panel" data-quality-panel hidden></div>
+        </div>
+      </details>
       <input class="modal-file-input" type="file" accept="image/*" data-modal-file ${can("canUpload") ? "" : "disabled"} />
       <div class="image-action-buttons">
         <button class="primary-button" type="button" data-replace-slot="${escapeAttr(slotId)}"><i data-lucide="${image ? "replace" : "image-plus"}"></i>${image ? "בחירת תמונה" : "הוספת תמונה"}</button>
@@ -1484,7 +1489,7 @@ function showImageActionModal(slotId) {
     preview.classList.remove("empty");
     preview.classList.add("filled", "pending");
     preview.innerHTML = `<img src="${escapeAttr(selectedUrl)}" alt="${escapeAttr(file.name)}" data-action-preview-media />`;
-    message.textContent = `תצוגה לפני החלפה: ${file.name}`;
+    message.textContent = "תמונה חדשה נבחרה. אפשר לאשר את ההחלפה עכשיו.";
     dialog.classList.add("has-pending-replace");
     pendingActions.hidden = false;
     cropButton.disabled = false;
@@ -1511,7 +1516,7 @@ function showImageActionModal(slotId) {
     preview.className = `action-preview ${image ? "filled" : "empty"}`;
     preview.disabled = !image;
     preview.innerHTML = image ? `<img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" data-action-preview-media />` : `<i data-lucide="image-plus"></i>`;
-    message.textContent = image ? image.name : "אין עדיין תמונה באזור הזה.";
+    message.textContent = image ? "בחרו תמונה חדשה או חתכו את התמונה הקיימת." : "בחרו תמונה שתופיע באזור הזה באתר.";
     dialog.classList.remove("has-pending-replace");
     qualityPanel.hidden = true;
     qualityPanel.innerHTML = "";

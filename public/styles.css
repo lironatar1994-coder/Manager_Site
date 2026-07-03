@@ -2668,6 +2668,46 @@ button.review-thumb:hover {
   color: var(--blue);
 }
 
+.modal-details {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  background: rgba(255, 253, 248, 0.58);
+  border: 1px solid var(--line);
+}
+
+.modal-details summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 12px;
+  color: var(--ink);
+  font-weight: 900;
+  cursor: pointer;
+  list-style: none;
+}
+
+.modal-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.modal-details summary::after {
+  margin-inline-start: auto;
+  color: var(--muted);
+  font-size: 1.1rem;
+  content: "+";
+}
+
+.modal-details[open] summary::after {
+  content: "-";
+}
+
+.modal-details-body {
+  display: grid;
+  gap: 10px;
+  padding: 0 12px 12px;
+}
+
 .quality-panel {
   grid-column: 1 / -1;
   display: grid;
@@ -2746,6 +2786,10 @@ button.review-thumb:hover {
 
 .image-action-modal.has-pending-replace [data-delete-current],
 .image-action-modal.has-pending-replace [data-restore-current] {
+  display: none;
+}
+
+.image-action-modal.has-pending-replace .modal-details {
   display: none;
 }
 
@@ -3714,6 +3758,7 @@ svg.lucide {
 
   .image-action-modal {
     grid-template-columns: 1fr;
+    gap: 10px;
     width: min(100%, 540px);
     max-height: calc(100dvh - 20px);
     overflow-y: auto;
@@ -3724,11 +3769,12 @@ svg.lucide {
   .action-preview {
     width: 100%;
     height: auto;
-    max-height: 34dvh;
+    max-height: 30dvh;
     aspect-ratio: 16 / 9;
   }
 
   .action-copy h2 {
+    margin-bottom: 4px;
     font-size: 1.18rem;
   }
 
@@ -3743,6 +3789,30 @@ svg.lucide {
     padding: 8px 9px;
   }
 
+  .modal-details summary {
+    min-height: 40px;
+  }
+
+  .modal-details-body {
+    gap: 8px;
+    padding: 0 10px 10px;
+  }
+
+  .image-action-modal:not(.has-pending-replace) .image-action-buttons {
+    position: sticky;
+    bottom: -12px;
+    z-index: 5;
+    margin: 2px -12px -12px;
+    padding: 10px 12px 12px;
+    background: rgba(255, 250, 241, 0.98);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -16px 34px rgba(34, 30, 24, 0.14);
+  }
+
+  .image-action-modal:not(.has-pending-replace) .image-action-buttons .primary-button {
+    min-height: 54px;
+  }
+
   .backup-status strong {
     grid-column: 2;
   }
@@ -3755,6 +3825,12 @@ svg.lucide {
 
   .image-action-modal.has-pending-replace .image-action-buttons {
     grid-template-columns: 1fr;
+    position: static;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border-top: 0;
+    box-shadow: none;
   }
 
   .image-action-modal.has-pending-replace .image-action-buttons [data-crop-slot] {
