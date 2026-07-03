@@ -120,6 +120,10 @@ The app never lets clients choose filesystem paths. It reads and replaces only p
 
 When a configured production site root exists, uploading to a mapped slot copies the upload to that production path and first backs up the previous file under `.manager-site-backups`.
 
+After copying a production asset, the server attempts to refresh matching `.html` references under the configured `siteRoot`: any exact `publicPath` reference, with or without an existing `?v=<digits>` query, is rewritten to `publicPath?v=<timestamp>`. This prevents stale browser/Nginx cache on public static websites.
+
+Future agents must still verify the live website references the configured `publicPath`. A replacement is not complete just because the file changed on disk or Manager Site shows a new thumbnail. Check static HTML, CSS `url(...)`, lazy-loaded attributes, before/after widgets, generated bundles, and CDN references.
+
 Production asset restore uses only backups from the same slot directory under `.manager-site-backups`. Before restoring, the current live file is backed up again with a `before-restore` suffix.
 
 Manager-served upload and production asset content responses use no-cache/no-store headers plus URL versioning so the Manager Site UI does not show stale images after replacement, deletion, reorder, or restore.

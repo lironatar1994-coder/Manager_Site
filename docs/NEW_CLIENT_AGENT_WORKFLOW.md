@@ -93,7 +93,34 @@ The client-facing desktop/mobile preview is a live iframe pointed at the configu
    - never add arbitrary paths outside the website root
    - do not reuse vague labels when a section has a specific purpose
 
-5. Write the client agent file.
+5. Verify public references and cache busting.
+
+   Do not stop after confirming that `currentPath` exists on disk. You must also prove that the live website actually references the same public file.
+
+   Check the HTML/CSS references:
+
+   ```bash
+   grep -RInE '<img|background|url\(|before|after|gallery' /var/www/<Site_Name> /root/<Site_Name> 2>/dev/null | head -200
+   ```
+
+   For each configured slot:
+
+   - `currentPath` is the exact file Manager Site will overwrite.
+   - `publicPath` is the exact browser path used by the live page, excluding any existing query string.
+   - Static HTML references include the same path, or are updated to use it.
+   - If the image URL can be cached, the live reference should support or include a query version like `?v=<timestamp>` after replacement.
+
+   Manager Site automatically tries to refresh matching `.html` references under `siteRoot` by changing `publicPath` to `publicPath?v=<timestamp>` after a successful production replacement. Future agents must still verify this behavior for each new client, especially for before/after sections, CSS background images, lazy-loaded images, and any site using generated HTML.
+
+   After a test replacement, verify both the file and the public reference:
+
+   ```bash
+   stat -c '%s %y %n' /var/www/<Site_Name>/path/to/image.jpg
+   grep -RIn '/Client_Site/path/to/image.jpg' /var/www/<Site_Name>/*.html
+   curl -I 'https://vee-app.co.il/Client_Site/path/to/image.jpg?v=<timestamp>'
+   ```
+
+6. Write the client agent file.
 
    `data/clients/<username>/AGENTS.md` should explain:
 
@@ -104,8 +131,10 @@ The client-facing desktop/mobile preview is a live iframe pointed at the configu
    - which image sections are editable
    - important client-specific notes
    - deployment or verification notes
+   - whether public image references are static HTML, CSS `url(...)`, framework-generated assets, or CDN URLs
+   - the exact cache-busting rule needed for this website
 
-6. Verify the live desktop/mobile preview.
+7. Verify the live desktop/mobile preview.
 
    The client workspace first section loads the configured public website URL in an iframe and adds a cache-busting `manager_preview` query parameter.
 
@@ -119,7 +148,7 @@ The client-facing desktop/mobile preview is a live iframe pointed at the configu
 
    If the live website cannot be framed, do not install Playwright or Chromium as a workaround. Leave a short note in `data/clients/<username>/AGENTS.md` explaining the framing block and fix the website headers if that site is under our control.
 
-7. Sync production config.
+8. Sync production config.
 
    After committing and deploying the repo, Manager Site may still prefer the runtime config under `data/clients`.
 
@@ -131,7 +160,7 @@ The client-facing desktop/mobile preview is a live iframe pointed at the configu
    chmod 600 /root/Manager_Site/data/clients/<username>/client.config.json
    ```
 
-8. Verify through Manager Site API.
+9. Verify through Manager Site API.
 
    Log in as admin and check the assets endpoint:
 
@@ -161,7 +190,7 @@ The client-facing desktop/mobile preview is a live iframe pointed at the configu
    - each required slot has `exists: true`
    - paths point to the intended live files
 
-9. Verify UI behavior.
+10. Verify UI behavior.
 
    Open:
 
@@ -219,4 +248,6 @@ The setup is complete only when:
 - Manager Site API returns the expected slots
 - live UI shows those slots and the live desktop/mobile iframe preview
 - uploads/replacements affect the intended live website files
+- live public page references are cache-busted or otherwise proven to show the new image immediately
+- before/after slots, CSS background images, and lazy-loaded images are verified on the actual public URL
 - changes are committed and pushed

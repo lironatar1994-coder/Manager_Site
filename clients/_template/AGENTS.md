@@ -36,6 +36,8 @@ For each visible website image that should be editable, document:
 - production file path
 - public browser path
 - which website section uses it
+- whether the live site references it from HTML, CSS `url(...)`, generated markup, or a CDN
+- how the public reference is cache-busted after replacement
 
 Example:
 
@@ -51,9 +53,22 @@ The Manager Site client workspace uses the configured public URL as a live ifram
 
 Verify the public URL returns a normal page and does not send headers that block framing. Do not add static screenshot files, Playwright, or Chromium just for the preview.
 
+## Replacement Visibility
+
+After replacing a production image, verify the public website itself shows the new file. Do not trust Manager Site thumbnails alone.
+
+Checklist:
+
+- the `currentPath` file changed on disk
+- the live page HTML/CSS references the same `publicPath`
+- static references are cache-busted with `?v=<timestamp>` or another site-specific cache clear
+- before/after sections are checked for both `before` and `after` images
+- CSS background images and lazy-loaded image attributes are checked separately
+
 ## Agent Notes
 
 - Do not add public registration.
 - Do not let clients choose arbitrary file paths.
 - Back up files before replacing production assets.
+- Verify public cache-busting after replacements so clients do not keep seeing stale images.
 - Keep usernames, URLs, and filesystem paths LTR in Hebrew UI.

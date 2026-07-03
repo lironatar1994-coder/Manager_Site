@@ -43,10 +43,21 @@ The Manager Site client workspace uses the live public URL as an iframe preview:
 
 Desktop/mobile buttons resize the Manager Site preview frame. Do not add static screenshots, Playwright, or Chromium for this preview.
 
+## Replacement Visibility
+
+Miryam's public site is static HTML under `/var/www/Miryam_Zelig/index.html`.
+
+After replacing any production image, especially the `before_after_before` and `before_after_after` slots, verify:
+
+- the target file changed on disk under `/var/www/Miryam_Zelig`
+- `index.html` references the same public path from `client.config.json`
+- the reference has a fresh `?v=<timestamp>` query so browser/Nginx cache does not keep the old image
+- the public URL `https://vee-app.co.il/Miryam_Zelig/` shows the new image, not only Manager Site
+
 ## Agent Notes
 
 - Keep `/client/miryam_zelig` as the backend route.
 - The UI is Hebrew RTL, but filesystem paths and URLs remain LTR.
 - Do not allow arbitrary file replacement outside the configured site root.
 - Backups are written beside production images under `.manager-site-backups`.
-- Manager Site writes directly to `/var/www/Miryam_Zelig`, so image replacements are visible on the live website immediately.
+- Manager Site writes directly to `/var/www/Miryam_Zelig`; live visibility also depends on public HTML/cache-busted references.

@@ -102,6 +102,7 @@ curl.exe -I https://vee-app.co.il/Manager_Site/login
 - Do not reset or remove production data during deploy.
 - Do not let clients choose arbitrary production paths. Only use `client.config.json` allowlisted paths.
 - Real production asset replacement must back up the old file before writing.
+- Replacements are not verified until the live public site references and displays the new image. Check `publicPath`, static HTML/CSS references, cache-busting `?v=...`, before/after widgets, CSS backgrounds, and lazy-loaded images.
 
 ## More Docs
 

@@ -16,10 +16,11 @@ Your job:
 3. Create or update `data/clients/<username>/client.config.json` with every editable image slot.
 4. Use clear Hebrew labels for client-visible image areas.
 5. Verify the live public website can load inside the Manager Site desktop/mobile iframe preview. Do not install Playwright or Chromium for this.
-6. If you also need a committed fallback/template, mirror the config under `clients/<username>/client.config.json`.
-7. Verify through the Manager Site API that all slots appear and existing files are detected.
-8. Verify the client UI route, including that the first section is client-safe and the live desktop/mobile preview loads.
-9. Commit, push, and deploy only when the setup is verified.
+6. Verify every `publicPath` is actually referenced by the live site and that replaced images are cache-busted on the public page, especially before/after images, CSS backgrounds, and lazy-loaded images.
+7. If you also need a committed fallback/template, mirror the config under `clients/<username>/client.config.json`.
+8. Verify through the Manager Site API that all slots appear and existing files are detected.
+9. Verify the client UI route, including that the first section is client-safe and the live desktop/mobile preview loads.
+10. Commit, push, and deploy only when the setup is verified.
 
 Do not ask me to explain the whole system again. The workflow file is the source of truth.
 ```
