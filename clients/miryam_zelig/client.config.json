@@ -84,5 +84,127 @@
       "currentPath": "/var/www/Miryam_Zelig/miryam.jpeg",
       "publicPath": "/Miryam_Zelig/miryam.jpeg"
     }
+  ],
+  "textSlots": [
+    {
+      "id": "about.title",
+      "labelHe": "כותרת אודות",
+      "group": "about",
+      "required": true,
+      "inputType": "short",
+      "maxLength": 80,
+      "filePath": "/var/www/Miryam_Zelig/index.html",
+      "marker": "about.title"
+    },
+    {
+      "id": "about.body",
+      "labelHe": "טקסט אודות",
+      "group": "about",
+      "required": true,
+      "inputType": "long",
+      "maxLength": 700,
+      "filePath": "/var/www/Miryam_Zelig/index.html",
+      "marker": "about.body"
+    },
+    {
+      "id": "faq.1.question",
+      "labelHe": "שאלה 1",
+      "group": "faq",
+      "required": true,
+      "inputType": "short",
+      "maxLength": 140,
+      "filePath": "/var/www/Miryam_Zelig/index.html",
+      "marker": "faq.1.question"
+    },
+    {
+      "id": "faq.1.answer",
+      "labelHe": "תשובה 1",
+      "group": "faq",
+      "required": true,
+      "inputType": "long",
+      "maxLength": 500,
+      "filePath": "/var/www/Miryam_Zelig/index.html",
+      "marker": "faq.1.answer"
+    },
+    {
+      "id": "faq.2.question",
+      "labelHe": "שאלה 2",
+      "group": "faq",
+      "required": true,
+      "inputType": "short",
+      "maxLength": 140,
+      "filePath": "/var/www/Miryam_Zelig/index.html",
+      "marker": "faq.2.question"
+    },
+    {
+      "id": "faq.2.answer",
+      "labelHe": "תשובה 2",
+      "group": "faq",
+      "required": true,
+      "inputType": "long",
+      "maxLength": 500,
+      "filePath": "/var/www/Miryam_Zelig/index.html",
+      "marker": "faq.2.answer"
+    },
+    {
+      "id": "faq.3.question",
+      "labelHe": "שאלה 3",
+      "group": "faq",
+      "required": true,
+      "inputType": "short",
+      "maxLength": 140,
+      "filePath": "/var/www/Miryam_Zelig/index.html",
+      "marker": "faq.3.question"
+    },
+    {
+      "id": "faq.3.answer",
+      "labelHe": "תשובה 3",
+      "group": "faq",
+      "required": true,
+      "inputType": "long",
+      "maxLength": 500,
+      "filePath": "/var/www/Miryam_Zelig/index.html",
+      "marker": "faq.3.answer"
+    },
+    {
+      "id": "faq.4.question",
+      "labelHe": "שאלה 4",
+      "group": "faq",
+      "required": true,
+      "inputType": "short",
+      "maxLength": 140,
+      "filePath": "/var/www/Miryam_Zelig/index.html",
+      "marker": "faq.4.question"
+    },
+    {
+      "id": "faq.4.answer",
+      "labelHe": "תשובה 4",
+      "group": "faq",
+      "required": true,
+      "inputType": "long",
+      "maxLength": 500,
+      "filePath": "/var/www/Miryam_Zelig/index.html",
+      "marker": "faq.4.answer"
+    },
+    {
+      "id": "faq.5.question",
+      "labelHe": "שאלה 5",
+      "group": "faq",
+      "required": true,
+      "inputType": "short",
+      "maxLength": 140,
+      "filePath": "/var/www/Miryam_Zelig/index.html",
+      "marker": "faq.5.question"
+    },
+    {
+      "id": "faq.5.answer",
+      "labelHe": "תשובה 5",
+      "group": "faq",
+      "required": true,
+      "inputType": "long",
+      "maxLength": 500,
+      "filePath": "/var/www/Miryam_Zelig/index.html",
+      "marker": "faq.5.answer"
+    }
   ]
 }

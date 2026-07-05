@@ -217,6 +217,54 @@ router.get("/api/sites/:siteId/assets", requireSiteAccess, async (req, res) => {
   });
 });
 
+router.get("/api/sites/:siteId/text", requireSiteAccess, async (req, res) => {
+  const config = await loadClientConfig(req.site.ownerUsername);
+  if (!config) {
+    res.json({ configured: false, textSlots: [], message: "No client config found" });
+    return;
+  }
+  res.json({
+    configured: true,
+    client: publicClientConfig(config),
+    textSlots: await scanClientTextSlots(config),
+  });
+});
+
+router.patch("/api/sites/:siteId/text/:slotId", requireSiteAccess, requirePermission("canEditText"), async (req, res) => {
+  const config = await loadClientConfig(req.site.ownerUsername);
+  const slot = config ? findTextSlot(config, req.params.slotId) : null;
+  if (!config || !slot) {
+    res.status(404).json({ error: "Text slot not configured" });
+    return;
+  }
+
+  const value = normalizeTextValue(req.body?.value);
+  if (slot.required && !value.trim()) {
+    res.status(400).json({ error: "Text value is required" });
+    return;
+  }
+  if (value.length > slot.maxLength) {
+    res.status(400).json({ error: "Text value is too long" });
+    return;
+  }
+
+  try {
+    const result = await replaceConfiguredText(slot, value);
+    const store = await readStore();
+    const site = store.sites.find((item) => item.id === req.site.id);
+    if (site) site.updatedAt = new Date().toISOString();
+    store.audit.push(audit(req.user, "text.updated", { siteId: req.site.id, slotId: slot.id, backupPath: result.backupPath }));
+    await writeStore(store);
+    res.json({
+      site: site || req.site,
+      textSlot: result.textSlot,
+      textSlots: await scanClientTextSlots(config),
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ error: error.message || "Could not update text slot" });
+  }
+});
+
 router.get("/api/sites/:siteId/assets/:slotId/content", requireSiteAccess, async (req, res) => {
   const config = await loadClientConfig(req.site.ownerUsername);
   const slot = config ? findConfigSlot(config, req.params.slotId) : null;
@@ -645,6 +693,7 @@ function defaultClientConfig(user, site) {
       currentPath: `${siteRoot}/public/images/${slot.id}.${slot.id === "logo" ? "png" : "jpg"}`,
       publicPath: `/images/${slot.id}.${slot.id === "logo" ? "png" : "jpg"}`,
     })),
+    textSlots: [],
   };
 }
 
@@ -666,6 +715,7 @@ function normalizeClientConfig(config, configPath) {
   const username = normalizeUsername(config.username);
   const siteRoot = path.resolve(String(config.siteRoot || ""));
   const imageSlots = Array.isArray(config.imageSlots) ? config.imageSlots : [];
+  const textSlots = Array.isArray(config.textSlots) ? config.textSlots : [];
   return {
     username,
     displayName: String(config.displayName || username),
@@ -676,6 +726,9 @@ function normalizeClientConfig(config, configPath) {
     configPath,
     imageSlots: imageSlots
       .map((slot) => normalizeConfigSlot(siteRoot, slot))
+      .filter(Boolean),
+    textSlots: textSlots
+      .map((slot) => normalizeTextSlot(siteRoot, slot))
       .filter(Boolean),
   };
 }
@@ -693,6 +746,24 @@ function normalizeConfigSlot(siteRoot, slot) {
   };
 }
 
+function normalizeTextSlot(siteRoot, slot) {
+  const id = normalizeTextSlotId(slot.id);
+  const filePath = slot.filePath ? path.resolve(String(slot.filePath)) : "";
+  const marker = String(slot.marker || id).trim();
+  if (!id || !filePath || !isPathInside(siteRoot, filePath) || !marker) return null;
+  const inputType = slot.inputType === "long" ? "long" : "short";
+  return {
+    id,
+    labelHe: String(slot.labelHe || id),
+    group: String(slot.group || ""),
+    required: slot.required !== false,
+    inputType,
+    maxLength: Math.min(Math.max(positiveInteger(slot.maxLength) || (inputType === "long" ? 900 : 180), 20), 2000),
+    filePath,
+    marker,
+  };
+}
+
 function publicClientConfig(config) {
   return {
     username: config.username,
@@ -702,6 +773,8 @@ function publicClientConfig(config) {
     publicUrl: config.publicUrl,
     siteRoot: config.siteRoot,
     configPath: config.configPath,
+    imageSlotCount: config.imageSlots.length,
+    textSlotCount: config.textSlots.length,
   };
 }
 
@@ -738,6 +811,130 @@ async function scanClientAssets(site, config) {
 function findConfigSlot(config, slotId) {
   const normalized = normalizeSlotId(slotId);
   return config.imageSlots.find((slot) => slot.id === normalized) || null;
+}
+
+function findTextSlot(config, slotId) {
+  const normalized = normalizeTextSlotId(slotId);
+  return config.textSlots.find((slot) => slot.id === normalized) || null;
+}
+
+async function scanClientTextSlots(config) {
+  const textSlots = [];
+  for (const slot of config.textSlots) {
+    let status = null;
+    try {
+      status = await readConfiguredText(slot);
+    } catch (error) {
+      status = {
+        exists: false,
+        editable: false,
+        value: "",
+        error: error.message || "Text slot unavailable",
+      };
+    }
+    textSlots.push({
+      id: slot.id,
+      label: slot.labelHe,
+      group: slot.group,
+      inputType: slot.inputType,
+      maxLength: slot.maxLength,
+      required: slot.required,
+      marker: slot.marker,
+      fileName: path.basename(slot.filePath),
+      ...status,
+    });
+  }
+  return textSlots;
+}
+
+async function readConfiguredText(slot) {
+  await assertFileReadable(slot.filePath);
+  const html = await fsp.readFile(slot.filePath, "utf8");
+  const matches = markerElementMatches(html, slot.marker);
+  if (matches.length !== 1) {
+    const error = new Error(matches.length ? "Text marker must be unique" : "Text marker not found");
+    error.statusCode = 404;
+    throw error;
+  }
+  return {
+    exists: true,
+    editable: true,
+    value: htmlToPlainText(matches[0][3]),
+    updatedAt: (await fsp.stat(slot.filePath)).mtime.toISOString(),
+    error: "",
+  };
+}
+
+async function replaceConfiguredText(slot, value) {
+  await assertFileReadable(slot.filePath);
+  const html = await fsp.readFile(slot.filePath, "utf8");
+  const matches = markerElementMatches(html, slot.marker);
+  if (matches.length !== 1) {
+    const error = new Error(matches.length ? "Text marker must be unique" : "Text marker not found");
+    error.statusCode = 404;
+    throw error;
+  }
+  const backupPath = await backupConfiguredFile(slot.filePath, `text-${slot.id}`);
+  const match = matches[0];
+  const nextHtml = `${html.slice(0, match.index)}${match[1]}${escapeHtmlContent(value)}${match[4]}${html.slice(match.index + match[0].length)}`;
+  await fsp.writeFile(slot.filePath, nextHtml);
+  const textSlot = await readConfiguredText(slot);
+  if (textSlot.value !== value) {
+    const error = new Error("Text update verification failed");
+    error.statusCode = 500;
+    throw error;
+  }
+  return {
+    backupPath,
+    textSlot: {
+      id: slot.id,
+      label: slot.labelHe,
+      group: slot.group,
+      inputType: slot.inputType,
+      maxLength: slot.maxLength,
+      required: slot.required,
+      marker: slot.marker,
+      fileName: path.basename(slot.filePath),
+      ...textSlot,
+    },
+  };
+}
+
+function markerElementMatches(html, marker) {
+  const markerPattern = escapeRegExp(marker);
+  const pattern = new RegExp(`(<([a-zA-Z][\\w:-]*)(?=[^>]*\\sdata-manager-text=["']${markerPattern}["'])[^>]*>)([\\s\\S]*?)(<\\/\\2>)`, "g");
+  return [...html.matchAll(pattern)];
+}
+
+function normalizeTextValue(value) {
+  return String(value ?? "").replace(/\r\n?/g, "\n").trim();
+}
+
+function htmlToPlainText(value) {
+  return decodeHtmlEntities(
+    String(value || "")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]*>/g, "")
+      .trim()
+  );
+}
+
+function decodeHtmlEntities(value) {
+  return String(value || "")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCodePoint(parseInt(code, 16)))
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}
+
+function escapeHtmlContent(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 async function replaceConfiguredAsset(site, slot, uploadedPath, config = null) {
@@ -937,6 +1134,15 @@ function normalizeUsername(value) {
     .replace(/^_+|_+$/g, "");
 }
 
+function normalizeTextSlotId(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_.-]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^[_ .-]+|[_ .-]+$/g, "");
+}
+
 function safeSegment(value) {
   return String(value).replace(/[^a-zA-Z0-9_-]/g, "_");
 }
@@ -946,6 +1152,7 @@ function normalizePermissions(input = {}) {
     canUpload: input.canUpload !== false,
     canDelete: input.canDelete !== false,
     canEditLinks: input.canEditLinks !== false,
+    canEditText: input.canEditText !== false,
     canPublish: input.canPublish === true,
   };
 }
@@ -958,7 +1165,7 @@ function publicUser(user) {
     role: user.role,
     active: user.active,
     siteId: user.siteId || null,
-    permissions: user.permissions || {},
+    permissions: normalizePermissions(user.permissions || {}),
     createdAt: user.createdAt,
     lastLoginAt: user.lastLoginAt,
   };
@@ -1016,6 +1223,7 @@ async function initStore() {
           canUpload: true,
           canDelete: true,
           canEditLinks: true,
+          canEditText: true,
           canPublish: true,
         },
         passwordHash,
@@ -1060,7 +1268,9 @@ async function initStore() {
 async function readStore() {
   const raw = await fsp.readFile(STORE_PATH, "utf8");
   const store = JSON.parse(raw);
-  store.users = Array.isArray(store.users) ? store.users : [];
+  store.users = Array.isArray(store.users)
+    ? store.users.map((user) => ({ ...user, permissions: normalizePermissions(user.permissions || {}) }))
+    : [];
   store.sites = Array.isArray(store.sites) ? store.sites.map(normalizeSite) : [];
   store.audit = Array.isArray(store.audit) ? store.audit : [];
   return store;

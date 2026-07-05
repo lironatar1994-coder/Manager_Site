@@ -26,6 +26,10 @@ const HEBREW_SLOT_LABELS = {
   gallery: "גלריה",
 };
 
+const UPLOAD_FILE_LIMIT_BYTES = 16 * 1024 * 1024;
+const ALLOWED_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"]);
+const ALLOWED_IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"];
+
 const state = {
   me: null,
   users: [],
@@ -33,6 +37,7 @@ const state = {
   audit: [],
   clientSite: null,
   clientAssets: null,
+  clientText: null,
   clientUsername: "",
   previewMode: "desktop",
   adminReviewFilter: "all",
@@ -275,6 +280,7 @@ function renderAdmin() {
             ${auditFilterButton("site", "אתרים", auditFilterCounts.site, auditFilter)}
             ${auditFilterButton("image", "תמונות", auditFilterCounts.image, auditFilter)}
             ${auditFilterButton("asset", "קבצי אתר", auditFilterCounts.asset, auditFilter)}
+            ${auditFilterButton("text", "טקסטים", auditFilterCounts.text, auditFilter)}
           </div>
           <div class="audit-list">${recentAuditRows.map(auditRow).join("") || `<p class="empty">אין פעילות בסינון הזה.</p>`}</div>
         </article>
@@ -405,6 +411,7 @@ function renderClient() {
             <span class="quiet">לחיצה על תמונה פותחת החלפה, מחיקה וחיתוך</span>
           </div>
           <div class="asset-queue">${slots.map((slot) => assetRailItem(site, slot)).join("")}</div>
+          ${renderTextManager()}
           <div class="confidence-note">
             <i data-lucide="${latestImage ? "history" : "sparkles"}"></i>
             <span>${escapeHtml(latestActivity)}</span>
@@ -469,6 +476,9 @@ function renderClient() {
       });
     });
   });
+  document.querySelectorAll("[data-edit-text-slot]").forEach((button) => {
+    button.addEventListener("click", () => showTextEditModal(button.dataset.editTextSlot));
+  });
   bindImageDragAndDrop();
   document.querySelectorAll("[data-admin-status]").forEach((button) => {
     button.addEventListener("click", () => updateSiteStatus(button.dataset.siteId, button.dataset.adminStatus));
@@ -511,6 +521,7 @@ function createUserForm() {
         ${permissionBox("canUpload", "העלאה", true)}
         ${permissionBox("canDelete", "מחיקה", true)}
         ${permissionBox("canEditLinks", "עריכת קישור", true)}
+        ${permissionBox("canEditText", "עריכת טקסט", true)}
         ${permissionBox("canPublish", "פרסום", false)}
       </div>
       <button class="primary-button" type="submit"><i data-lucide="user-plus"></i>יצירת נתיב</button>
@@ -695,6 +706,54 @@ function assetRailItem(site, slot) {
   `;
 }
 
+function renderTextManager() {
+  const slots = state.clientText?.textSlots || [];
+  if (!slots.length) return "";
+  const aboutSlots = slots.filter((slot) => (slot.group || "").toLowerCase() === "about");
+  const faqSlots = slots.filter((slot) => (slot.group || "").toLowerCase() === "faq");
+  const otherSlots = slots.filter((slot) => !["about", "faq"].includes((slot.group || "").toLowerCase()));
+  return `
+    <section class="text-manager" aria-label="טקסטים באתר">
+      <div class="panel-title compact-title">
+        <span>
+          <h2>טקסטים באתר</h2>
+          <span class="quiet">אודות ושאלות נפוצות, ישירות באתר החי</span>
+        </span>
+        <span class="text-count">${slots.filter((slot) => slot.editable).length}/${slots.length}</span>
+      </div>
+      ${textGroup("אודות", aboutSlots)}
+      ${textGroup("שאלות נפוצות", faqSlots)}
+      ${otherSlots.length ? textGroup("טקסטים נוספים", otherSlots) : ""}
+    </section>
+  `;
+}
+
+function textGroup(title, slots) {
+  if (!slots.length) return "";
+  return `
+    <div class="text-group">
+      <h3>${escapeHtml(title)}</h3>
+      <div class="text-row-list">
+        ${slots.map(textSlotRow).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function textSlotRow(slot) {
+  const disabled = !slot.editable || !can("canEditText");
+  const preview = slot.value || slot.error || "לא נמצא טקסט לעריכה";
+  return `
+    <button class="text-slot-row ${slot.editable ? "ready" : "blocked"}" type="button" data-edit-text-slot="${escapeAttr(slot.id)}" ${disabled ? "disabled" : ""}>
+      <span>
+        <strong>${escapeHtml(slot.label || slot.id)}</strong>
+        <small>${escapeHtml(preview)}</small>
+      </span>
+      <i data-lucide="${slot.editable ? "pen-line" : "lock"}"></i>
+    </button>
+  `;
+}
+
 function draggableAttrs(image) {
   if (!image || !can("canUpload")) return "";
   return [
@@ -770,6 +829,7 @@ function permissionChips(permissions = {}) {
     ["canUpload", "העלאה"],
     ["canDelete", "מחיקה"],
     ["canEditLinks", "עריכת קישור"],
+    ["canEditText", "עריכת טקסט"],
     ["canPublish", "פרסום"],
   ]
     .filter(([key]) => permissions[key])
@@ -1055,7 +1115,7 @@ function auditRow(row) {
 
 function auditCategory(action = "") {
   const prefix = String(action).split(".")[0];
-  return ["user", "site", "image", "asset"].includes(prefix) ? prefix : "other";
+  return ["user", "site", "image", "asset", "text"].includes(prefix) ? prefix : "other";
 }
 
 function auditCategoryLabel(category) {
@@ -1064,6 +1124,7 @@ function auditCategoryLabel(category) {
     site: "אתר",
     image: "תמונה",
     asset: "קובץ אתר",
+    text: "טקסט",
     other: "מערכת",
   };
   return labels[category] || labels.other;
@@ -1077,7 +1138,7 @@ function auditCountsByCategory(rows = []) {
       counts[category] = (counts[category] || 0) + 1;
       return counts;
     },
-    { all: 0, user: 0, site: 0, image: 0, asset: 0, other: 0 }
+    { all: 0, user: 0, site: 0, image: 0, asset: 0, text: 0, other: 0 }
   );
 }
 
@@ -1094,7 +1155,8 @@ function formatAuditDetail(row) {
   const details = row.details || {};
   const parts = [];
   if (details.username) parts.push(`לקוח: ${details.username}`);
-  if (details.slotId) parts.push(`אזור: ${slotDisplayLabel({ id: details.slotId })}`);
+  if (details.slotId && String(row.action || "").startsWith("text.")) parts.push(`שדה: ${textSlotAuditLabel(details.slotId)}`);
+  else if (details.slotId) parts.push(`אזור: ${slotDisplayLabel({ id: details.slotId })}`);
   if (details.sourceSlotId && details.targetSlotId) parts.push(`${slotDisplayLabel({ id: details.sourceSlotId })} → ${slotDisplayLabel({ id: details.targetSlotId })}`);
   if (details.status) parts.push(`סטטוס: ${HEBREW_STATUS_META[details.status]?.label || details.status}`);
   if (details.imageId && !details.slotId) parts.push(`תמונה: ${details.imageId}`);
@@ -1116,6 +1178,7 @@ function formatAuditAction(action) {
     "asset.deleted": "תמונת אתר נמחקה",
     "asset.restored": "תמונת אתר שוחזרה",
     "asset.reordered": "תמונות אתר הוחלפו",
+    "text.updated": "טקסט באתר עודכן",
   };
   return labels[action] || action;
 }
@@ -1144,8 +1207,32 @@ function formatApiError(error) {
     "Production images must be reordered by slot": "תמונות אתר חי אפשר לסדר רק לפי אזורי תמונה",
     "Could not restore image backup": "לא ניתן לשחזר את גיבוי התמונה",
     "Request failed": "הבקשה נכשלה",
+    "Network request failed": "לא ניתן להתחבר לשרת. בדקו חיבור ונסו שוב.",
+    "Server unavailable": "השרת לא זמין כרגע. נסו שוב בעוד דקה.",
+    "Unexpected server response": "השרת החזיר תשובה לא צפויה. נסו לרענן.",
+    "Too many requests": "יש יותר מדי פעולות ברצף. חכו רגע ונסו שוב.",
+    "Request timed out": "הבקשה לקחה יותר מדי זמן. נסו שוב.",
+    "Upload file is missing": "בחרו תמונה לפני ההעלאה.",
+    "Upload type not allowed": "אפשר להעלות רק JPG, PNG, WebP, GIF או SVG.",
+    "Text slot not configured": "אזור הטקסט לא מוגדר לעריכה.",
+    "Text marker not found": "סימון הטקסט לא נמצא באתר. צריך לעדכן את קובץ האתר.",
+    "Text marker must be unique": "סימון הטקסט מופיע יותר מפעם אחת באתר.",
+    "Text value is required": "חובה להזין טקסט לפני השמירה.",
+    "Text value is too long": "הטקסט ארוך מדי לשדה הזה.",
+    "Text update verification failed": "הטקסט נשמר אך האימות נכשל. צריך לבדוק את האתר.",
+    "Could not update text slot": "לא ניתן לעדכן את הטקסט כרגע.",
   };
   return labels[error] || error || "הפעולה נכשלה";
+}
+
+function validateImageFile(file) {
+  if (!file || typeof file.size !== "number" || file.size === 0) return "Upload file is missing";
+  if (file.size > UPLOAD_FILE_LIMIT_BYTES) return "Uploaded image is too large";
+  const fileName = (file.name || "").toLowerCase();
+  const hasAllowedMime = file.type ? ALLOWED_IMAGE_MIME_TYPES.has(file.type) : false;
+  const hasAllowedExtension = ALLOWED_IMAGE_EXTENSIONS.some((extension) => fileName.endsWith(extension));
+  if (!hasAllowedMime && !hasAllowedExtension) return "Upload type not allowed";
+  return "";
 }
 
 async function onLogin(event) {
@@ -1181,6 +1268,7 @@ async function onCreateUser(event) {
       canUpload: form.has("canUpload"),
       canDelete: form.has("canDelete"),
       canEditLinks: form.has("canEditLinks"),
+      canEditText: form.has("canEditText"),
       canPublish: form.has("canPublish"),
     },
   };
@@ -1282,6 +1370,7 @@ function showEditUserModal(userId) {
           ${permissionBox("canUpload", "העלאה", Boolean(user.permissions?.canUpload))}
           ${permissionBox("canDelete", "מחיקה", Boolean(user.permissions?.canDelete))}
           ${permissionBox("canEditLinks", "עריכת קישור", Boolean(user.permissions?.canEditLinks))}
+          ${permissionBox("canEditText", "עריכת טקסט", Boolean(user.permissions?.canEditText))}
           ${permissionBox("canPublish", "פרסום", Boolean(user.permissions?.canPublish))}
         </div>
         <p class="edit-note">שינויים כאן משפיעים על הפרטים שהלקוח רואה ועל ההרשאות שלו במערכת.</p>
@@ -1314,6 +1403,7 @@ async function saveUserProfile(userId, form) {
       canUpload: form.has("canUpload"),
       canDelete: form.has("canDelete"),
       canEditLinks: form.has("canEditLinks"),
+      canEditText: form.has("canEditText"),
       canPublish: form.has("canPublish"),
     },
   };
@@ -1373,7 +1463,10 @@ async function onUploadImage(event) {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
   const selectedSlot = form.get("slotId") || "gallery";
-  await appendImageMetadata(form, form.get("image"));
+  const selectedFile = form.get("image");
+  const validationError = validateImageFile(selectedFile);
+  if (validationError) return toast(formatApiError(validationError), "error");
+  await appendImageMetadata(form, selectedFile);
   const response = await api(`/api/sites/${state.clientSite.id}/images`, { method: "POST", form });
   if (response?.error) return toast(formatApiError(response.error), "error");
   state.clientSite = response.site;
@@ -1391,6 +1484,11 @@ async function onUploadImage(event) {
 }
 
 async function uploadImageToSlot(slotId, file, name = "") {
+  const validationError = validateImageFile(file);
+  if (validationError) {
+    toast(formatApiError(validationError), "error");
+    return false;
+  }
   const form = new FormData();
   form.set("slotId", slotId);
   form.set("image", file, name || file.name || `${slotId}.jpg`);
@@ -1456,6 +1554,77 @@ async function restoreAsset(slotId) {
   };
   toast("התמונה שוחזרה מהגיבוי האחרון", "success");
   renderClient();
+}
+
+function showTextEditModal(slotId) {
+  const slot = (state.clientText?.textSlots || []).find((item) => item.id === slotId);
+  if (!slot || !slot.editable || !can("canEditText")) return;
+  const multiline = slot.inputType === "long";
+  const field = multiline
+    ? `<textarea name="value" maxlength="${slot.maxLength}" rows="7" required>${escapeHtml(slot.value || "")}</textarea>`
+    : `<input name="value" maxlength="${slot.maxLength}" value="${escapeAttr(slot.value || "")}" required />`;
+  const modal = document.createElement("div");
+  modal.className = "modal-backdrop";
+  modal.innerHTML = `
+    <div class="confirm-modal text-edit-modal" role="dialog" aria-modal="true" aria-label="${escapeAttr(slot.label || "עריכת טקסט")}" dir="rtl" lang="he">
+      <button class="icon-action modal-close" type="button" aria-label="סגירה"><i data-lucide="x"></i></button>
+      <p class="eyebrow">טקסט באתר</p>
+      <h2>${escapeHtml(slot.label || slot.id)}</h2>
+      <form id="textEditForm" class="text-edit-form">
+        <label>
+          <span>טקסט שיופיע באתר</span>
+          ${field}
+        </label>
+        <div class="text-edit-footer">
+          <small><bdi data-text-count>${String(slot.value || "").length}</bdi>/${slot.maxLength}</small>
+          <span>${slot.fileName ? escapeHtml(slot.fileName) : "קובץ האתר"}</span>
+        </div>
+        <div class="modal-actions">
+          <button class="ghost-button" type="button" data-cancel>ביטול</button>
+          <button class="primary-button" type="submit"><i data-lucide="save"></i>שמירת טקסט</button>
+        </div>
+      </form>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  icons();
+  const close = () => modal.remove();
+  const input = modal.querySelector("[name='value']");
+  const counter = modal.querySelector("[data-text-count]");
+  const updateCounter = () => {
+    counter.textContent = String(input.value.length);
+    counter.classList.toggle("limit", input.value.length > slot.maxLength * 0.9);
+  };
+  modal.querySelector(".modal-close").addEventListener("click", close);
+  modal.querySelector("[data-cancel]").addEventListener("click", close);
+  input.addEventListener("input", updateCounter);
+  modal.querySelector("#textEditForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const saved = await saveTextSlot(slot.id, input.value);
+    if (saved) close();
+  });
+  input.focus();
+}
+
+async function saveTextSlot(slotId, value) {
+  const response = await api(`/api/sites/${state.clientSite.id}/text/${encodeURIComponent(slotId)}`, { method: "PATCH", body: { value } });
+  if (response?.error) {
+    toast(formatApiError(response.error), "error");
+    return false;
+  }
+  state.clientSite = response.site || state.clientSite;
+  state.clientText = { ...(state.clientText || {}), textSlots: response.textSlots || [] };
+  state.livePreviewVersion = Date.now();
+  state.lastProof = {
+    title: "הטקסט עודכן",
+    imageText: textSlotLabel(slotId),
+    liveFileOk: true,
+    previewOk: true,
+    previewText: "התצוגה החיה רועננה בדפדפן",
+  };
+  toast("הטקסט נשמר באתר", "success");
+  renderClient();
+  return true;
 }
 
 function showImageActionModal(slotId) {
@@ -1880,7 +2049,7 @@ async function loadClient(username) {
   } else {
     state.clientSite = sites[0] || state.clientSite;
   }
-  await loadClientAssets();
+  await Promise.all([loadClientAssets(), loadClientText()]);
 }
 
 async function loadClientAssets() {
@@ -1892,6 +2061,15 @@ async function loadClientAssets() {
   }
 }
 
+async function loadClientText() {
+  state.clientText = null;
+  if (!state.clientSite?.id) return;
+  const response = await api(`/api/sites/${state.clientSite.id}/text`);
+  if (!response?.error) {
+    state.clientText = response;
+  }
+}
+
 async function api(path, options = {}) {
   const request = { method: options.method || "GET", credentials: "same-origin", headers: {} };
   if (options.form) request.body = options.form;
@@ -1900,20 +2078,38 @@ async function api(path, options = {}) {
     request.body = JSON.stringify(options.body);
   }
 
-  const response = await fetch(`${basePath}${path}`, request);
-  if (response.status === 401 && !options.allow401) {
-    state.me = null;
-    const nextLogin = isAdminAreaRoute() ? "/admin-login" : "/login";
-    navigate(nextLogin, true);
-    if (nextLogin === "/admin-login") renderAdminLogin("נא להתחבר מחדש.");
-    else renderLogin("נא להתחבר מחדש.");
-    return {};
+  try {
+    const response = await fetch(`${basePath}${path}`, request);
+    if (response.status === 401 && !options.allow401) {
+      state.me = null;
+      const nextLogin = isAdminAreaRoute() ? "/admin-login" : "/login";
+      navigate(nextLogin, true);
+      if (nextLogin === "/admin-login") renderAdminLogin("נא להתחבר מחדש.");
+      else renderLogin("נא להתחבר מחדש.");
+      return {};
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    let payload = {};
+    if (contentType.includes("application/json")) {
+      try {
+        payload = await response.json();
+      } catch (error) {
+        return { error: "Unexpected server response" };
+      }
+    }
+
+    if (response.status === 413) return { error: "Uploaded image is too large" };
+    if (response.status === 415) return { error: payload.error || "Upload type not allowed" };
+    if (response.status === 408 || response.status === 504) return { error: "Request timed out" };
+    if (response.status === 429) return { error: "Too many requests" };
+    if (response.status >= 500) return { error: "Server unavailable" };
+    if (!response.ok && !options.allow401) return { error: payload.error || "Request failed" };
+    return payload;
+  } catch (error) {
+    console.error("API request failed", path, error);
+    return { error: "Network request failed" };
   }
-  const contentType = response.headers.get("content-type") || "";
-  const payload = contentType.includes("application/json") ? await response.json() : {};
-  if (response.status === 413) return { error: "Uploaded image is too large" };
-  if (!response.ok && !options.allow401) return { error: payload.error || "Request failed" };
-  return payload;
 }
 
 function bindShell() {
@@ -2131,6 +2327,29 @@ function slotLabel(site, slotId) {
   return slotDisplayLabel(displaySlots(site).find((slot) => slot.id === slotId) || { id: slotId });
 }
 
+function textSlotLabel(slotId) {
+  const slot = (state.clientText?.textSlots || []).find((item) => item.id === slotId);
+  return slot?.label || slotId;
+}
+
+function textSlotAuditLabel(slotId) {
+  const labels = {
+    "about.title": "כותרת אודות",
+    "about.body": "טקסט אודות",
+    "faq.1.question": "שאלה 1",
+    "faq.1.answer": "תשובה 1",
+    "faq.2.question": "שאלה 2",
+    "faq.2.answer": "תשובה 2",
+    "faq.3.question": "שאלה 3",
+    "faq.3.answer": "תשובה 3",
+    "faq.4.question": "שאלה 4",
+    "faq.4.answer": "תשובה 4",
+    "faq.5.question": "שאלה 5",
+    "faq.5.answer": "תשובה 5",
+  };
+  return labels[slotId] || slotId;
+}
+
 function slotDisplayLabel(slot) {
   return HEBREW_SLOT_LABELS[slot?.id] || slot?.label || "תמונה";
 }
@@ -2188,21 +2407,26 @@ function toast(message, type = "info") {
     node.className = "toast";
     node.innerHTML = `
       <span class="toast-icon" aria-hidden="true"></span>
-      <span class="toast-message"></span>
+      <span class="toast-copy">
+        <span class="toast-title"></span>
+        <span class="toast-message"></span>
+      </span>
     `;
     document.body.appendChild(node);
   }
   const normalizedType = ["success", "error", "info"].includes(type) ? type : "info";
   const icon = normalizedType === "success" ? "check" : normalizedType === "error" ? "triangle-alert" : "info";
+  const title = normalizedType === "success" ? "בוצע" : normalizedType === "error" ? "צריך בדיקה" : "שימו לב";
   node.dataset.type = normalizedType;
   node.setAttribute("role", normalizedType === "error" ? "alert" : "status");
   node.setAttribute("aria-live", normalizedType === "error" ? "assertive" : "polite");
   node.querySelector(".toast-icon").innerHTML = `<i data-lucide="${icon}"></i>`;
+  node.querySelector(".toast-title").textContent = title;
   node.querySelector(".toast-message").textContent = message;
   node.classList.add("show");
   icons();
   clearTimeout(toast.timeout);
-  toast.timeout = setTimeout(() => node.classList.remove("show"), normalizedType === "error" ? 4200 : 3400);
+  toast.timeout = setTimeout(() => node.classList.remove("show"), normalizedType === "error" ? 5600 : 3600);
 }
 
 function icons() {

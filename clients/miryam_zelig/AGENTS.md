@@ -35,6 +35,15 @@ Current slots:
 - Before/after after image: `gallery/before-after-after.jpeg`
 - About portrait: `miryam.jpeg`
 
+Editable text is controlled through `textSlots` in `client.config.json`.
+
+Current text slots:
+
+- About: `about.title`, `about.body`
+- FAQ questions and answers: `faq.1.question` through `faq.5.answer`
+
+Important: editable website text must keep its `data-manager-text="<slot-id>"` marker in both `/root/Miryam_Zelig/index.html` and `/var/www/Miryam_Zelig/index.html`. If you redesign or move About/FAQ content, move the marker with the exact visible element. Do not remove or duplicate these markers, because Manager Site requires exactly one marker per text slot before it will save.
+
 Important: the public hero image must reference `/Miryam_Zelig/gallery/img1.jpeg?v=<timestamp>`. Do not point the visible hero photo at `gallery/hero.jpeg`; Manager Site replaces `gallery/img1.jpeg`, so using another hero filename makes the hero appear unchangeable even though the upload succeeds.
 
 Important: the public gallery can still use `gallery/img2.jpeg` and `gallery/img3.jpeg`, but the before/after slider must not use those gallery files. The slider HTML must reference:
@@ -72,6 +81,12 @@ grep -n 'ba-before\|ba-after\|before-after-before\|before-after-after\|gallery/i
 ```
 
 Expected result: normal gallery frames may reference `gallery/img2.jpeg` and `gallery/img3.jpeg`; `.ba-before` and `.ba-after` must reference the dedicated `before-after-*` files.
+
+After replacing any production text, verify:
+
+- `/var/www/Miryam_Zelig/index.html` contains the new visible Hebrew text
+- the matching `data-manager-text` marker still exists exactly once
+- the public URL `https://vee-app.co.il/Miryam_Zelig/` shows the new text after refresh
 
 ## Agent Notes
 

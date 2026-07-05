@@ -103,13 +103,15 @@ Sites:
 - `GET /api/sites/:siteId/assets/:slotId/content`
 - `DELETE /api/sites/:siteId/assets/:slotId`
 - `POST /api/sites/:siteId/assets/:slotId/restore`
+- `GET /api/sites/:siteId/text`
+- `PATCH /api/sites/:siteId/text/:slotId`
 
 ## Client Asset Configs
 
 Each client can have a human file and a machine config:
 
 - `AGENTS.md` explains the client and website goal.
-- `client.config.json` allowlists exact production image paths.
+- `client.config.json` allowlists exact production image paths and optional text slots.
 
 The server checks persistent runtime configs first:
 
@@ -119,6 +121,8 @@ The server checks persistent runtime configs first:
 The app never lets clients choose filesystem paths. It reads and replaces only paths listed in `client.config.json`, and only when the configured path is inside `siteRoot`.
 
 When a configured production site root exists, uploading to a mapped slot copies the upload to that production path and first backs up the previous file under `.manager-site-backups`.
+
+Text editing uses `textSlots` in the same config. Each slot points to an absolute HTML file path inside `siteRoot` and a `data-manager-text` marker. The server updates plain text only, requires exactly one matching marker, backs up the HTML file before writing, and rejects over-limit text.
 
 After copying a production asset, the server attempts to refresh matching `.html` references under the configured `siteRoot`: any exact `publicPath` reference, with or without an existing `?v=<digits>` query, is rewritten to `publicPath?v=<timestamp>`. This prevents stale browser/Nginx cache on public static websites.
 

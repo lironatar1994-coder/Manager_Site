@@ -93,7 +93,38 @@ The client-facing desktop/mobile preview is a live iframe pointed at the configu
    - never add arbitrary paths outside the website root
    - do not reuse vague labels when a section has a specific purpose
 
-5. Verify public references and cache busting.
+5. Create text slots when the client should edit website copy.
+
+   Start with structured, low-risk sections such as About and FAQ. Do not create a free-form page builder.
+
+   Each editable text field needs one stable HTML marker and one `textSlots` entry:
+
+   ```html
+   <p data-manager-text="about.body">Current about text...</p>
+   ```
+
+   ```json
+   {
+     "id": "about.body",
+     "labelHe": "טקסט אודות",
+     "group": "about",
+     "required": true,
+     "inputType": "long",
+     "maxLength": 700,
+     "filePath": "/var/www/Client_Site/index.html",
+     "marker": "about.body"
+   }
+   ```
+
+   Text slot rules:
+
+   - `id` and `marker` must be stable ASCII.
+   - `filePath` must be an absolute path inside `siteRoot`.
+   - the matching `data-manager-text` marker must exist exactly once.
+   - clients edit plain text only, not HTML.
+   - if a future redesign moves content, move the marker with the visible element.
+
+6. Verify public references and cache busting.
 
    Do not stop after confirming that `currentPath` exists on disk. You must also prove that the live website actually references the same public file.
 
@@ -120,7 +151,7 @@ The client-facing desktop/mobile preview is a live iframe pointed at the configu
    curl -I 'https://vee-app.co.il/Client_Site/path/to/image.jpg?v=<timestamp>'
    ```
 
-6. Write the client agent file.
+7. Write the client agent file.
 
    `data/clients/<username>/AGENTS.md` should explain:
 
@@ -129,12 +160,13 @@ The client-facing desktop/mobile preview is a live iframe pointed at the configu
    - production paths
    - what the website is supposed to achieve
    - which image sections are editable
+   - which text sections are editable and which `data-manager-text` markers must be preserved
    - important client-specific notes
    - deployment or verification notes
    - whether public image references are static HTML, CSS `url(...)`, framework-generated assets, or CDN URLs
    - the exact cache-busting rule needed for this website
 
-7. Verify the live desktop/mobile preview.
+8. Verify the live desktop/mobile preview.
 
    The client workspace first section loads the configured public website URL in an iframe and adds a cache-busting `manager_preview` query parameter.
 
