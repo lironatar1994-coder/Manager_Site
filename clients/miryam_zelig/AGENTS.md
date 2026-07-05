@@ -35,6 +35,8 @@ Current slots:
 - Before/after after image: `gallery/before-after-after.jpeg`
 - About portrait: `miryam.jpeg`
 
+Important: the public hero image must reference `/Miryam_Zelig/gallery/img1.jpeg?v=<timestamp>`. Do not point the visible hero photo at `gallery/hero.jpeg`; Manager Site replaces `gallery/img1.jpeg`, so using another hero filename makes the hero appear unchangeable even though the upload succeeds.
+
 Important: the public gallery can still use `gallery/img2.jpeg` and `gallery/img3.jpeg`, but the before/after slider must not use those gallery files. The slider HTML must reference:
 
 - `/Miryam_Zelig/gallery/before-after-before.jpeg?v=<timestamp>`
