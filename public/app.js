@@ -1618,6 +1618,32 @@ async function saveTextSlot(slotId, value) {
   return true;
 }
 
+function showFullImagePreview(src, alt = "") {
+  if (!src) return;
+  const viewer = document.createElement("div");
+  viewer.className = "image-preview-viewer";
+  viewer.innerHTML = `
+    <button class="image-preview-close" type="button" aria-label="סגירה"><i data-lucide="x"></i></button>
+    <figure>
+      <img src="${escapeAttr(src)}" alt="${escapeAttr(alt)}" />
+    </figure>
+  `;
+  document.body.appendChild(viewer);
+  icons();
+  const close = () => {
+    document.removeEventListener("keydown", onKeydown);
+    viewer.remove();
+  };
+  const onKeydown = (event) => {
+    if (event.key === "Escape") close();
+  };
+  viewer.querySelector(".image-preview-close").addEventListener("click", close);
+  viewer.addEventListener("click", (event) => {
+    if (event.target === viewer) close();
+  });
+  document.addEventListener("keydown", onKeydown);
+}
+
 function showImageActionModal(slotId) {
   const slot = displaySlots(state.clientSite).find((item) => item.id === slotId) || { id: slotId };
   const image = imagesForSlot(state.clientSite, slotId)[0];
@@ -1675,8 +1701,9 @@ function showImageActionModal(slotId) {
   };
   modal.querySelector(".modal-close").addEventListener("click", cleanup);
   preview.addEventListener("click", () => {
-    if (!preview.querySelector("img")) return;
-    dialog.classList.toggle("preview-expanded");
+    const previewImage = preview.querySelector("img");
+    if (!previewImage) return;
+    showFullImagePreview(previewImage.src, previewImage.alt || slotDisplayLabel(slot));
   });
   modal.querySelector("[data-replace-slot]").addEventListener("click", () => {
     fileInput.click();
@@ -1713,7 +1740,6 @@ function showImageActionModal(slotId) {
     selectedFile = null;
     selectedUrl = "";
     fileInput.value = "";
-    dialog.classList.remove("preview-expanded");
     preview.className = `action-preview ${image ? "filled" : "empty"}`;
     preview.disabled = !image;
     preview.innerHTML = image ? `<img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" data-action-preview-media />` : `<i data-lucide="image-plus"></i>`;
