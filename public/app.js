@@ -356,11 +356,7 @@ function renderClient() {
         <div class="client-hero-copy">
           <p class="eyebrow">${escapeHtml(clientName)}</p>
           <h1>ניהול תמונות האתר</h1>
-          <p class="client-hero-subtitle">תצוגה חיה של האתר, וכל התמונות שניתן להחליף, במקום אחד נקי.</p>
-          <div class="hero-meta">
-            <span class="readiness-chip"><i data-lucide="screen-share"></i>תצוגה חיה</span>
-            <span class="readiness-chip"><i data-lucide="shield-check"></i>שמירה ישירה באתר</span>
-          </div>
+          <p class="client-hero-subtitle">כל התמונות והטקסטים שאפשר לעדכן באתר, במקום אחד נקי.</p>
           <div class="hero-actions">
             <a class="primary-button" href="${escapeAttr(visibleWebsiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>פתיחה</a>
             <button class="ghost-button" type="button" data-share-website="${escapeAttr(visibleWebsiteUrl)}"><i data-lucide="share-2"></i>שיתוף</button>
@@ -378,7 +374,6 @@ function renderClient() {
         <article class="website-preview managed-preview hero-live-preview" data-preview-mode="${state.previewMode}">
           <div class="preview-toolbar">
             <div>
-              <p class="eyebrow">תצוגה חיה</p>
               <h2>האתר עכשיו</h2>
             </div>
             <div class="preview-toggle" role="tablist" aria-label="בחירת תצוגה">
@@ -693,7 +688,7 @@ function assetRailItem(site, slot) {
       </span>
       <span class="asset-queue-copy">
         <strong>${escapeHtml(slotDisplayLabel(slot))}</strong>
-        <small>${primary ? "מוכן לעריכה" : "אפשר להוסיף תמונה"}</small>
+        <small>${primary ? "אפשר להחליף או לסדר" : "אפשר להוסיף תמונה"}</small>
         <span class="asset-queue-hint">${primary ? "לחצו לפתיחה, החלפה, חיתוך או מחיקה" : "לחצו כדי לבחור תמונה מתאימה"}</span>
       </span>
       <span class="asset-queue-action">
