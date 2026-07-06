@@ -681,7 +681,6 @@ function reviewRow(site) {
 function assetRailItem(site, slot) {
   const images = imagesForSlot(site, slot.id);
   const primary = images[0];
-  const sourceLabel = primary?.source === "production" ? "מהאתר החי" : primary ? "עודכן במערכת" : "חסר";
   const stateLabel = primary ? "תמונה קיימת" : slot.required ? "נדרשת תמונה" : "אפשר להוסיף";
   const actionLabel = primary ? "ניהול" : "הוספה";
   return `
@@ -694,8 +693,7 @@ function assetRailItem(site, slot) {
       </span>
       <span class="asset-queue-copy">
         <strong>${escapeHtml(slotDisplayLabel(slot))}</strong>
-        <small>${escapeHtml(sourceLabel)} · ${escapeHtml(slotRatioLabel(slot.ratio))}</small>
-        ${primary ? imageQualityChips(primary, slot) : `<span class="image-meta-chips"><small><i data-lucide="scan"></i>מומלץ ${escapeHtml(recommendedSizeText(slot))}</small></span>`}
+        <small>${primary ? "מוכן לעריכה" : "אפשר להוסיף תמונה"}</small>
         <span class="asset-queue-hint">${primary ? "לחצו לפתיחה, החלפה, חיתוך או מחיקה" : "לחצו כדי לבחור תמונה מתאימה"}</span>
       </span>
       <span class="asset-queue-action">
@@ -717,9 +715,7 @@ function renderTextManager() {
       <div class="panel-title compact-title">
         <span>
           <h2>טקסטים באתר</h2>
-          <span class="quiet">אודות ושאלות נפוצות, ישירות באתר החי</span>
         </span>
-        <span class="text-count">${slots.filter((slot) => slot.editable).length}/${slots.length}</span>
       </div>
       ${textGroup("אודות", aboutSlots)}
       ${textGroup("שאלות נפוצות", faqSlots)}
