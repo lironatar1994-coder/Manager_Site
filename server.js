@@ -352,6 +352,71 @@ router.post("/api/sites/:siteId/assets/reorder", requireSiteAccess, requirePermi
   res.json({ site, assets: await scanClientAssets(site || req.site, config) });
 });
 
+router.post(
+  "/api/sites/:siteId/assets/gallery",
+  requireSiteAccess,
+  requirePermission("canUpload"),
+  upload.single("image"),
+  async (req, res) => {
+    if (!req.file) {
+      res.status(400).json({ error: "Image file is required" });
+      return;
+    }
+
+    const configDoc = await loadClientConfigDocument(req.site.ownerUsername);
+    if (!configDoc) {
+      res.status(404).json({ error: "Client gallery is not configured" });
+      return;
+    }
+
+    let nextSlot;
+    let result;
+    try {
+      const config = normalizeClientConfig(configDoc.config, configDoc.savePath);
+      if (!(await directoryExists(config.siteRoot))) {
+        const error = new Error("Live website folder is not available");
+        error.statusCode = 404;
+        throw error;
+      }
+      nextSlot = await nextGallerySlotConfig(config, configDoc.config);
+      result = await appendConfiguredGalleryImage(config, nextSlot, req.file.path);
+
+      const rawSlots = Array.isArray(configDoc.config.imageSlots) ? configDoc.config.imageSlots : [];
+      configDoc.config.imageSlots = [...rawSlots, nextSlot];
+      await saveClientConfigDocument(configDoc);
+
+      const store = await readStore();
+      const site = store.sites.find((item) => item.id === req.params.siteId);
+      if (site) {
+        site.updatedAt = new Date().toISOString();
+        store.audit.push(audit(req.user, "asset.gallery_added", { siteId: site.id, slotId: nextSlot.id, productionPath: nextSlot.currentPath, htmlPath: result.htmlPath }));
+        await writeStore(store);
+      }
+
+      const updatedConfig = await loadClientConfig(req.site.ownerUsername);
+      res.status(201).json({
+        site: site || req.site,
+        slot: nextSlot,
+        image: {
+          id: `asset-${nextSlot.id}`,
+          name: path.basename(nextSlot.currentPath),
+          slotId: nextSlot.id,
+          url: `${BASE_PATH}/api/sites/${req.site.id}/assets/${nextSlot.id}/content?v=${result.version}`,
+          source: "production",
+          productionPath: nextSlot.currentPath,
+        },
+        assets: await scanClientAssets(site || req.site, updatedConfig),
+        publish: result,
+      });
+    } catch (error) {
+      if (nextSlot?.currentPath) {
+        await fsp.rm(nextSlot.currentPath, { force: true }).catch(() => {});
+      }
+      res.status(error.statusCode || 500).json({ error: error.message || "Could not add gallery image" });
+    }
+  }
+);
+
 router.patch("/api/sites/:siteId", requireSiteAccess, requirePermission("canEditLinks"), async (req, res) => {
   const store = await readStore();
   const site = store.sites.find((item) => item.id === req.params.siteId);
@@ -711,6 +776,31 @@ async function loadClientConfig(username) {
   return null;
 }
 
+async function loadClientConfigDocument(username) {
+  const safeUsername = safeSegment(username);
+  const runtimePath = path.join(CLIENTS_DATA_DIR, safeUsername, "client.config.json");
+  const candidates = [
+    runtimePath,
+    path.join(CLIENTS_REPO_DIR, safeUsername, "client.config.json"),
+  ];
+  for (const candidate of candidates) {
+    if (!fs.existsSync(candidate)) continue;
+    const raw = await fsp.readFile(candidate, "utf8");
+    return {
+      config: JSON.parse(raw),
+      sourcePath: candidate,
+      savePath: runtimePath,
+    };
+  }
+  return null;
+}
+
+async function saveClientConfigDocument(document) {
+  await fsp.mkdir(path.dirname(document.savePath), { recursive: true });
+  await fsp.writeFile(document.savePath, `${JSON.stringify(document.config, null, 2)}\n`);
+  await fsp.chmod(document.savePath, 0o600).catch(() => {});
+}
+
 function normalizeClientConfig(config, configPath) {
   const username = normalizeUsername(config.username);
   const siteRoot = path.resolve(String(config.siteRoot || ""));
@@ -816,6 +906,121 @@ function findConfigSlot(config, slotId) {
 function findTextSlot(config, slotId) {
   const normalized = normalizeTextSlotId(slotId);
   return config.textSlots.find((slot) => slot.id === normalized) || null;
+}
+
+async function nextGallerySlotConfig(config, rawConfig) {
+  const gallerySlots = config.imageSlots
+    .filter((slot) => gallerySlotNumber(slot.id))
+    .sort((a, b) => gallerySlotNumber(a.id) - gallerySlotNumber(b.id));
+  if (!gallerySlots.length) {
+    const error = new Error("No existing gallery slot to extend");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const lastSlot = gallerySlots[gallerySlots.length - 1];
+  const lastSlotNumber = gallerySlotNumber(lastSlot.id);
+  const rawSlots = Array.isArray(rawConfig.imageSlots) ? rawConfig.imageSlots : [];
+  const existingIds = new Set(rawSlots.map((slot) => normalizeSlotId(slot.id)));
+  const existingPaths = new Set(config.imageSlots.map((slot) => slot.absolutePath));
+  const existingPublicPaths = new Set(config.imageSlots.map((slot) => slot.publicPath));
+
+  for (let offset = 1; offset <= 100; offset += 1) {
+    const nextNumber = lastSlotNumber + offset;
+    const id = `gallery_${nextNumber}`;
+    const currentPath = incrementTrailingPathNumber(lastSlot.absolutePath, offset);
+    const publicPath = incrementPublicPathNumber(lastSlot.publicPath, offset);
+    if (!currentPath || !publicPath || existingIds.has(id) || existingPaths.has(currentPath) || existingPublicPaths.has(publicPath)) continue;
+    if (await fileExists(currentPath)) continue;
+    if (!isPathInside(config.siteRoot, currentPath)) continue;
+    return {
+      id,
+      labelHe: `גלריה ${nextNumber}`,
+      required: false,
+      currentPath,
+      publicPath,
+    };
+  }
+
+  const error = new Error("Could not find a safe next gallery filename");
+  error.statusCode = 409;
+  throw error;
+}
+
+async function appendConfiguredGalleryImage(config, slot, uploadedPath) {
+  await fsp.mkdir(path.dirname(slot.currentPath), { recursive: true });
+  await fsp.copyFile(uploadedPath, slot.currentPath);
+  const version = Date.now();
+  const htmlPath = await insertGalleryFrame(config, slot, version);
+  return {
+    slotId: slot.id,
+    path: slot.currentPath,
+    publicPath: slot.publicPath,
+    htmlPath,
+    version,
+  };
+}
+
+async function insertGalleryFrame(config, slot, version) {
+  const gallerySlots = config.imageSlots
+    .filter((item) => gallerySlotNumber(item.id))
+    .sort((a, b) => gallerySlotNumber(a.id) - gallerySlotNumber(b.id));
+  const referenceSlots = [...gallerySlots].reverse();
+  const htmlFiles = await listHtmlFiles(config.siteRoot);
+  const nextNumber = gallerySlotNumber(slot.id);
+  const nextFrame = `\n    <div class="frame reveal"><img src="${escapeHtmlAttribute(slot.publicPath)}?v=${version}" alt="${escapeHtmlAttribute(galleryAltText(config, nextNumber))}" loading="lazy"></div>`;
+
+  for (const htmlPath of htmlFiles) {
+    const html = await fsp.readFile(htmlPath, "utf8");
+    for (const referenceSlot of referenceSlots) {
+      if (!referenceSlot.publicPath) continue;
+      const escapedReference = escapeRegExp(referenceSlot.publicPath);
+      const framePattern = new RegExp(`(<div\\s+class=["'][^"']*\\bframe\\b[^"']*["'][^>]*>\\s*<img\\s+[^>]*src=["']${escapedReference}(?:\\?v=\\d+)?["'][^>]*>\\s*<\\/div>)`, "g");
+      const matches = [...html.matchAll(framePattern)];
+      if (!matches.length) continue;
+      const match = matches[matches.length - 1];
+      const insertAt = match.index + match[0].length;
+      await backupConfiguredFile(htmlPath, "gallery-html");
+      await fsp.writeFile(htmlPath, `${html.slice(0, insertAt)}${nextFrame}${html.slice(insertAt)}`);
+      return htmlPath;
+    }
+  }
+
+  const error = new Error("Could not find the live gallery markup to update");
+  error.statusCode = 422;
+  throw error;
+}
+
+function gallerySlotNumber(slotId) {
+  const id = normalizeSlotId(slotId);
+  if (id === "gallery") return 1;
+  const match = id.match(/^gallery_(\d+)$/);
+  return match ? Number(match[1]) : 0;
+}
+
+function incrementTrailingPathNumber(filePath, offset) {
+  const parsed = path.parse(filePath);
+  const match = parsed.name.match(/^(.*?)(\d+)$/);
+  if (!match) return "";
+  return path.join(parsed.dir, `${match[1]}${Number(match[2]) + offset}${parsed.ext}`);
+}
+
+function incrementPublicPathNumber(publicPath, offset) {
+  const value = String(publicPath || "");
+  const slashIndex = value.lastIndexOf("/");
+  const dir = slashIndex >= 0 ? value.slice(0, slashIndex + 1) : "";
+  const fileName = slashIndex >= 0 ? value.slice(slashIndex + 1) : value;
+  const dotIndex = fileName.lastIndexOf(".");
+  const name = dotIndex >= 0 ? fileName.slice(0, dotIndex) : fileName;
+  const ext = dotIndex >= 0 ? fileName.slice(dotIndex) : "";
+  const match = name.match(/^(.*?)(\d+)$/);
+  if (!match) return "";
+  return `${dir}${match[1]}${Number(match[2]) + offset}${ext}`;
+}
+
+function galleryAltText(config, number) {
+  const websiteName = String(config.websiteName || config.displayName || "").trim();
+  return websiteName ? `${websiteName} - תמונת גלריה ${number}` : `תמונת גלריה ${number}`;
 }
 
 async function scanClientTextSlots(config) {
@@ -935,6 +1140,10 @@ function escapeHtmlContent(value) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+}
+
+function escapeHtmlAttribute(value) {
+  return escapeHtmlContent(value).replace(/"/g, "&quot;");
 }
 
 async function replaceConfiguredAsset(site, slot, uploadedPath, config = null) {

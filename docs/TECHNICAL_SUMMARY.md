@@ -103,6 +103,7 @@ Sites:
 - `GET /api/sites/:siteId/assets/:slotId/content`
 - `DELETE /api/sites/:siteId/assets/:slotId`
 - `POST /api/sites/:siteId/assets/:slotId/restore`
+- `POST /api/sites/:siteId/assets/gallery`
 - `GET /api/sites/:siteId/text`
 - `PATCH /api/sites/:siteId/text/:slotId`
 
@@ -121,6 +122,8 @@ The server checks persistent runtime configs first:
 The app never lets clients choose filesystem paths. It reads and replaces only paths listed in `client.config.json`, and only when the configured path is inside `siteRoot`.
 
 When a configured production site root exists, uploading to a mapped slot copies the upload to that production path and first backs up the previous file under `.manager-site-backups`.
+
+Gallery append uses `POST /api/sites/:siteId/assets/gallery`. The server infers the next gallery slot from existing allowlisted `gallery` / `gallery_N` slots, writes the uploaded file to the next numbered production path, appends that slot to the runtime `client.config.json`, and inserts a matching `<div class="frame ..."><img ...></div>` after the last known gallery frame in the live HTML. If the static gallery markup cannot be found safely, the request fails instead of creating a hidden image that does not appear on the public website.
 
 Text editing uses `textSlots` in the same config. Each slot points to an absolute HTML file path inside `siteRoot` and a `data-manager-text` marker. The server updates plain text only, requires exactly one matching marker, backs up the HTML file before writing, and rejects over-limit text.
 

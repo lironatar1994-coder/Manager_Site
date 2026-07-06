@@ -959,15 +959,36 @@ function showSectionEditor(sectionId) {
       showTextEditModal(button.dataset.editTextSlot);
     });
   });
+  const addGalleryButton = modal.querySelector("[data-add-gallery-image]");
+  const addGalleryInput = modal.querySelector("[data-add-gallery-file]");
+  if (addGalleryButton && addGalleryInput) {
+    addGalleryButton.addEventListener("click", () => addGalleryInput.click());
+    addGalleryInput.addEventListener("change", async () => {
+      const file = addGalleryInput.files?.[0];
+      if (!file) return;
+      const saved = await addGalleryImage(file);
+      if (saved) close();
+    });
+  }
   bindImageDragAndDrop();
 }
 
 function sectionImagePane(section, active) {
   return `
     <div class="section-editor-pane" data-section-pane="images" ${active ? "" : "hidden"}>
+      ${section.id === "gallery" && can("canUpload") ? galleryAddButton() : ""}
       <div class="section-item-list">
         ${section.imageSlots.map(sectionImageRow).join("")}
       </div>
+    </div>
+  `;
+}
+
+function galleryAddButton() {
+  return `
+    <div class="gallery-add-panel">
+      <button class="primary-button gallery-add-button" type="button" data-add-gallery-image><i data-lucide="image-plus"></i>הוספת תמונה לגלריה</button>
+      <input type="file" accept="image/*" data-add-gallery-file hidden />
     </div>
   `;
 }
@@ -1472,6 +1493,12 @@ function formatApiError(error) {
     "Source and target image slots are required": "חובה לבחור תמונת מקור ותמונת יעד",
     "Configured image slot not found": "אזור התמונה לא נמצא בהגדרות",
     "Production images must be reordered by slot": "תמונות אתר חי אפשר לסדר רק לפי אזורי תמונה",
+    "Client gallery is not configured": "הגלריה לא מוגדרת להוספת תמונות.",
+    "Live website folder is not available": "תיקיית האתר החי לא זמינה כרגע.",
+    "No existing gallery slot to extend": "אין גלריה קיימת שאפשר להרחיב.",
+    "Could not find a safe next gallery filename": "לא נמצא שם קובץ בטוח לתמונה החדשה.",
+    "Could not find the live gallery markup to update": "לא נמצא מקום בטוח להוספת התמונה באתר החי.",
+    "Could not add gallery image": "לא ניתן להוסיף תמונה לגלריה כרגע.",
     "Could not restore image backup": "לא ניתן לשחזר את גיבוי התמונה",
     "Request failed": "הבקשה נכשלה",
     "Network request failed": "לא ניתן להתחבר לשרת. בדקו חיבור ונסו שוב.",
@@ -1777,6 +1804,36 @@ async function uploadImageToSlot(slotId, file, name = "") {
     previewText: "התצוגה החיה רועננה בדפדפן",
   };
   toast("התמונה עודכנה והתצוגה רועננה", "success");
+  renderClient();
+  return true;
+}
+
+async function addGalleryImage(file) {
+  const validationError = validateImageFile(file);
+  if (validationError) {
+    toast(formatApiError(validationError), "error");
+    return false;
+  }
+  const form = new FormData();
+  form.set("image", file, file.name || "gallery-image.jpg");
+  form.set("name", file.name || "gallery-image.jpg");
+  await appendImageMetadata(form, file);
+  const response = await api(`/api/sites/${state.clientSite.id}/assets/gallery`, { method: "POST", form });
+  if (response?.error) {
+    toast(formatApiError(response.error), "error");
+    return false;
+  }
+  state.clientSite = response.site || state.clientSite;
+  state.clientAssets = { ...(state.clientAssets || {}), assets: response.assets || [] };
+  state.livePreviewVersion = Date.now();
+  state.lastProof = {
+    title: "התמונה נוספה לגלריה",
+    imageText: response.slot?.labelHe || "גלריה",
+    liveFileOk: true,
+    previewOk: true,
+    previewText: "התצוגה החיה רועננה בדפדפן",
+  };
+  toast("התמונה נוספה לגלריה", "success");
   renderClient();
   return true;
 }

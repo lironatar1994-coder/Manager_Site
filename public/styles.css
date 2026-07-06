@@ -3421,6 +3421,17 @@ button.review-thumb:hover {
   gap: 10px;
 }
 
+.gallery-add-panel {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.gallery-add-button {
+  width: 100%;
+  min-height: 52px;
+}
+
 .section-edit-row {
   display: grid;
   grid-template-columns: 68px minmax(0, 1fr) 28px;
