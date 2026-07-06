@@ -337,8 +337,7 @@ function renderClient() {
   const slots = displaySlots(site);
   const completedSlots = slots.filter((slot) => imagesForSlot(site, slot.id).length).length;
   const totalSlots = slots.length;
-  const latestImage = site.images[0];
-  const latestActivity = latestImage ? `${latestImage.name} עודכנה על ידי ${latestImage.changedBy}` : "בחרו אזור בתצוגה או ברשימה והעלו תמונה ראשונה.";
+  const sections = clientEditorSections(site);
   const isAdminPreview = state.me.role === "admin";
   const clientName = isAdminPreview ? state.clientUsername : state.me.displayName;
   const visibleWebsiteUrl = state.clientAssets?.client?.publicUrl || site.websiteUrl;
@@ -402,16 +401,13 @@ function renderClient() {
       <section class="client-overview client-task-overview">
         <article class="progress-panel client-control-panel">
           <div class="panel-title">
-            <h2>תמונות להחלפה</h2>
-            <span class="quiet">לחיצה על תמונה פותחת החלפה, מחיקה וחיתוך</span>
+            <span>
+              <p class="eyebrow">עריכת האתר</p>
+              <h2>בחרו אזור</h2>
+            </span>
+            <span class="quiet">כל שינוי נפתח בחלון נקי עם תצוגה לפני אישור.</span>
           </div>
-          <div class="asset-queue">${slots.map((slot) => assetRailItem(site, slot)).join("")}</div>
-          ${renderTextManager()}
-          <div class="confidence-note">
-            <i data-lucide="${latestImage ? "history" : "sparkles"}"></i>
-            <span>${escapeHtml(latestActivity)}</span>
-          </div>
-          ${renderUpdateProof(visibleWebsiteUrl)}
+          <div class="section-editor-grid">${sections.map(sectionCard).join("")}</div>
           ${
             isAdminPreview
               ? `<div class="panel-title compact-title">
@@ -441,8 +437,11 @@ function renderClient() {
     shareClientWebsite(event.currentTarget.dataset.shareWebsite, site.name || clientName);
   });
   bindLivePreview();
+  document.querySelectorAll("[data-edit-section]").forEach((button) => {
+    button.addEventListener("click", () => showSectionEditor(button.dataset.editSection));
+  });
   // The previous slot grid and standalone upload form are intentionally not rendered.
-  // Image actions now live in the drag/drop rail to keep one clear workflow.
+  // Image actions now live inside the section editor to keep one clear workflow.
   document.querySelectorAll("[data-image-action-slot]").forEach((button) => {
     button.addEventListener("click", () => {
       if (button.dataset.justDragged === "true") return;
@@ -743,6 +742,251 @@ function textSlotRow(slot) {
       <i data-lucide="${slot.editable ? "pen-line" : "lock"}"></i>
     </button>
   `;
+}
+
+function clientEditorSections(site) {
+  const sections = [
+    {
+      id: "hero",
+      title: "פתיחה",
+      icon: "sparkles",
+      description: "התמונה הראשונה שמקבלת את פני המבקרים.",
+      imageSlots: [],
+      textSlots: [],
+    },
+    {
+      id: "gallery",
+      title: "גלריה",
+      icon: "images",
+      description: "התמונות שמציגות את העבודה והאווירה באתר.",
+      imageSlots: [],
+      textSlots: [],
+    },
+    {
+      id: "before_after",
+      title: "לפני ואחרי",
+      icon: "columns-2",
+      description: "תמונות ההשוואה שמופיעות באזור לפני ואחרי.",
+      imageSlots: [],
+      textSlots: [],
+    },
+    {
+      id: "about",
+      title: "אודות",
+      icon: "user-round",
+      description: "הטקסט והתמונה שמספרים מי עומדת מאחורי האתר.",
+      imageSlots: [],
+      textSlots: [],
+    },
+    {
+      id: "faq",
+      title: "שאלות נפוצות",
+      icon: "message-circle-question",
+      description: "שאלות ותשובות שמאפשרות ללקוחות להבין מהר.",
+      imageSlots: [],
+      textSlots: [],
+    },
+  ];
+  const byId = new Map(sections.map((section) => [section.id, section]));
+
+  displaySlots(site).forEach((slot) => {
+    const section = byId.get(sectionIdForImageSlot(slot.id));
+    if (section) section.imageSlots.push(slot);
+  });
+
+  (state.clientText?.textSlots || []).forEach((slot) => {
+    const section = byId.get(sectionIdForTextSlot(slot));
+    if (section) section.textSlots.push(slot);
+  });
+
+  return sections
+    .map((section) => enrichClientSection(site, section))
+    .filter((section) => section.imageSlots.length || section.textSlots.length);
+}
+
+function enrichClientSection(site, section) {
+  const imageSlots = section.imageSlots.map((slot) => ({
+    ...slot,
+    images: imagesForSlot(site, slot.id),
+  }));
+  const primaryImage = imageSlots.find((slot) => slot.images.length)?.images[0] || null;
+  const firstText = section.textSlots.find((slot) => String(slot.value || "").trim());
+  return {
+    ...section,
+    imageSlots,
+    primaryImage,
+    previewText: firstText ? trimText(firstText.value, 92) : section.description,
+    ready: Boolean(primaryImage || firstText),
+  };
+}
+
+function sectionIdForImageSlot(slotId = "") {
+  if (slotId === "hero") return "hero";
+  if (slotId === "about") return "about";
+  if (slotId.startsWith("before_after")) return "before_after";
+  if (slotId.startsWith("gallery")) return "gallery";
+  return "gallery";
+}
+
+function sectionIdForTextSlot(slot) {
+  const group = String(slot.group || "").toLowerCase();
+  const id = String(slot.id || "").toLowerCase();
+  if (group === "about" || id.startsWith("about.")) return "about";
+  if (group === "faq" || id.startsWith("faq.")) return "faq";
+  return "about";
+}
+
+function sectionCard(section) {
+  return `
+    <button class="section-editor-card ${section.ready ? "ready" : "empty"}" type="button" data-edit-section="${escapeAttr(section.id)}">
+      <span class="section-card-media">
+        ${
+          section.primaryImage
+            ? `<img src="${escapeAttr(section.primaryImage.url)}" alt="${escapeAttr(section.primaryImage.name)}" />`
+            : `<i data-lucide="${escapeAttr(section.icon)}"></i>`
+        }
+      </span>
+      <span class="section-card-copy">
+        <strong>${escapeHtml(section.title)}</strong>
+        <small>${escapeHtml(section.previewText)}</small>
+      </span>
+      <span class="section-card-action"><i data-lucide="pen-line"></i>עריכה</span>
+    </button>
+  `;
+}
+
+function showSectionEditor(sectionId) {
+  const site = state.clientSite;
+  const section = clientEditorSections(site).find((item) => item.id === sectionId);
+  if (!section) return;
+  const hasImages = section.imageSlots.length > 0;
+  const hasText = section.textSlots.length > 0;
+  const defaultPane = hasImages ? "images" : "text";
+  const modal = document.createElement("div");
+  modal.className = "section-editor-backdrop";
+  modal.innerHTML = `
+    <div class="section-editor-modal" role="dialog" aria-modal="true" aria-label="${escapeAttr(section.title)}" dir="rtl" lang="he">
+      <header class="section-editor-header">
+        <span class="section-editor-kicker"><i data-lucide="${escapeAttr(section.icon)}"></i>${escapeHtml(section.title)}</span>
+        <button class="icon-action modal-close" type="button" aria-label="סגירה"><i data-lucide="x"></i></button>
+      </header>
+      <div class="section-editor-layout">
+        <button class="section-editor-preview ${section.primaryImage ? "filled" : "empty"}" type="button" data-section-preview ${section.primaryImage ? "" : "disabled"}>
+          ${
+            section.primaryImage
+              ? `<img src="${escapeAttr(section.primaryImage.url)}" alt="${escapeAttr(section.primaryImage.name)}" />`
+              : `<i data-lucide="${escapeAttr(section.icon)}"></i>`
+          }
+        </button>
+        <div class="section-editor-content">
+          <h2>${escapeHtml(section.title)}</h2>
+          <p>${escapeHtml(section.description)}</p>
+          ${
+            hasImages && hasText
+              ? `<div class="section-editor-tabs" role="tablist">
+                  <button class="active" type="button" data-section-tab="images">תמונות</button>
+                  <button type="button" data-section-tab="text">טקסט</button>
+                </div>`
+              : ""
+          }
+          ${hasImages ? sectionImagePane(section, defaultPane === "images") : ""}
+          ${hasText ? sectionTextPane(section, defaultPane === "text") : ""}
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  icons();
+
+  const close = () => modal.remove();
+  modal.querySelector(".modal-close").addEventListener("click", close);
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) close();
+  });
+  modal.querySelector("[data-section-preview]")?.addEventListener("click", () => {
+    if (section.primaryImage) showFullImagePreview(section.primaryImage.url, section.primaryImage.name || section.title);
+  });
+  modal.querySelectorAll("[data-section-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      modal.querySelectorAll("[data-section-tab]").forEach((item) => item.classList.toggle("active", item === button));
+      modal.querySelectorAll("[data-section-pane]").forEach((pane) => {
+        pane.hidden = pane.dataset.sectionPane !== button.dataset.sectionTab;
+      });
+    });
+  });
+  modal.querySelectorAll("[data-image-action-slot]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (button.dataset.justDragged === "true") return;
+      close();
+      showImageActionModal(button.dataset.imageActionSlot);
+    });
+  });
+  modal.querySelectorAll("[data-edit-text-slot]").forEach((button) => {
+    button.addEventListener("click", () => {
+      close();
+      showTextEditModal(button.dataset.editTextSlot);
+    });
+  });
+  bindImageDragAndDrop();
+}
+
+function sectionImagePane(section, active) {
+  return `
+    <div class="section-editor-pane" data-section-pane="images" ${active ? "" : "hidden"}>
+      <div class="section-item-list">
+        ${section.imageSlots.map(sectionImageRow).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function sectionImageRow(slot) {
+  const image = slot.images[0];
+  return `
+    <button class="section-edit-row image-row ${image ? "filled" : "empty"}" type="button" data-image-action-slot="${escapeAttr(slot.id)}" data-drop-slot="${escapeAttr(slot.id)}" ${
+      image ? draggableAttrs(image) : ""
+    } ${can("canUpload") ? "" : "disabled"}>
+      <span class="section-row-thumb">
+        ${image ? `<img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" />` : `<i data-lucide="image-plus"></i>`}
+      </span>
+      <span>
+        <strong>${escapeHtml(slotDisplayLabel(slot))}</strong>
+        <small>${image ? "לחצו לעריכה, החלפה או חיתוך" : "לחצו כדי להוסיף תמונה"}</small>
+      </span>
+      <i data-lucide="${image ? "settings-2" : "plus"}"></i>
+    </button>
+  `;
+}
+
+function sectionTextPane(section, active) {
+  return `
+    <div class="section-editor-pane" data-section-pane="text" ${active ? "" : "hidden"}>
+      <div class="section-item-list">
+        ${section.textSlots.map(sectionTextRow).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function sectionTextRow(slot) {
+  const disabled = !slot.editable || !can("canEditText");
+  const preview = slot.value || "לחצו כדי לערוך";
+  return `
+    <button class="section-edit-row text-row ${slot.editable ? "ready" : "blocked"}" type="button" data-edit-text-slot="${escapeAttr(slot.id)}" ${disabled ? "disabled" : ""}>
+      <span class="section-row-thumb text-thumb"><i data-lucide="type"></i></span>
+      <span>
+        <strong>${escapeHtml(slot.label || slot.id)}</strong>
+        <small>${escapeHtml(trimText(preview, 84))}</small>
+      </span>
+      <i data-lucide="${slot.editable ? "pen-line" : "lock"}"></i>
+    </button>
+  `;
+}
+
+function trimText(value, length = 90) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (text.length <= length) return text;
+  return `${text.slice(0, length - 1).trim()}…`;
 }
 
 function draggableAttrs(image) {
