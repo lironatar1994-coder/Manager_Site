@@ -125,6 +125,8 @@ When a configured production site root exists, uploading to a mapped slot copies
 
 Gallery append uses `POST /api/sites/:siteId/assets/gallery`. The server infers the next gallery slot from existing allowlisted `gallery` / `gallery_N` slots, writes the uploaded file to the next numbered production path, appends that slot to the runtime `client.config.json`, and inserts a matching `<div class="frame ..."><img ...></div>` after the last known gallery frame in the live HTML. If the static gallery markup cannot be found safely, the request fails instead of creating a hidden image that does not appear on the public website.
 
+Deleting a gallery asset also removes its matching live gallery frame from HTML before deleting the image file. Optional `gallery_N` slots are removed from the runtime config so deleted gallery images do not remain as empty placeholders.
+
 Text editing uses `textSlots` in the same config. Each slot points to an absolute HTML file path inside `siteRoot` and a `data-manager-text` marker. The server updates plain text only, requires exactly one matching marker, backs up the HTML file before writing, and rejects over-limit text.
 
 After copying a production asset, the server attempts to refresh matching `.html` references under the configured `siteRoot`: any exact `publicPath` reference, with or without an existing `?v=<digits>` query, is rewritten to `publicPath?v=<timestamp>`. This prevents stale browser/Nginx cache on public static websites.

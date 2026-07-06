@@ -43,6 +43,7 @@ const state = {
   adminReviewFilter: "all",
   adminAuditFilter: "all",
   lastProof: null,
+  sectionNotice: null,
   livePreviewVersion: Date.now(),
 };
 
@@ -966,8 +967,17 @@ function showSectionEditor(sectionId) {
     addGalleryInput.addEventListener("change", async () => {
       const file = addGalleryInput.files?.[0];
       if (!file) return;
-      const saved = await addGalleryImage(file);
+      addGalleryButton.disabled = true;
+      addGalleryButton.innerHTML = `<i data-lucide="loader-circle"></i>מוסיפים לגלריה`;
+      icons();
+      const saved = await addGalleryImage(file, { reopenGallery: true });
       if (saved) close();
+      else {
+        addGalleryButton.disabled = false;
+        addGalleryButton.innerHTML = `<i data-lucide="image-plus"></i>הוספת תמונה לגלריה`;
+        addGalleryInput.value = "";
+        icons();
+      }
     });
   }
   bindImageDragAndDrop();
@@ -976,10 +986,22 @@ function showSectionEditor(sectionId) {
 function sectionImagePane(section, active) {
   return `
     <div class="section-editor-pane" data-section-pane="images" ${active ? "" : "hidden"}>
+      ${sectionNotice(section.id)}
       ${section.id === "gallery" && can("canUpload") ? galleryAddButton() : ""}
       <div class="section-item-list">
         ${section.imageSlots.map(sectionImageRow).join("")}
       </div>
+    </div>
+  `;
+}
+
+function sectionNotice(sectionId) {
+  const notice = state.sectionNotice;
+  if (!notice || notice.sectionId !== sectionId) return "";
+  return `
+    <div class="section-notice ${escapeAttr(notice.type || "success")}">
+      <i data-lucide="${notice.type === "error" ? "triangle-alert" : "check-circle-2"}"></i>
+      <span>${escapeHtml(notice.message)}</span>
     </div>
   `;
 }
@@ -1499,6 +1521,7 @@ function formatApiError(error) {
     "Could not find a safe next gallery filename": "לא נמצא שם קובץ בטוח לתמונה החדשה.",
     "Could not find the live gallery markup to update": "לא נמצא מקום בטוח להוספת התמונה באתר החי.",
     "Could not add gallery image": "לא ניתן להוסיף תמונה לגלריה כרגע.",
+    "Could not remove image from live gallery": "לא ניתן להסיר את התמונה מהגלריה באתר החי.",
     "Could not restore image backup": "לא ניתן לשחזר את גיבוי התמונה",
     "Request failed": "הבקשה נכשלה",
     "Network request failed": "לא ניתן להתחבר לשרת. בדקו חיבור ונסו שוב.",
@@ -1808,7 +1831,7 @@ async function uploadImageToSlot(slotId, file, name = "") {
   return true;
 }
 
-async function addGalleryImage(file) {
+async function addGalleryImage(file, options = {}) {
   const validationError = validateImageFile(file);
   if (validationError) {
     toast(formatApiError(validationError), "error");
@@ -1826,6 +1849,11 @@ async function addGalleryImage(file) {
   state.clientSite = response.site || state.clientSite;
   state.clientAssets = { ...(state.clientAssets || {}), assets: response.assets || [] };
   state.livePreviewVersion = Date.now();
+  state.sectionNotice = {
+    sectionId: "gallery",
+    type: "success",
+    message: "התמונה נוספה לגלריה ומופיעה באתר",
+  };
   state.lastProof = {
     title: "התמונה נוספה לגלריה",
     imageText: response.slot?.labelHe || "גלריה",
@@ -1833,8 +1861,11 @@ async function addGalleryImage(file) {
     previewOk: true,
     previewText: "התצוגה החיה רועננה בדפדפן",
   };
-  toast("התמונה נוספה לגלריה", "success");
+  toast("התמונה נוספה לגלריה ומופיעה באתר", "success");
   renderClient();
+  if (options.reopenGallery) {
+    window.setTimeout(() => showSectionEditor("gallery"), 0);
+  }
   return true;
 }
 

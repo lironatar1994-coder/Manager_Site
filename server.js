@@ -282,22 +282,43 @@ router.get("/api/sites/:siteId/assets/:slotId/content", requireSiteAccess, async
 });
 
 router.delete("/api/sites/:siteId/assets/:slotId", requireSiteAccess, requirePermission("canDelete"), async (req, res) => {
-  const config = await loadClientConfig(req.site.ownerUsername);
+  const configDoc = await loadClientConfigDocument(req.site.ownerUsername);
+  const config = configDoc ? normalizeClientConfig(configDoc.config, configDoc.savePath) : null;
   const slot = config ? findConfigSlot(config, req.params.slotId) : null;
   if (!config || !slot?.absolutePath) {
     res.status(404).json({ error: "Asset slot not configured" });
     return;
   }
-  const backupPath = await removeConfiguredAsset(slot);
+
+  let backupPath = null;
+  let removedFramePath = null;
+  try {
+    if (gallerySlotNumber(slot.id)) {
+      removedFramePath = await removeGalleryFrame(config, slot);
+    }
+    if (await fileExists(slot.absolutePath)) {
+      backupPath = await removeConfiguredAsset(slot);
+    }
+    if (gallerySlotNumber(slot.id) > 1 && !slot.required && configDoc) {
+      const rawSlots = Array.isArray(configDoc.config.imageSlots) ? configDoc.config.imageSlots : [];
+      configDoc.config.imageSlots = rawSlots.filter((item) => normalizeSlotId(item.id) !== slot.id);
+      await saveClientConfigDocument(configDoc);
+    }
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ error: error.message || "Could not remove image from live gallery" });
+    return;
+  }
+
   const store = await readStore();
   const site = store.sites.find((item) => item.id === req.params.siteId);
   if (site) {
     site.images = (site.images || []).filter((image) => !(image.slotId === slot.id && image.source === "production"));
     site.updatedAt = new Date().toISOString();
-    store.audit.push(audit(req.user, "asset.deleted", { siteId: site.id, slotId: slot.id, productionPath: slot.absolutePath, backupPath }));
+    store.audit.push(audit(req.user, "asset.deleted", { siteId: site.id, slotId: slot.id, productionPath: slot.absolutePath, backupPath, removedFramePath }));
     await writeStore(store);
   }
-  res.json({ site, assets: await scanClientAssets(site || req.site, config) });
+  const updatedConfig = await loadClientConfig(req.site.ownerUsername);
+  res.json({ site, assets: updatedConfig ? await scanClientAssets(site || req.site, updatedConfig) : [] });
 });
 
 router.post("/api/sites/:siteId/assets/:slotId/restore", requireSiteAccess, requirePermission("canUpload"), async (req, res) => {
@@ -989,6 +1010,24 @@ async function insertGalleryFrame(config, slot, version) {
   const error = new Error("Could not find the live gallery markup to update");
   error.statusCode = 422;
   throw error;
+}
+
+async function removeGalleryFrame(config, slot) {
+  if (!slot.publicPath) return null;
+  const htmlFiles = await listHtmlFiles(config.siteRoot);
+  const escapedReference = escapeRegExp(slot.publicPath);
+  const framePattern = new RegExp(`\\n?\\s*(<div\\s+class=["'][^"']*\\bframe\\b[^"']*["'][^>]*>\\s*<img\\s+[^>]*src=["']${escapedReference}(?:\\?v=\\d+)?["'][^>]*>\\s*<\\/div>)`, "g");
+
+  for (const htmlPath of htmlFiles) {
+    const html = await fsp.readFile(htmlPath, "utf8");
+    const matches = [...html.matchAll(framePattern)];
+    if (!matches.length) continue;
+    await backupConfiguredFile(htmlPath, "gallery-remove-html");
+    await fsp.writeFile(htmlPath, html.replace(framePattern, ""));
+    return htmlPath;
+  }
+
+  return null;
 }
 
 function gallerySlotNumber(slotId) {
