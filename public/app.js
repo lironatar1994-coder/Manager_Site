@@ -1878,11 +1878,19 @@ async function deleteImage(imageId) {
 }
 
 async function deleteAsset(slotId) {
+  const isGalleryAsset = sectionIdForImageSlot(slotId) === "gallery";
   const response = await api(`/api/sites/${state.clientSite.id}/assets/${slotId}`, { method: "DELETE" });
   if (response?.error) return toast(formatApiError(response.error), "error");
   state.clientSite = response.site || state.clientSite;
   state.clientAssets = { ...(state.clientAssets || {}), assets: response.assets || [] };
   state.livePreviewVersion = Date.now();
+  state.sectionNotice = isGalleryAsset
+    ? {
+        sectionId: "gallery",
+        type: "success",
+        message: "התמונה הוסרה מהגלריה באתר",
+      }
+    : null;
   state.lastProof = {
     title: "התמונה הוסרה",
     imageText: "התמונה הוסרה מהאתר",
@@ -1892,6 +1900,9 @@ async function deleteAsset(slotId) {
   };
   toast("התמונה הוסרה מקובץ האתר", "success");
   renderClient();
+  if (isGalleryAsset) {
+    window.setTimeout(() => showSectionEditor("gallery"), 0);
+  }
 }
 
 async function restoreAsset(slotId) {
