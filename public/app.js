@@ -839,13 +839,7 @@ function sectionIdForTextSlot(slot) {
 function sectionCard(section) {
   return `
     <button class="section-editor-card ${section.ready ? "ready" : "empty"}" type="button" data-edit-section="${escapeAttr(section.id)}">
-      <span class="section-card-media">
-        ${
-          section.primaryImage
-            ? `<img src="${escapeAttr(section.primaryImage.url)}" alt="${escapeAttr(section.primaryImage.name)}" />`
-            : `<i data-lucide="${escapeAttr(section.icon)}"></i>`
-        }
-      </span>
+      ${sectionCardMedia(section)}
       <span class="section-card-copy">
         <strong>${escapeHtml(section.title)}</strong>
         <small>${escapeHtml(section.previewText)}</small>
@@ -853,6 +847,44 @@ function sectionCard(section) {
       <span class="section-card-action"><i data-lucide="pen-line"></i>עריכה</span>
     </button>
   `;
+}
+
+function sectionCardMedia(section) {
+  const images = section.imageSlots.flatMap((slot) => slot.images.slice(0, 1));
+  if (section.id === "gallery" && images.length) {
+    return `
+      <span class="section-card-media section-card-collage gallery-collage">
+        ${collageCells(images, 4, section.icon)}
+      </span>
+    `;
+  }
+  if (section.id === "before_after" && images.length) {
+    return `
+      <span class="section-card-media section-card-collage before-after-collage">
+        ${collageCells(images, 2, section.icon)}
+      </span>
+    `;
+  }
+  return `
+    <span class="section-card-media">
+      ${
+        section.primaryImage
+          ? `<img src="${escapeAttr(section.primaryImage.url)}" alt="${escapeAttr(section.primaryImage.name)}" />`
+          : `<i data-lucide="${escapeAttr(section.icon)}"></i>`
+      }
+    </span>
+  `;
+}
+
+function collageCells(images, count, fallbackIcon) {
+  return Array.from({ length: count }, (_, index) => {
+    const image = images[index];
+    return `
+      <span class="section-card-tile ${image ? "filled" : "empty"}">
+        ${image ? `<img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" />` : `<i data-lucide="${escapeAttr(fallbackIcon)}"></i>`}
+      </span>
+    `;
+  }).join("");
 }
 
 function showSectionEditor(sectionId) {
