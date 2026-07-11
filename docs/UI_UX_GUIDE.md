@@ -53,10 +53,10 @@ Most clients will use phones. Keep mobile flows fast:
 
 The current mobile order for clients is:
 
-1. hero-style client command section with live desktop/mobile preview
-2. site link edit and primary actions
-3. drag/drop image rail with task-style image cards
-4. image action modal for replace, delete, and crop
+1. compact site header with open, share, and site-link actions
+2. live desktop/mobile preview as the dominant first-screen element
+3. persistent `עריכת האתר` bottom drawer with a visual section contact sheet
+4. full-screen section editor and tap-first image actions for replace, crop, restore, and delete
 
 ## Client Workflow
 
@@ -70,7 +70,7 @@ The client should immediately understand:
 
 Do not show internal review/status/approval language in the first client-facing section. Admin-only status controls may exist for admin preview, but the normal client experience should read like a simple website image manager.
 
-The first client section should be visual before explanatory. Keep copy short and make the live website preview the dominant element; avoid long paragraphs, internal process language, or empty dashboard metrics.
+The first client section should be visual before explanatory. Keep copy short and make the live website preview the dominant element; avoid long paragraphs, internal process language, or empty dashboard metrics. On mobile, the editing drawer should remain one tap away without pushing the preview out of view.
 
 Use explicit labels. Do not hide core actions behind unclear icons.
 

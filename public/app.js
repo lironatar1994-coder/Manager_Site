@@ -44,6 +44,8 @@ const state = {
   adminAuditFilter: "all",
   lastProof: null,
   sectionNotice: null,
+  clientDrawerOpen: false,
+  clientPreviewInitialized: false,
   livePreviewVersion: Date.now(),
 };
 
@@ -335,9 +337,10 @@ function renderClient() {
   setDocumentLocale("he", "rtl");
   const site = state.clientSite;
   if (!site) return renderForbidden();
-  const slots = displaySlots(site);
-  const completedSlots = slots.filter((slot) => imagesForSlot(site, slot.id).length).length;
-  const totalSlots = slots.length;
+  if (!state.clientPreviewInitialized) {
+    state.previewMode = window.matchMedia("(max-width: 760px)").matches ? "mobile" : "desktop";
+    state.clientPreviewInitialized = true;
+  }
   const sections = clientEditorSections(site);
   const isAdminPreview = state.me.role === "admin";
   const clientName = isAdminPreview ? state.clientUsername : state.me.displayName;
@@ -345,41 +348,42 @@ function renderClient() {
   app.className = `app-view client-mode client-rtl ${state.me.role === "admin" ? "admin-preview" : ""}`;
   app.innerHTML = `
     ${shell("client")}
-    <main class="workspace client-workspace" dir="rtl" lang="he">
+    <main class="workspace client-workspace client-studio" dir="rtl" lang="he">
       ${
         isAdminPreview
           ? `<section class="preview-banner"><i data-lucide="eye"></i><span>תצוגת מנהל עבור ${escapeHtml(state.clientUsername)}</span><a href="${href("/admin")}">חזרה לניהול</a></section>`
           : ""
       }
-
-      <section class="client-hero-page">
-        <div class="client-hero-copy">
-          <p class="eyebrow">${escapeHtml(clientName)}</p>
-          <h1>ניהול תמונות האתר</h1>
-          <p class="client-hero-subtitle">כל התמונות והטקסטים שאפשר לעדכן באתר, במקום אחד נקי.</p>
-          <div class="hero-actions">
-            <a class="primary-button" href="${escapeAttr(visibleWebsiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>פתיחה</a>
-            <button class="ghost-button" type="button" data-share-website="${escapeAttr(visibleWebsiteUrl)}"><i data-lucide="share-2"></i>שיתוף</button>
-            <button class="ghost-button icon-only" type="button" data-refresh-preview aria-label="רענון תצוגה" title="רענון תצוגה"><i data-lucide="refresh-cw"></i></button>
-          </div>
-          <details class="hero-link-details">
-            <summary><i data-lucide="link"></i><span>קישור האתר</span><bdi>${escapeHtml(shortUrlLabel(visibleWebsiteUrl))}</bdi></summary>
-            <form id="siteLinkForm" class="site-link-form hero-link-form">
-              <label>כתובת האתר<input name="websiteUrl" value="${escapeAttr(visibleWebsiteUrl)}" ${can("canEditLinks") ? "" : "disabled"} /></label>
-              <button class="ghost-button" type="submit" ${can("canEditLinks") ? "" : "disabled"}><i data-lucide="${can("canEditLinks") ? "save" : "lock"}"></i>${can("canEditLinks") ? "שמירה" : "נעול"}</button>
-            </form>
+      <header class="client-studio-header">
+        <div class="studio-identity">
+          <span class="studio-kicker">האתר שלך</span>
+          <h1>${escapeHtml(clientName)}</h1>
+        </div>
+        <div class="studio-actions">
+          <a class="studio-action studio-open" href="${escapeAttr(visibleWebsiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i><span>פתיחת האתר</span></a>
+          <button class="studio-action" type="button" data-share-website="${escapeAttr(visibleWebsiteUrl)}"><i data-lucide="share-2"></i><span>שיתוף</span></button>
+          <details class="studio-site-menu">
+            <summary aria-label="אפשרויות אתר"><i data-lucide="ellipsis"></i></summary>
+            <div class="studio-site-menu-panel">
+              <bdi>${escapeHtml(shortUrlLabel(visibleWebsiteUrl))}</bdi>
+              <form id="siteLinkForm" class="site-link-form studio-link-form">
+                <label>קישור האתר<input name="websiteUrl" value="${escapeAttr(visibleWebsiteUrl)}" dir="ltr" ${can("canEditLinks") ? "" : "disabled"} /></label>
+                <button class="ghost-button" type="submit" ${can("canEditLinks") ? "" : "disabled"}><i data-lucide="${can("canEditLinks") ? "save" : "lock"}"></i>שמירה</button>
+              </form>
+            </div>
           </details>
         </div>
+      </header>
 
-        <article class="website-preview managed-preview hero-live-preview" data-preview-mode="${state.previewMode}">
-          <div class="preview-toolbar">
-            <div>
-              <h2>האתר עכשיו</h2>
-            </div>
+      <section class="client-studio-layout">
+        <article class="website-preview managed-preview studio-preview" data-preview-mode="${state.previewMode}">
+          <div class="preview-toolbar studio-preview-toolbar">
+            <div class="studio-preview-title"><span>כך האתר נראה</span></div>
             <div class="preview-toggle" role="tablist" aria-label="בחירת תצוגה">
               <button class="${state.previewMode === "desktop" ? "active" : ""}" type="button" data-preview-mode="desktop"><i data-lucide="monitor"></i>מחשב</button>
               <button class="${state.previewMode === "mobile" ? "active" : ""}" type="button" data-preview-mode="mobile"><i data-lucide="smartphone"></i>נייד</button>
             </div>
+            <button class="studio-refresh" type="button" data-refresh-preview aria-label="רענון תצוגה" title="רענון תצוגה"><i data-lucide="refresh-cw"></i></button>
           </div>
           <div class="preview-device">
             <div class="browser-bar"><span></span><span></span><span></span><p>${escapeHtml(visibleWebsiteUrl)}</p></div>
@@ -387,8 +391,8 @@ function renderClient() {
               <iframe src="${escapeAttr(clientLivePreviewUrl(visibleWebsiteUrl))}" title="תצוגת האתר החי" loading="lazy" data-live-preview></iframe>
               <div class="preview-fallback" data-live-preview-fallback hidden>
                 <i data-lucide="panel-top-open"></i>
-                <strong>התצוגה החיה לא זמינה כרגע</strong>
-                <span>אפשר לפתוח את האתר בחלון חדש ולהמשיך לנהל את התמונות כאן.</span>
+                <strong>לא ניתן להציג את האתר כאן</strong>
+                <span>אפשר לפתוח אותו בחלון חדש ולהמשיך לערוך כאן.</span>
                 <div>
                   <a class="primary-button" href="${escapeAttr(visibleWebsiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>פתיחת האתר</a>
                   <button class="ghost-button" type="button" data-refresh-preview-inline><i data-lucide="refresh-cw"></i>ניסיון נוסף</button>
@@ -397,33 +401,17 @@ function renderClient() {
             </div>
           </div>
         </article>
-      </section>
-
-      <section class="client-overview client-task-overview">
-        <article class="progress-panel client-control-panel">
-          <div class="panel-title">
-            <span>
-              <p class="eyebrow">עריכת האתר</p>
-              <h2>בחרו אזור</h2>
-            </span>
-            <span class="quiet">כל שינוי נפתח בחלון נקי עם תצוגה לפני אישור.</span>
+        <aside class="client-edit-drawer ${state.clientDrawerOpen ? "open" : ""}">
+          <button class="client-drawer-handle" type="button" data-toggle-client-drawer aria-expanded="${state.clientDrawerOpen}">
+            <span class="drawer-grip" aria-hidden="true"></span>
+            <span><small>עריכת האתר</small><strong>בחירת אזור</strong></span>
+            <i data-lucide="chevron-up"></i>
+          </button>
+          <div class="client-drawer-body">
+            <div class="client-drawer-heading"><span>${sections.length} אזורים</span><p>בחירה באזור פותחת עריכה ממוקדת.</p></div>
+            <div class="section-editor-grid studio-section-grid">${sections.map(sectionCard).join("")}</div>
           </div>
-          <div class="section-editor-grid">${sections.map(sectionCard).join("")}</div>
-          ${
-            isAdminPreview
-              ? `<div class="panel-title compact-title">
-                  <h2>סטטוס מנהל</h2>
-                  <span class="quiet">${completedSlots}/${totalSlots} אזורים מרכזיים מוכנים</span>
-                </div>
-                ${statusTimeline(site.status)}
-                <div class="admin-status-actions">
-                  <button class="ghost-button small" type="button" data-admin-status="draft" data-site-id="${site.id}">טיוטה</button>
-                  <button class="ghost-button small" type="button" data-admin-status="published" data-site-id="${site.id}">פורסם</button>
-                  <button class="ghost-button small" type="button" data-admin-status="needs_attention" data-site-id="${site.id}">דורש טיפול</button>
-                </div>`
-              : ""
-          }
-        </article>
+        </aside>
       </section>
     </main>
   `;
@@ -434,6 +422,10 @@ function renderClient() {
   });
   document.querySelector("[data-refresh-preview]")?.addEventListener("click", refreshSitePreview);
   document.querySelector("[data-refresh-preview-inline]")?.addEventListener("click", refreshSitePreview);
+  document.querySelector("[data-toggle-client-drawer]")?.addEventListener("click", () => {
+    state.clientDrawerOpen = !state.clientDrawerOpen;
+    renderClient();
+  });
   document.querySelector("[data-share-website]")?.addEventListener("click", (event) => {
     shareClientWebsite(event.currentTarget.dataset.shareWebsite, site.name || clientName);
   });
@@ -838,14 +830,17 @@ function sectionIdForTextSlot(slot) {
 }
 
 function sectionCard(section) {
+  const imageCount = section.imageSlots.reduce((total, slot) => total + slot.images.length, 0);
+  const textCount = section.textSlots.filter((slot) => String(slot.value || "").trim()).length;
+  const contentLabel = imageCount ? `${imageCount} ${imageCount === 1 ? "תמונה" : "תמונות"}` : textCount ? `${textCount} טקסטים` : "להתחלת עריכה";
   return `
     <button class="section-editor-card ${section.ready ? "ready" : "empty"}" type="button" data-edit-section="${escapeAttr(section.id)}">
       ${sectionCardMedia(section)}
       <span class="section-card-copy">
         <strong>${escapeHtml(section.title)}</strong>
-        <small>${escapeHtml(section.previewText)}</small>
+        <small>${escapeHtml(contentLabel)}</small>
       </span>
-      <span class="section-card-action"><i data-lucide="pen-line"></i>עריכה</span>
+      <span class="section-card-action"><i data-lucide="arrow-up-left"></i><span>עריכה</span></span>
     </button>
   `;
 }
@@ -912,8 +907,6 @@ function showSectionEditor(sectionId) {
           }
         </button>
         <div class="section-editor-content">
-          <h2>${escapeHtml(section.title)}</h2>
-          <p>${escapeHtml(section.description)}</p>
           ${
             hasImages && hasText
               ? `<div class="section-editor-tabs" role="tablist">
@@ -1037,7 +1030,7 @@ function sectionImageRow(slot) {
       </span>
       <span>
         <strong>${escapeHtml(slotDisplayLabel(slot))}</strong>
-        <small>${image ? "לחצו לעריכה, החלפה או חיתוך" : "לחצו כדי להוסיף תמונה"}</small>
+        <small>${image ? "החלפה, חיתוך או מחיקה" : "הוספת תמונה"}</small>
       </span>
       <i data-lucide="${image ? "settings-2" : "plus"}"></i>
     </button>
@@ -2064,7 +2057,7 @@ function showImageActionModal(slotId) {
       <div class="action-copy">
         <p class="eyebrow">אזור תמונה</p>
         <h2>${escapeHtml(slotDisplayLabel(slot))}</h2>
-        <p data-action-message>${image ? "בחרו תמונה חדשה או חתכו את התמונה הקיימת." : "בחרו תמונה שתופיע באזור הזה באתר."}</p>
+        <p data-action-message>${image ? "בחרו תמונה חדשה או ערכו את הקיימת." : "בחרו תמונה להוספה באזור הזה."}</p>
       </div>
       <details class="modal-details">
         <summary><i data-lucide="info"></i>פרטים</summary>
@@ -2122,7 +2115,7 @@ function showImageActionModal(slotId) {
     preview.classList.remove("empty");
     preview.classList.add("filled", "pending");
     preview.innerHTML = `<img src="${escapeAttr(selectedUrl)}" alt="${escapeAttr(file.name)}" data-action-preview-media />`;
-    message.textContent = "תמונה חדשה נבחרה. אפשר לאשר את ההחלפה עכשיו.";
+    message.textContent = "התמונה מוכנה. אשרו כדי לעדכן את האתר.";
     dialog.classList.add("has-pending-replace");
     pendingActions.hidden = false;
     cropButton.disabled = false;
@@ -2148,7 +2141,7 @@ function showImageActionModal(slotId) {
     preview.className = `action-preview ${image ? "filled" : "empty"}`;
     preview.disabled = !image;
     preview.innerHTML = image ? `<img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" data-action-preview-media />` : `<i data-lucide="image-plus"></i>`;
-    message.textContent = image ? "בחרו תמונה חדשה או חתכו את התמונה הקיימת." : "בחרו תמונה שתופיע באזור הזה באתר.";
+    message.textContent = image ? "בחרו תמונה חדשה או ערכו את הקיימת." : "בחרו תמונה להוספה באזור הזה.";
     dialog.classList.remove("has-pending-replace");
     qualityPanel.hidden = true;
     qualityPanel.innerHTML = "";
@@ -2458,7 +2451,12 @@ async function loadAdmin() {
 }
 
 async function loadClient(username) {
+  const previousUsername = state.clientUsername;
   state.clientUsername = username || state.me.username;
+  if (previousUsername !== state.clientUsername) {
+    state.clientPreviewInitialized = false;
+    state.clientDrawerOpen = false;
+  }
   const sitesResponse = await api("/api/sites");
   const sites = sitesResponse.sites || [];
   if (state.me.role === "admin") {
