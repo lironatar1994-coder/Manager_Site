@@ -1097,11 +1097,8 @@ async function insertGalleryFrame(config, slot, version) {
     const html = await fsp.readFile(htmlPath, "utf8");
     for (const referenceSlot of referenceSlots) {
       if (!referenceSlot.publicPath) continue;
-      const escapedReference = escapeRegExp(referenceSlot.publicPath);
-      const framePattern = new RegExp(`(<div\\s+class=["'][^"']*\\bframe\\b[^"']*["'][^>]*>\\s*<img\\s+[^>]*src=["']${escapedReference}(?:\\?v=\\d+)?["'][^>]*>\\s*<\\/div>)`, "g");
-      const matches = [...html.matchAll(framePattern)];
-      if (!matches.length) continue;
-      const match = matches[matches.length - 1];
+      const match = findGalleryFrame(html, referenceSlot.publicPath);
+      if (!match) continue;
       const insertAt = match.index + match[0].length;
       await backupConfiguredFile(htmlPath, "gallery-html");
       await fsp.writeFile(htmlPath, `${html.slice(0, insertAt)}${nextFrame}${html.slice(insertAt)}`);
@@ -1117,15 +1114,14 @@ async function insertGalleryFrame(config, slot, version) {
 async function removeGalleryFrame(config, slot) {
   if (!slot.publicPath) return null;
   const htmlFiles = await listHtmlFiles(config.siteRoot);
-  const escapedReference = escapeRegExp(slot.publicPath);
-  const framePattern = new RegExp(`\\n?\\s*(<div\\s+class=["'][^"']*\\bframe\\b[^"']*["'][^>]*>\\s*<img\\s+[^>]*src=["']${escapedReference}(?:\\?v=\\d+)?["'][^>]*>\\s*<\\/div>)`, "g");
 
   for (const htmlPath of htmlFiles) {
     const html = await fsp.readFile(htmlPath, "utf8");
-    const matches = [...html.matchAll(framePattern)];
-    if (!matches.length) continue;
+    const match = findGalleryFrame(html, slot.publicPath);
+    if (!match) continue;
     await backupConfiguredFile(htmlPath, "gallery-remove-html");
-    await fsp.writeFile(htmlPath, html.replace(framePattern, ""));
+    const before = html.slice(0, match.index).replace(/\n?\s*$/, "");
+    await fsp.writeFile(htmlPath, `${before}${html.slice(match.index + match[0].length)}`);
     return htmlPath;
   }
 
@@ -1326,11 +1322,9 @@ async function ensureGalleryFrame(config, slot, version) {
 async function galleryFrameExists(config, slot) {
   if (!slot.publicPath) return false;
   const htmlFiles = await listHtmlFiles(config.siteRoot);
-  const escapedReference = escapeRegExp(slot.publicPath);
-  const framePattern = new RegExp(`<div\\s+class=["'][^"']*\\bframe\\b[^"']*["'][^>]*>\\s*<img\\s+[^>]*src=["']${escapedReference}(?:\\?v=\\d+)?["'][^>]*>\\s*<\\/div>`, "i");
   for (const htmlPath of htmlFiles) {
     const html = await fsp.readFile(htmlPath, "utf8");
-    if (framePattern.test(html)) return true;
+    if (findGalleryFrame(html, slot.publicPath)) return true;
   }
   return false;
 }
@@ -1342,7 +1336,7 @@ async function refreshPublicAssetReferences(siteRoot, publicPath, version) {
   if (!publicReference) return;
 
   const escapedReference = escapeRegExp(publicReference);
-  const referencePattern = new RegExp(`${escapedReference}(?:\\?v=\\d+)?`, "g");
+  const referencePattern = new RegExp(`${escapedReference}(?:\\?v=[^"'\\s>]+)?`, "g");
   const nextReference = `${publicReference}?v=${version}`;
 
   for (const htmlPath of htmlFiles) {
@@ -1449,7 +1443,7 @@ async function reorderConfiguredGalleryFrames(config, sourceSlot, targetSlot, po
 function findGalleryFrame(html, publicPath) {
   if (!publicPath) return null;
   const escapedReference = escapeRegExp(publicPath);
-  const pattern = new RegExp(`(<div\\s+class=["'][^"']*\\bframe\\b[^"']*["'][^>]*>\\s*<img\\s+[^>]*src=["']${escapedReference}(?:\\?v=[^"']*)?["'][^>]*>\\s*<\\/div>)`, "g");
+  const pattern = new RegExp(`(<div\\s+class=["'][^"']*\\bframe\\b[^"']*["'][^>]*>\\s*<img\\s+[^>]*src=["']${escapedReference}(?:\\?v=[^"'\\s>]+)?["'][^>]*>\\s*<\\/div>)`, "g");
   const matches = [...html.matchAll(pattern)];
   return matches.length ? matches[matches.length - 1] : null;
 }
