@@ -1327,10 +1327,19 @@ function setPreviewMode(mode) {
 }
 
 function displaySlots(site) {
+  const configuredAssets = state.clientAssets?.assets || [];
+  if (state.clientAssets?.configured) {
+    return configuredAssets.map((asset) => ({
+      id: asset.slotId,
+      label: asset.label,
+      ratio: asset.slotId.startsWith("gallery") ? "free" : "",
+      required: asset.required,
+    }));
+  }
   const fallbackSlots = site.slots?.length ? site.slots : DEFAULT_SLOTS;
   const merged = new Map();
   fallbackSlots.forEach((slot) => merged.set(slot.id, slot));
-  (state.clientAssets?.assets || []).forEach((asset) => {
+  configuredAssets.forEach((asset) => {
     merged.set(asset.slotId, {
       id: asset.slotId,
       label: asset.label,
@@ -1342,9 +1351,27 @@ function displaySlots(site) {
 }
 
 function imagesForSlot(site, slotId) {
+  const configuredAssets = state.clientAssets?.assets || [];
+  if (state.clientAssets?.configured) {
+    return configuredAssets
+      .filter((asset) => asset.exists && asset.slotId === slotId)
+      .map((asset) => ({
+        id: asset.id,
+        name: asset.name,
+        slotId: asset.slotId,
+        url: asset.url,
+        size: asset.size,
+        changedAt: asset.mtime,
+        changedBy: "production",
+        source: "production",
+        productionPath: asset.productionPath,
+        backupCount: asset.backupCount || 0,
+        latestBackupAt: asset.latestBackupAt || null,
+      }));
+  }
   const managed = (site.images || []).filter((image) => (image.slotId || "gallery") === slotId);
   if (managed.length) return managed;
-  return (state.clientAssets?.assets || [])
+  return configuredAssets
     .filter((asset) => asset.exists && asset.slotId === slotId)
     .map((asset) => ({
       id: asset.id,

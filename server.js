@@ -508,6 +508,11 @@ router.post(
     const slotId = normalizeSlotId(req.body.slotId);
     const clientConfig = await loadClientConfig(site.ownerUsername);
     const configSlot = clientConfig ? findConfigSlot(clientConfig, slotId) : null;
+    if (clientConfig && gallerySlotNumber(slotId) && !configSlot) {
+      await fsp.rm(req.file.path, { force: true });
+      res.status(409).json({ error: "Gallery slot is no longer part of the live website. Add a new image through the gallery." });
+      return;
+    }
     if (slotId !== "gallery") {
       const replaced = site.images.filter((image) => image.slotId === slotId && image.fileName);
       for (const image of replaced) {
@@ -1282,14 +1287,37 @@ async function replaceConfiguredAsset(site, slot, uploadedPath, config = null) {
   }
   await fsp.copyFile(uploadedPath, slot.absolutePath);
   const version = Date.now();
+  let galleryFramePath = null;
+  if (config?.siteRoot && gallerySlotNumber(slot.id)) {
+    galleryFramePath = await ensureGalleryFrame(config, slot, version);
+  }
   if (config?.siteRoot && slot.publicPath) {
     await refreshPublicAssetReferences(config.siteRoot, slot.publicPath, version);
   }
   return {
     path: slot.absolutePath,
     backupPath,
+    galleryFramePath,
     url: `${BASE_PATH}/api/sites/${site.id}/assets/${slot.id}/content?v=${version}`,
   };
+}
+
+async function ensureGalleryFrame(config, slot, version) {
+  if (!gallerySlotNumber(slot.id) || !slot.publicPath) return null;
+  if (await galleryFrameExists(config, slot)) return null;
+  return insertGalleryFrame(config, slot, version);
+}
+
+async function galleryFrameExists(config, slot) {
+  if (!slot.publicPath) return false;
+  const htmlFiles = await listHtmlFiles(config.siteRoot);
+  const escapedReference = escapeRegExp(slot.publicPath);
+  const framePattern = new RegExp(`<div\\s+class=["'][^"']*\\bframe\\b[^"']*["'][^>]*>\\s*<img\\s+[^>]*src=["']${escapedReference}(?:\\?v=\\d+)?["'][^>]*>\\s*<\\/div>`, "i");
+  for (const htmlPath of htmlFiles) {
+    const html = await fsp.readFile(htmlPath, "utf8");
+    if (framePattern.test(html)) return true;
+  }
+  return false;
 }
 
 async function refreshPublicAssetReferences(siteRoot, publicPath, version) {
