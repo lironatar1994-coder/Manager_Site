@@ -338,18 +338,19 @@ function renderClient() {
   setDocumentLocale("he", "rtl");
   const site = state.clientSite;
   if (!site) return renderForbidden();
+  const isMobileViewport = window.matchMedia("(max-width: 760px)").matches;
   if (!state.clientPreviewInitialized) {
-    const isMobileWorkspace = window.matchMedia("(max-width: 760px)").matches;
-    state.previewMode = isMobileWorkspace ? "mobile" : "desktop";
-    state.clientWorkspaceMode = isMobileWorkspace ? "edit" : "preview";
-    state.clientDrawerOpen = isMobileWorkspace;
+    state.previewMode = isMobileViewport ? "mobile" : "desktop";
+    state.clientWorkspaceMode = isMobileViewport ? "edit" : "preview";
+    state.clientDrawerOpen = isMobileViewport;
     state.clientPreviewInitialized = true;
   }
+  if (isMobileViewport) state.previewMode = "mobile";
   const sections = clientEditorSections(site);
   const isAdminPreview = state.me.role === "admin";
   const clientName = isAdminPreview ? state.clientUsername : state.me.displayName;
   const visibleWebsiteUrl = state.clientAssets?.client?.publicUrl || site.websiteUrl;
-  const showLivePreview = !window.matchMedia("(max-width: 760px)").matches || state.clientWorkspaceMode === "preview";
+  const showLivePreview = !isMobileViewport || state.clientWorkspaceMode === "preview";
   app.className = `app-view client-mode client-rtl ${state.me.role === "admin" ? "admin-preview" : ""}`;
   app.innerHTML = `
     ${shell("client")}

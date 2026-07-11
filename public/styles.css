@@ -5310,6 +5310,10 @@ svg.lucide {
     margin-right: auto;
   }
 
+  .studio-preview .preview-toggle [data-preview-mode="desktop"] {
+    display: none;
+  }
+
   .studio-preview .preview-toggle button {
     min-height: 34px;
     padding: 0 9px;
