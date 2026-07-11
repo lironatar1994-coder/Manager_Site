@@ -418,8 +418,8 @@ function renderClient() {
             <i data-lucide="chevron-up"></i>
           </button>
           <div class="client-drawer-body">
-            <div class="client-drawer-heading"><span>${sections.length} אזורים</span><p>בחירה באזור פותחת עריכה ממוקדת.</p></div>
-            <div class="section-editor-grid studio-section-grid">${sections.map(sectionCard).join("")}</div>
+            <div class="client-drawer-heading"><strong>עריכת האתר</strong><span>${sections.length} אזורים</span></div>
+            ${clientSectionGroups(sections)}
           </div>
         </aside>
       </section>
@@ -846,6 +846,27 @@ function sectionIdForTextSlot(slot) {
   return "about";
 }
 
+function clientSectionGroups(sections) {
+  const visualSections = sections.filter((section) => section.imageSlots.length > 0 && !section.textSlots.length);
+  const contentSections = sections.filter((section) => section.textSlots.length > 0);
+  const group = (title, className, items) => {
+    if (!items.length) return "";
+    return `
+      <section class="client-section-group ${className}">
+        <header class="client-section-group-heading">
+          <h2>${title}</h2>
+          <span>${items.length}</span>
+        </header>
+        <div class="section-editor-grid studio-section-grid">${items.map(sectionCard).join("")}</div>
+      </section>
+    `;
+  };
+  return [
+    group("תמונות באתר", "visual-section-group", visualSections),
+    group("תוכן באתר", "content-section-group", contentSections),
+  ].join("");
+}
+
 function sectionCard(section) {
   const imageCount = section.imageSlots.reduce((total, slot) => total + slot.images.length, 0);
   const textCount = section.textSlots.filter((slot) => String(slot.value || "").trim()).length;
@@ -858,7 +879,7 @@ function sectionCard(section) {
       ? `${imageCount} ${imageCount === 1 ? "תמונה" : "תמונות"}`
       : "להתחלת עריכה";
   return `
-    <button class="section-editor-card ${section.ready ? "ready" : "empty"} ${isTextSection ? "text-section" : "image-section"}" type="button" data-edit-section="${escapeAttr(section.id)}">
+    <button class="section-editor-card section-${escapeAttr(section.id)} ${section.ready ? "ready" : "empty"} ${isTextSection ? "text-section" : "image-section"}" type="button" data-edit-section="${escapeAttr(section.id)}">
       ${sectionCardMedia(section)}
       <span class="section-card-copy">
         <strong>${escapeHtml(section.title)}</strong>
