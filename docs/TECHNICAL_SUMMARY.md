@@ -132,6 +132,8 @@ When a configured production site root exists, uploading to a mapped slot copies
 
 Gallery append uses `POST /api/sites/:siteId/assets/gallery`. The server infers the next gallery slot from existing allowlisted `gallery` / `gallery_N` slots, writes the uploaded file to the next numbered production path, appends that slot to the runtime `client.config.json`, and inserts a matching `<div class="frame ..."><img ...></div>` after the last known gallery frame in the live HTML. If the static gallery markup cannot be found safely, the request fails instead of creating a hidden image that does not appear on the public website.
 
+When a client has a runtime image config, its production assets are the only gallery source shown in the client workspace; stale legacy manager uploads cannot override live images. `scripts/reconcile-legacy-gallery.js` can safely adopt older manager-only gallery uploads into the live site after a dry run. It backs up the store, config, and HTML before any `--apply` write.
+
 Deleting a gallery asset also removes its matching live gallery frame from HTML before deleting the image file. Optional `gallery_N` slots are removed from the runtime config so deleted gallery images do not remain as empty placeholders.
 
 Text editing uses `textSlots` in the same config. Each slot points to an absolute HTML file path inside `siteRoot` and a `data-manager-text` marker. The server updates plain text only, requires exactly one matching marker, backs up the HTML file before writing, and rejects over-limit text.
