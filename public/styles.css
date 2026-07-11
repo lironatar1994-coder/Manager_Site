@@ -3427,6 +3427,25 @@ button.review-thumb:hover {
   margin-bottom: 10px;
 }
 
+.gallery-add-hint {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.gallery-add-feedback {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(174, 55, 45, 0.28);
+  background: rgba(174, 55, 45, 0.08);
+  color: #8f2f28;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  text-align: right;
+}
+
 .gallery-add-button {
   width: 100%;
   min-height: 52px;

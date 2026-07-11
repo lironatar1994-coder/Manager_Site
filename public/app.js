@@ -963,10 +963,15 @@ function showSectionEditor(sectionId) {
   const addGalleryButton = modal.querySelector("[data-add-gallery-image]");
   const addGalleryInput = modal.querySelector("[data-add-gallery-file]");
   if (addGalleryButton && addGalleryInput) {
+    const addGalleryFeedback = modal.querySelector("[data-gallery-add-feedback]");
     addGalleryButton.addEventListener("click", () => addGalleryInput.click());
     addGalleryInput.addEventListener("change", async () => {
       const file = addGalleryInput.files?.[0];
       if (!file) return;
+      if (addGalleryFeedback) {
+        addGalleryFeedback.hidden = true;
+        addGalleryFeedback.textContent = "";
+      }
       addGalleryButton.disabled = true;
       addGalleryButton.innerHTML = `<i data-lucide="loader-circle"></i>מוסיפים לגלריה`;
       icons();
@@ -975,6 +980,10 @@ function showSectionEditor(sectionId) {
       else {
         addGalleryButton.disabled = false;
         addGalleryButton.innerHTML = `<i data-lucide="image-plus"></i>הוספת תמונה לגלריה`;
+        if (addGalleryFeedback) {
+          addGalleryFeedback.textContent = state.galleryAddError || "לא הצלחנו להוסיף את התמונה. נסו קובץ JPG, PNG או WebP עד 16MB.";
+          addGalleryFeedback.hidden = false;
+        }
         addGalleryInput.value = "";
         icons();
       }
@@ -1010,7 +1019,9 @@ function galleryAddButton() {
   return `
     <div class="gallery-add-panel">
       <button class="primary-button gallery-add-button" type="button" data-add-gallery-image><i data-lucide="image-plus"></i>הוספת תמונה לגלריה</button>
-      <input type="file" accept="image/*" data-add-gallery-file hidden />
+      <small class="gallery-add-hint">JPG, PNG או WebP · עד 16MB</small>
+      <div class="gallery-add-feedback" data-gallery-add-feedback role="alert" hidden></div>
+      <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" data-add-gallery-file hidden />
     </div>
   `;
 }
@@ -1531,6 +1542,7 @@ function formatApiError(error) {
     "Request timed out": "הבקשה לקחה יותר מדי זמן. נסו שוב.",
     "Upload file is missing": "בחרו תמונה לפני ההעלאה.",
     "Upload type not allowed": "אפשר להעלות רק JPG, PNG, WebP, GIF או SVG.",
+    "HEIC images are not supported": "תמונות HEIC אינן נתמכות. בחרו בתמונה כ-JPG, PNG או WebP.",
     "Text slot not configured": "אזור הטקסט לא מוגדר לעריכה.",
     "Text marker not found": "סימון הטקסט לא נמצא באתר. צריך לעדכן את קובץ האתר.",
     "Text marker must be unique": "סימון הטקסט מופיע יותר מפעם אחת באתר.",
@@ -1546,6 +1558,7 @@ function validateImageFile(file) {
   if (!file || typeof file.size !== "number" || file.size === 0) return "Upload file is missing";
   if (file.size > UPLOAD_FILE_LIMIT_BYTES) return "Uploaded image is too large";
   const fileName = (file.name || "").toLowerCase();
+  if (["image/heic", "image/heif"].includes(file.type) || /\.(heic|heif)$/.test(fileName)) return "HEIC images are not supported";
   const hasAllowedMime = file.type ? ALLOWED_IMAGE_MIME_TYPES.has(file.type) : false;
   const hasAllowedExtension = ALLOWED_IMAGE_EXTENSIONS.some((extension) => fileName.endsWith(extension));
   if (!hasAllowedMime && !hasAllowedExtension) return "Upload type not allowed";
@@ -1832,9 +1845,11 @@ async function uploadImageToSlot(slotId, file, name = "") {
 }
 
 async function addGalleryImage(file, options = {}) {
+  state.galleryAddError = "";
   const validationError = validateImageFile(file);
   if (validationError) {
-    toast(formatApiError(validationError), "error");
+    state.galleryAddError = formatApiError(validationError);
+    toast(state.galleryAddError, "error");
     return false;
   }
   const form = new FormData();
@@ -1843,7 +1858,8 @@ async function addGalleryImage(file, options = {}) {
   await appendImageMetadata(form, file);
   const response = await api(`/api/sites/${state.clientSite.id}/assets/gallery`, { method: "POST", form });
   if (response?.error) {
-    toast(formatApiError(response.error), "error");
+    state.galleryAddError = formatApiError(response.error);
+    toast(state.galleryAddError, "error");
     return false;
   }
   state.clientSite = response.site || state.clientSite;
