@@ -4,6 +4,13 @@ This repo is a compact Node/Express app with a static single-page frontend.
 
 ## Runtime
 
+Gallery upload failures are emailed to `ERROR_ALERT_EMAIL` through Resend when
+`RESEND_API_KEY` is configured. Alerts include diagnostic metadata only, never
+image contents or credentials. Browser-side format/size failures are reported
+through an authenticated endpoint; server-side upload failures are reported by
+the upload handler. Nginx allows multipart overhead while the app enforces the
+actual 16 MB image limit.
+
 - Node.js `>=20`
 - Express
 - Multer for image uploads

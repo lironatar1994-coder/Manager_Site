@@ -1850,6 +1850,7 @@ async function addGalleryImage(file, options = {}) {
   if (validationError) {
     state.galleryAddError = formatApiError(validationError);
     toast(state.galleryAddError, "error");
+    void reportGalleryUploadFailure(file, validationError);
     return false;
   }
   const form = new FormData();
@@ -1883,6 +1884,19 @@ async function addGalleryImage(file, options = {}) {
     window.setTimeout(() => showSectionEditor("gallery"), 0);
   }
   return true;
+}
+
+async function reportGalleryUploadFailure(file, error) {
+  if (!state.clientSite?.id) return;
+  await api(`/api/sites/${state.clientSite.id}/upload-failures`, {
+    method: "POST",
+    body: {
+      error,
+      fileName: file?.name || "unavailable",
+      fileType: file?.type || "unavailable",
+      fileSize: Number(file?.size) || 0,
+    },
+  });
 }
 
 async function deleteImage(imageId) {

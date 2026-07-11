@@ -18,6 +18,9 @@ const CLIENTS_DATA_DIR = process.env.CLIENTS_DIR || path.join(DATA_DIR, "clients
 const CLIENTS_REPO_DIR = path.join(__dirname, "clients");
 const PUBLIC_DIR = path.join(__dirname, "public");
 const UPLOAD_FILE_LIMIT_BYTES = 16 * 1024 * 1024;
+const ERROR_ALERT_EMAIL = process.env.ERROR_ALERT_EMAIL || "lironatar94@gmail.com";
+const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
+const EMAIL_FROM = process.env.EMAIL_FROM || "Manager Site <onboarding@resend.dev>";
 const IMAGE_SLOTS = [
   { id: "hero", label: "Hero image", ratio: "16:9", required: true },
   { id: "logo", label: "Logo", ratio: "1:1", required: true },
@@ -29,6 +32,7 @@ const SITE_STATUSES = ["draft", "published", "needs_attention"];
 
 const app = express();
 const sessions = new Map();
+const galleryAlertCooldowns = new Map();
 
 app.disable("x-powered-by");
 app.use(express.json({ limit: "1mb" }));
@@ -374,6 +378,24 @@ router.post("/api/sites/:siteId/assets/reorder", requireSiteAccess, requirePermi
 });
 
 router.post(
+  "/api/sites/:siteId/upload-failures",
+  requireSiteAccess,
+  requirePermission("canUpload"),
+  async (req, res) => {
+    const input = req.body || {};
+    req.file = {
+      originalname: String(input.fileName || "unavailable").slice(0, 180),
+      mimetype: String(input.fileType || "unavailable").slice(0, 100),
+      size: Number(input.fileSize),
+    };
+    const error = new Error(String(input.error || "Client-side upload validation failed").slice(0, 300));
+    error.code = "CLIENT_VALIDATION";
+    void sendGalleryFailureEmail(req, error);
+    res.status(202).json({ reported: true });
+  }
+);
+
+router.post(
   "/api/sites/:siteId/assets/gallery",
   requireSiteAccess,
   requirePermission("canUpload"),
@@ -433,6 +455,7 @@ router.post(
       if (nextSlot?.currentPath) {
         await fsp.rm(nextSlot.currentPath, { force: true }).catch(() => {});
       }
+      void sendGalleryFailureEmail(req, error);
       res.status(error.statusCode || 500).json({ error: error.message || "Could not add gallery image" });
     }
   }
@@ -622,6 +645,7 @@ if (BASE_PATH) {
 
 app.use((err, req, res, next) => {
   if (err) {
+    if (isGalleryUploadRequest(req)) void sendGalleryFailureEmail(req, err);
     if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
       res.status(413).json({ error: "Uploaded image is too large" });
       return;
@@ -631,6 +655,64 @@ app.use((err, req, res, next) => {
   }
   next();
 });
+
+function isGalleryUploadRequest(req) {
+  return req.method === "POST" && /\/api\/sites\/[^/]+\/assets\/gallery\/?$/.test(req.originalUrl || req.url || "");
+}
+
+async function sendGalleryFailureEmail(req, error) {
+  if (!RESEND_API_KEY || !ERROR_ALERT_EMAIL) {
+    console.warn("Gallery upload alert skipped: email provider is not configured");
+    return;
+  }
+
+  const alertKey = `${req.user?.username || req.site?.ownerUsername || "unknown"}:${error?.code || error?.message || "unknown"}`;
+  const lastAlertAt = galleryAlertCooldowns.get(alertKey) || 0;
+  if (Date.now() - lastAlertAt < 60_000) return;
+  galleryAlertCooldowns.set(alertKey, Date.now());
+
+  const file = req.file;
+  const details = [
+    "A client gallery upload failed.",
+    "",
+    `Client: ${req.user?.username || req.site?.ownerUsername || "unknown"}`,
+    `Site: ${req.site?.name || req.params?.siteId || "unknown"}`,
+    `Time: ${new Date().toISOString()}`,
+    `Error: ${error?.message || "Unknown error"}`,
+    `Error code: ${error?.code || "none"}`,
+    `File name: ${file?.originalname || "unavailable"}`,
+    `File type: ${file?.mimetype || "unavailable"}`,
+    `File size: ${formatFileSize(file?.size)}`,
+    `Route: ${req.originalUrl || req.url || "unknown"}`,
+  ].join("\n");
+
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: EMAIL_FROM,
+        to: [ERROR_ALERT_EMAIL],
+        subject: `Manager Site: gallery upload failed for ${req.user?.username || "client"}`,
+        text: details,
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok) {
+      console.error("Gallery upload alert failed", response.status, await response.text());
+    }
+  } catch (emailError) {
+    console.error("Gallery upload alert failed", emailError.message);
+  }
+}
+
+function formatFileSize(bytes) {
+  if (!Number.isFinite(bytes)) return "unavailable";
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
 
 async function startServer() {
   await initStore();

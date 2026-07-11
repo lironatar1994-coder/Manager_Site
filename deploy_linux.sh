@@ -81,6 +81,19 @@ PY
   chmod 600 "${NODE_ENV_FILE}"
 fi
 
+if ! grep -q "^ERROR_ALERT_EMAIL=" "${NODE_ENV_FILE}"; then
+  echo "ERROR_ALERT_EMAIL=lironatar94@gmail.com" >> "${NODE_ENV_FILE}"
+fi
+
+if ! grep -q "^RESEND_API_KEY=" "${NODE_ENV_FILE}" && [ -f "/root/Vee/backend/.env" ]; then
+  RESEND_KEY="$(grep '^RESEND_API_KEY=' /root/Vee/backend/.env | head -n1 | cut -d= -f2-)"
+  if [ -n "${RESEND_KEY}" ]; then
+    printf 'RESEND_API_KEY=%s\n' "${RESEND_KEY}" >> "${NODE_ENV_FILE}"
+  fi
+fi
+
+chmod 600 "${NODE_ENV_FILE}"
+
 echo "[INFO] Starting PM2 process..."
 if ! command -v pm2 >/dev/null 2>&1; then
   npm install -g pm2
@@ -109,7 +122,8 @@ location ^~ ${LOWER_ROUTE_BASE}/ {
 }
 
 location ^~ ${ROUTE_BASE}/ {
-    client_max_body_size 16m;
+    # Allow multipart overhead through; the app enforces the 16 MB file limit.
+    client_max_body_size 17m;
 
     proxy_pass http://127.0.0.1:${APP_PORT}${ROUTE_BASE}/;
     proxy_http_version 1.1;
