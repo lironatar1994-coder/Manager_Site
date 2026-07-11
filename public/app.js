@@ -46,6 +46,7 @@ const state = {
   sectionNotice: null,
   clientDrawerOpen: false,
   clientPreviewInitialized: false,
+  clientWorkspaceMode: "edit",
   livePreviewVersion: Date.now(),
 };
 
@@ -338,17 +339,21 @@ function renderClient() {
   const site = state.clientSite;
   if (!site) return renderForbidden();
   if (!state.clientPreviewInitialized) {
-    state.previewMode = window.matchMedia("(max-width: 760px)").matches ? "mobile" : "desktop";
+    const isMobileWorkspace = window.matchMedia("(max-width: 760px)").matches;
+    state.previewMode = isMobileWorkspace ? "mobile" : "desktop";
+    state.clientWorkspaceMode = isMobileWorkspace ? "edit" : "preview";
+    state.clientDrawerOpen = isMobileWorkspace;
     state.clientPreviewInitialized = true;
   }
   const sections = clientEditorSections(site);
   const isAdminPreview = state.me.role === "admin";
   const clientName = isAdminPreview ? state.clientUsername : state.me.displayName;
   const visibleWebsiteUrl = state.clientAssets?.client?.publicUrl || site.websiteUrl;
+  const showLivePreview = !window.matchMedia("(max-width: 760px)").matches || state.clientWorkspaceMode === "preview";
   app.className = `app-view client-mode client-rtl ${state.me.role === "admin" ? "admin-preview" : ""}`;
   app.innerHTML = `
     ${shell("client")}
-    <main class="workspace client-workspace client-studio" dir="rtl" lang="he">
+    <main class="workspace client-workspace client-studio mode-${escapeAttr(state.clientWorkspaceMode)}" dir="rtl" lang="he">
       ${
         isAdminPreview
           ? `<section class="preview-banner"><i data-lucide="eye"></i><span>תצוגת מנהל עבור ${escapeHtml(state.clientUsername)}</span><a href="${href("/admin")}">חזרה לניהול</a></section>`
@@ -358,6 +363,10 @@ function renderClient() {
         <div class="studio-identity">
           <span class="studio-kicker">האתר שלך</span>
           <h1>${escapeHtml(clientName)}</h1>
+        </div>
+        <div class="studio-mode-switch" role="tablist" aria-label="מצב עבודה">
+          <button class="${state.clientWorkspaceMode === "preview" ? "active" : ""}" type="button" data-client-workspace-mode="preview" aria-pressed="${state.clientWorkspaceMode === "preview"}"><i data-lucide="monitor"></i><span>תצוגה</span></button>
+          <button class="${state.clientWorkspaceMode === "edit" ? "active" : ""}" type="button" data-client-workspace-mode="edit" aria-pressed="${state.clientWorkspaceMode === "edit"}"><i data-lucide="sliders-horizontal"></i><span>עריכה</span></button>
         </div>
         <div class="studio-actions">
           <a class="studio-action studio-open" href="${escapeAttr(visibleWebsiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i><span>פתיחת האתר</span></a>
@@ -388,7 +397,7 @@ function renderClient() {
           <div class="preview-device">
             <div class="browser-bar"><span></span><span></span><span></span><p>${escapeHtml(visibleWebsiteUrl)}</p></div>
             <div class="preview-canvas live-iframe-preview">
-              <iframe src="${escapeAttr(clientLivePreviewUrl(visibleWebsiteUrl))}" title="תצוגת האתר החי" loading="lazy" data-live-preview></iframe>
+              <iframe src="${escapeAttr(showLivePreview ? clientLivePreviewUrl(visibleWebsiteUrl) : "about:blank")}" title="תצוגת האתר החי" loading="lazy" data-live-preview></iframe>
               <div class="preview-fallback" data-live-preview-fallback hidden>
                 <i data-lucide="panel-top-open"></i>
                 <strong>לא ניתן להציג את האתר כאן</strong>
@@ -425,6 +434,13 @@ function renderClient() {
   document.querySelector("[data-toggle-client-drawer]")?.addEventListener("click", () => {
     state.clientDrawerOpen = !state.clientDrawerOpen;
     renderClient();
+  });
+  document.querySelectorAll("[data-client-workspace-mode]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.clientWorkspaceMode = button.dataset.clientWorkspaceMode === "preview" ? "preview" : "edit";
+      state.clientDrawerOpen = state.clientWorkspaceMode === "edit";
+      renderClient();
+    });
   });
   document.querySelector("[data-share-website]")?.addEventListener("click", (event) => {
     shareClientWebsite(event.currentTarget.dataset.shareWebsite, site.name || clientName);
@@ -2456,6 +2472,7 @@ async function loadClient(username) {
   if (previousUsername !== state.clientUsername) {
     state.clientPreviewInitialized = false;
     state.clientDrawerOpen = false;
+    state.clientWorkspaceMode = "edit";
   }
   const sitesResponse = await api("/api/sites");
   const sites = sitesResponse.sites || [];

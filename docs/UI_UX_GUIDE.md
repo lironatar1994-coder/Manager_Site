@@ -54,8 +54,8 @@ Most clients will use phones. Keep mobile flows fast:
 The current mobile order for clients is:
 
 1. compact site header with open, share, and site-link actions
-2. live desktop/mobile preview as the dominant first-screen element
-3. persistent `עריכת האתר` bottom drawer with a visual section contact sheet
+2. explicit `תצוגה` and `עריכה` switch; phones open in editing mode so iframe scrolling never blocks management actions
+3. live desktop/mobile preview in `תצוגה`, or a visual section contact sheet in `עריכה`
 4. full-screen section editor and tap-first image actions for replace, crop, restore, and delete
 
 ## Client Workflow

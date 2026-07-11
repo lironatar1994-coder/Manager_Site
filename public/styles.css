@@ -4664,6 +4664,10 @@ svg.lucide {
   flex: 0 0 auto;
 }
 
+.studio-mode-switch {
+  display: none;
+}
+
 .studio-action,
 .studio-site-menu summary,
 .studio-refresh {
@@ -4971,6 +4975,9 @@ svg.lucide {
   }
 
   .client-studio-header {
+    display: grid;
+    grid-template-columns: minmax(84px, 1fr) auto auto;
+    gap: 6px;
     min-height: 60px;
     margin: 0;
     padding: 8px 12px;
@@ -4995,6 +5002,40 @@ svg.lucide {
     gap: 6px;
   }
 
+  .studio-mode-switch {
+    display: inline-grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2px;
+    padding: 3px;
+    background: #dfe8e5;
+    border: 1px solid rgba(24, 34, 36, 0.1);
+  }
+
+  .studio-mode-switch button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-width: 34px;
+    min-height: 34px;
+    padding: 0 7px;
+    color: #5d7775;
+    font-size: 0.69rem;
+    font-weight: 900;
+    background: transparent;
+    border: 0;
+  }
+
+  .studio-mode-switch button.active {
+    color: #f8fbfa;
+    background: #1f4f50;
+  }
+
+  .studio-mode-switch i {
+    width: 14px;
+    height: 14px;
+  }
+
   .studio-action,
   .studio-site-menu summary {
     width: 40px;
@@ -5014,6 +5055,14 @@ svg.lucide {
 
   .client-studio-layout {
     display: block;
+  }
+
+  .client-studio.mode-edit .studio-preview {
+    display: none;
+  }
+
+  .client-studio.mode-preview .client-edit-drawer {
+    display: none;
   }
 
   .studio-preview {
@@ -5088,6 +5137,35 @@ svg.lucide {
 
   .client-edit-drawer.open {
     transform: translateY(0);
+  }
+
+  .client-studio.mode-edit .client-edit-drawer {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    border-width: 0;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .client-studio.mode-edit .client-drawer-handle {
+    display: none;
+  }
+
+  .client-studio.mode-edit .client-drawer-body {
+    max-height: none;
+    overflow: visible;
+    padding: 14px 12px calc(18px + env(safe-area-inset-bottom));
+    border-top: 0;
+  }
+
+  .client-studio.mode-edit .client-drawer-heading {
+    display: flex;
+    margin-bottom: 12px;
+  }
+
+  .client-studio.mode-edit .client-drawer-heading p {
+    display: block;
   }
 
   .client-drawer-handle {
@@ -5214,6 +5292,17 @@ svg.lucide {
   .client-drawer-handle > i,
   .studio-section-grid .section-editor-card {
     transition: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .studio-mode-switch button {
+    min-width: 32px;
+    padding: 0;
+  }
+
+  .studio-mode-switch button span {
+    display: none;
   }
 }
 
