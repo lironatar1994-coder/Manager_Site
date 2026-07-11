@@ -848,21 +848,39 @@ function sectionIdForTextSlot(slot) {
 function sectionCard(section) {
   const imageCount = section.imageSlots.reduce((total, slot) => total + slot.images.length, 0);
   const textCount = section.textSlots.filter((slot) => String(slot.value || "").trim()).length;
-  const contentLabel = imageCount ? `${imageCount} ${imageCount === 1 ? "תמונה" : "תמונות"}` : textCount ? `${textCount} טקסטים` : "להתחלת עריכה";
+  const isTextSection = section.textSlots.length > 0;
+  const contentLabel = isTextSection
+    ? textCount
+      ? `${textCount} טקסטים${imageCount ? " + תמונה" : ""}`
+      : "להתחלת כתיבה"
+    : imageCount
+      ? `${imageCount} ${imageCount === 1 ? "תמונה" : "תמונות"}`
+      : "להתחלת עריכה";
   return `
-    <button class="section-editor-card ${section.ready ? "ready" : "empty"}" type="button" data-edit-section="${escapeAttr(section.id)}">
+    <button class="section-editor-card ${section.ready ? "ready" : "empty"} ${isTextSection ? "text-section" : "image-section"}" type="button" data-edit-section="${escapeAttr(section.id)}">
       ${sectionCardMedia(section)}
       <span class="section-card-copy">
         <strong>${escapeHtml(section.title)}</strong>
         <small>${escapeHtml(contentLabel)}</small>
       </span>
-      <span class="section-card-action"><i data-lucide="arrow-up-left"></i><span>עריכה</span></span>
+      <span class="section-card-action"><i data-lucide="${isTextSection ? "text-cursor-input" : "arrow-up-left"}"></i><span>${isTextSection ? "עריכת טקסט" : "עריכה"}</span></span>
     </button>
   `;
 }
 
 function sectionCardMedia(section) {
   const images = section.imageSlots.flatMap((slot) => slot.images.slice(0, 1));
+  if (section.textSlots.length) {
+    const icon = section.id === "faq" ? "messages-square" : "notebook-pen";
+    const preview = trimText(section.previewText || "תוכן האתר", 70);
+    return `
+      <span class="section-card-media section-card-editorial editorial-${escapeAttr(section.id)}">
+        <span class="editorial-mark"><i data-lucide="${icon}"></i></span>
+        <span class="editorial-copy">${escapeHtml(preview)}</span>
+        <span class="editorial-lines" aria-hidden="true"><i></i><i></i><i></i></span>
+      </span>
+    `;
+  }
   if (section.id === "gallery" && images.length) {
     return `
       <span class="section-card-media section-card-collage gallery-collage">
@@ -905,7 +923,8 @@ function showSectionEditor(sectionId) {
   if (!section) return;
   const hasImages = section.imageSlots.length > 0;
   const hasText = section.textSlots.length > 0;
-  const defaultPane = hasImages ? "images" : "text";
+  const defaultPane = hasText ? "text" : "images";
+  const textFirstPreview = hasText;
   const modal = document.createElement("div");
   modal.className = "section-editor-backdrop";
   modal.innerHTML = `
@@ -915,9 +934,11 @@ function showSectionEditor(sectionId) {
         <button class="icon-action modal-close" type="button" aria-label="סגירה"><i data-lucide="x"></i></button>
       </header>
       <div class="section-editor-layout">
-        <button class="section-editor-preview ${section.primaryImage ? "filled" : "empty"}" type="button" data-section-preview ${section.primaryImage ? "" : "disabled"}>
+        <button class="section-editor-preview ${textFirstPreview ? "text-preview" : section.primaryImage ? "filled" : "empty"}" type="button" data-section-preview ${textFirstPreview || !section.primaryImage ? "disabled" : ""}>
           ${
-            section.primaryImage
+            textFirstPreview
+              ? `<span class="section-editor-text-preview"><i data-lucide="${section.id === "faq" ? "messages-square" : "notebook-pen"}"></i><strong>עריכת תוכן</strong><small>${escapeHtml(trimText(section.previewText || "לחצו על שדה כדי להתחיל לערוך.", 160))}</small></span>`
+              : section.primaryImage
               ? `<img src="${escapeAttr(section.primaryImage.url)}" alt="${escapeAttr(section.primaryImage.name)}" />`
               : `<i data-lucide="${escapeAttr(section.icon)}"></i>`
           }
@@ -926,8 +947,8 @@ function showSectionEditor(sectionId) {
           ${
             hasImages && hasText
               ? `<div class="section-editor-tabs" role="tablist">
-                  <button class="active" type="button" data-section-tab="images">תמונות</button>
-                  <button type="button" data-section-tab="text">טקסט</button>
+                  <button class="active" type="button" data-section-tab="text">טקסט</button>
+                  <button type="button" data-section-tab="images">תמונה</button>
                 </div>`
               : ""
           }
