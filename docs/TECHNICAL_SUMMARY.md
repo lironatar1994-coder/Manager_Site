@@ -134,6 +134,8 @@ Gallery append uses `POST /api/sites/:siteId/assets/gallery`. The server infers 
 
 When a client has a runtime image config, its production assets are the only gallery source shown in the client workspace; stale legacy manager uploads cannot override live images. `scripts/reconcile-legacy-gallery.js` can safely adopt older manager-only gallery uploads into the live site after a dry run. It backs up the store, config, and HTML before any `--apply` write.
 
+Deleting any gallery image removes its corresponding runtime gallery slot, including the first gallery slot. This prevents a later static-site deployment from restoring a deleted default image into the live gallery.
+
 Deleting a gallery asset also removes its matching live gallery frame from HTML before deleting the image file. Optional `gallery_N` slots are removed from the runtime config so deleted gallery images do not remain as empty placeholders.
 
 Text editing uses `textSlots` in the same config. Each slot points to an absolute HTML file path inside `siteRoot` and a `data-manager-text` marker. The server updates plain text only, requires exactly one matching marker, backs up the HTML file before writing, and rejects over-limit text.

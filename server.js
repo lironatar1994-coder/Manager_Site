@@ -303,7 +303,7 @@ router.delete("/api/sites/:siteId/assets/:slotId", requireSiteAccess, requirePer
     if (await fileExists(slot.absolutePath)) {
       backupPath = await removeConfiguredAsset(slot);
     }
-    if (gallerySlotNumber(slot.id) > 1 && !slot.required && configDoc) {
+    if (gallerySlotNumber(slot.id) && configDoc) {
       const rawSlots = Array.isArray(configDoc.config.imageSlots) ? configDoc.config.imageSlots : [];
       configDoc.config.imageSlots = rawSlots.filter((item) => normalizeSlotId(item.id) !== slot.id);
       await saveClientConfigDocument(configDoc);
