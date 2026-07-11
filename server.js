@@ -353,12 +353,14 @@ router.post("/api/sites/:siteId/assets/:slotId/restore", requireSiteAccess, requ
 router.post("/api/sites/:siteId/assets/reorder", requireSiteAccess, requirePermission("canUpload"), async (req, res) => {
   const sourceSlotId = normalizeSlotId(req.body?.sourceSlotId);
   const targetSlotId = normalizeSlotId(req.body?.targetSlotId);
+  const position = req.body?.position === "after" ? "after" : "before";
   if (!sourceSlotId || !targetSlotId || sourceSlotId === targetSlotId) {
     res.status(400).json({ error: "Source and target image slots are required" });
     return;
   }
 
-  const config = await loadClientConfig(req.site.ownerUsername);
+  const configDoc = await loadClientConfigDocument(req.site.ownerUsername);
+  const config = configDoc ? normalizeClientConfig(configDoc.config, configDoc.savePath) : null;
   const sourceSlot = config ? findConfigSlot(config, sourceSlotId) : null;
   const targetSlot = config ? findConfigSlot(config, targetSlotId) : null;
   if (!config || !sourceSlot?.absolutePath || !targetSlot?.absolutePath) {
@@ -366,7 +368,19 @@ router.post("/api/sites/:siteId/assets/reorder", requireSiteAccess, requirePermi
     return;
   }
 
-  const result = await reorderConfiguredAssets(sourceSlot, targetSlot);
+  let result;
+  try {
+    if (gallerySlotNumber(sourceSlotId) && gallerySlotNumber(targetSlotId)) {
+      result = await reorderConfiguredGalleryFrames(config, sourceSlot, targetSlot, position);
+      reorderRawConfigSlots(configDoc.config, sourceSlotId, targetSlotId, position);
+      await saveClientConfigDocument(configDoc);
+    } else {
+      result = await reorderConfiguredAssets(sourceSlot, targetSlot);
+    }
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ error: error.message || "Could not reorder images" });
+    return;
+  }
   const store = await readStore();
   const site = store.sites.find((item) => item.id === req.params.siteId);
   if (site) {
@@ -374,7 +388,8 @@ router.post("/api/sites/:siteId/assets/reorder", requireSiteAccess, requirePermi
     store.audit.push(audit(req.user, "asset.reordered", { siteId: site.id, sourceSlotId, targetSlotId, ...result }));
     await writeStore(store);
   }
-  res.json({ site, assets: await scanClientAssets(site || req.site, config) });
+  const updatedConfig = await loadClientConfig(req.site.ownerUsername);
+  res.json({ site, assets: await scanClientAssets(site || req.site, updatedConfig || config) });
 });
 
 router.post(
@@ -1407,6 +1422,47 @@ async function reorderConfiguredAssets(sourceSlot, targetSlot) {
   }
 
   return { sourcePath: sourceSlot.absolutePath, targetPath: targetSlot.absolutePath, sourceBackupPath, targetBackupPath, swapped: targetExists };
+}
+
+async function reorderConfiguredGalleryFrames(config, sourceSlot, targetSlot, position) {
+  const htmlFiles = await listHtmlFiles(config.siteRoot);
+  for (const htmlPath of htmlFiles) {
+    const html = await fsp.readFile(htmlPath, "utf8");
+    const sourceFrame = findGalleryFrame(html, sourceSlot.publicPath);
+    const targetFrame = findGalleryFrame(html, targetSlot.publicPath);
+    if (!sourceFrame || !targetFrame) continue;
+
+    const withoutSource = `${html.slice(0, sourceFrame.index)}${html.slice(sourceFrame.index + sourceFrame[0].length)}`;
+    const targetAfterRemoval = findGalleryFrame(withoutSource, targetSlot.publicPath);
+    if (!targetAfterRemoval) continue;
+    const insertAt = position === "after" ? targetAfterRemoval.index + targetAfterRemoval[0].length : targetAfterRemoval.index;
+    await backupConfiguredFile(htmlPath, "gallery-reorder-html");
+    await fsp.writeFile(htmlPath, `${withoutSource.slice(0, insertAt)}${sourceFrame[0]}${withoutSource.slice(insertAt)}`);
+    return { htmlPath, sourceSlotId: sourceSlot.id, targetSlotId: targetSlot.id, position };
+  }
+
+  const error = new Error("Could not find the live gallery images to reorder");
+  error.statusCode = 422;
+  throw error;
+}
+
+function findGalleryFrame(html, publicPath) {
+  if (!publicPath) return null;
+  const escapedReference = escapeRegExp(publicPath);
+  const pattern = new RegExp(`(<div\\s+class=["'][^"']*\\bframe\\b[^"']*["'][^>]*>\\s*<img\\s+[^>]*src=["']${escapedReference}(?:\\?v=[^"']*)?["'][^>]*>\\s*<\\/div>)`, "g");
+  const matches = [...html.matchAll(pattern)];
+  return matches.length ? matches[matches.length - 1] : null;
+}
+
+function reorderRawConfigSlots(rawConfig, sourceSlotId, targetSlotId, position) {
+  const slots = Array.isArray(rawConfig.imageSlots) ? [...rawConfig.imageSlots] : [];
+  const sourceIndex = slots.findIndex((slot) => normalizeSlotId(slot.id) === sourceSlotId);
+  if (sourceIndex < 0) throw new Error("Configured source image was not found");
+  const [source] = slots.splice(sourceIndex, 1);
+  const targetIndex = slots.findIndex((slot) => normalizeSlotId(slot.id) === targetSlotId);
+  if (targetIndex < 0) throw new Error("Configured target image was not found");
+  slots.splice(position === "after" ? targetIndex + 1 : targetIndex, 0, source);
+  rawConfig.imageSlots = slots;
 }
 
 async function backupConfiguredFile(filePath, suffix) {

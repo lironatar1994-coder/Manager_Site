@@ -3455,6 +3455,102 @@ button.review-thumb:hover {
   animation: spin 900ms linear infinite;
 }
 
+.gallery-sort-list {
+  display: grid;
+  gap: 8px;
+}
+
+.gallery-sort-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: stretch;
+  padding: 7px;
+  background: #f3f8f6;
+  border: 1px solid rgba(31, 79, 80, 0.14);
+}
+
+.gallery-sort-row.drop-ready {
+  background: rgba(31, 79, 80, 0.12);
+  border-color: rgba(31, 79, 80, 0.46);
+  box-shadow: inset 0 0 0 2px rgba(31, 79, 80, 0.12);
+}
+
+.gallery-sort-main {
+  display: grid;
+  grid-template-columns: 28px 58px minmax(0, 1fr) 24px;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 0;
+  color: var(--black);
+  text-align: right;
+  background: transparent;
+  border: 0;
+}
+
+.gallery-sort-main.is-dragging {
+  opacity: 0.42;
+}
+
+.gallery-sort-index {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: #f8fbfa;
+  font-size: 0.75rem;
+  font-weight: 900;
+  background: #1f4f50;
+}
+
+.gallery-sort-main .section-row-thumb {
+  width: 58px;
+  height: 58px;
+}
+
+.gallery-sort-main strong,
+.gallery-sort-main small {
+  display: block;
+}
+
+.gallery-sort-main strong {
+  font-size: 0.9rem;
+}
+
+.gallery-sort-main small {
+  margin-top: 3px;
+  color: #667572;
+  font-size: 0.72rem;
+}
+
+.gallery-sort-main > i {
+  width: 18px;
+  height: 18px;
+  color: #5d7775;
+}
+
+.gallery-sort-controls {
+  display: grid;
+  grid-template-rows: repeat(2, 1fr);
+  gap: 5px;
+}
+
+.gallery-sort-controls .icon-action {
+  width: 34px;
+  min-width: 34px;
+  height: 28px;
+  min-height: 28px;
+  color: #1f4f50;
+  background: #f8fbfa;
+  border-color: rgba(31, 79, 80, 0.2);
+}
+
+.gallery-sort-controls .icon-action i {
+  width: 16px;
+  height: 16px;
+}
+
 .section-notice {
   display: grid;
   grid-template-columns: 20px minmax(0, 1fr);
@@ -5741,6 +5837,28 @@ svg.lucide {
     grid-template-columns: 60px minmax(0, 1fr) 24px;
     min-height: 80px;
     padding: 9px;
+  }
+
+  .gallery-sort-main {
+    grid-template-columns: 26px 54px minmax(0, 1fr) 20px;
+    gap: 8px;
+  }
+
+  .gallery-sort-index {
+    width: 26px;
+    height: 26px;
+  }
+
+  .gallery-sort-main .section-row-thumb {
+    width: 54px;
+    height: 54px;
+  }
+
+  .gallery-sort-controls .icon-action {
+    width: 38px;
+    min-width: 38px;
+    height: 32px;
+    min-height: 32px;
   }
 
   .section-row-thumb {

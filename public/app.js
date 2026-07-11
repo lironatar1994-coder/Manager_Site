@@ -984,6 +984,14 @@ function showSectionEditor(sectionId) {
       showImageActionModal(button.dataset.imageActionSlot);
     });
   });
+  modal.querySelectorAll("[data-gallery-move]").forEach((button) => {
+    button.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      button.disabled = true;
+      const moved = await moveGalleryImage(button.dataset.gallerySlot, button.dataset.galleryMove);
+      if (!moved) button.disabled = false;
+    });
+  });
   modal.querySelectorAll("[data-edit-text-slot]").forEach((button) => {
     button.addEventListener("click", () => {
       close();
@@ -1027,10 +1035,37 @@ function sectionImagePane(section, active) {
     <div class="section-editor-pane" data-section-pane="images" ${active ? "" : "hidden"}>
       ${sectionNotice(section.id)}
       ${section.id === "gallery" && can("canUpload") ? galleryAddButton() : ""}
-      <div class="section-item-list">
-        ${section.imageSlots.map(sectionImageRow).join("")}
-      </div>
+      ${section.id === "gallery" ? gallerySortList(section) : `<div class="section-item-list">${section.imageSlots.map(sectionImageRow).join("")}</div>`}
     </div>
+  `;
+}
+
+function gallerySortList(section) {
+  const filledSlots = section.imageSlots.filter((slot) => slot.images.length);
+  const emptySlots = section.imageSlots.filter((slot) => !slot.images.length);
+  return `
+    <div class="gallery-sort-list" aria-label="סידור תמונות גלריה">
+      ${filledSlots.map((slot, index) => gallerySortRow(slot, index, filledSlots.length)).join("")}
+      ${emptySlots.map(sectionImageRow).join("")}
+    </div>
+  `;
+}
+
+function gallerySortRow(slot, index, total) {
+  const image = slot.images[0];
+  return `
+    <article class="gallery-sort-row" data-drop-slot="${escapeAttr(slot.id)}">
+      <button class="gallery-sort-main" type="button" data-image-action-slot="${escapeAttr(slot.id)}" ${draggableAttrs(image)}>
+        <span class="gallery-sort-index">${index + 1}</span>
+        <span class="section-row-thumb"><img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" /></span>
+        <span><strong>תמונה ${index + 1}</strong><small>לחצו לעריכה</small></span>
+        <i data-lucide="grip-vertical"></i>
+      </button>
+      <div class="gallery-sort-controls" aria-label="שינוי סדר">
+        <button class="icon-action" type="button" data-gallery-move="earlier" data-gallery-slot="${escapeAttr(slot.id)}" ${index === 0 ? "disabled" : ""} aria-label="העברה מוקדם יותר" title="העברה מוקדם יותר"><i data-lucide="arrow-up"></i></button>
+        <button class="icon-action" type="button" data-gallery-move="later" data-gallery-slot="${escapeAttr(slot.id)}" ${index === total - 1 ? "disabled" : ""} aria-label="העברה מאוחר יותר" title="העברה מאוחר יותר"><i data-lucide="arrow-down"></i></button>
+      </div>
+    </article>
   `;
 }
 
@@ -1454,7 +1489,7 @@ async function reorderDraggedImage({ imageId, slotId, source, targetSlotId, targ
   }
   const productionMove = source === "production" || targetSource === "production" || imageId.startsWith("asset-") || targetImageId.startsWith("asset-");
   const response = productionMove
-    ? await api(`/api/sites/${state.clientSite.id}/assets/reorder`, { method: "POST", body: { sourceSlotId: slotId, targetSlotId } })
+    ? await api(`/api/sites/${state.clientSite.id}/assets/reorder`, { method: "POST", body: { sourceSlotId: slotId, targetSlotId, position: "before" } })
     : await api(`/api/sites/${state.clientSite.id}/images/${imageId}/placement`, { method: "PATCH", body: { targetSlotId, targetImageId } });
   if (response?.error) return toast(formatApiError(response.error), "error");
   state.clientSite = response.site || state.clientSite;
@@ -1470,6 +1505,30 @@ async function reorderDraggedImage({ imageId, slotId, source, targetSlotId, targ
   };
   toast("סדר התמונות עודכן", "success");
   renderClient();
+}
+
+async function moveGalleryImage(slotId, direction) {
+  const gallery = clientEditorSections(state.clientSite).find((section) => section.id === "gallery");
+  const slots = (gallery?.imageSlots || []).filter((slot) => slot.images.length);
+  const index = slots.findIndex((slot) => slot.id === slotId);
+  const target = slots[index + (direction === "earlier" ? -1 : 1)];
+  if (index < 0 || !target) return false;
+  const response = await api(`/api/sites/${state.clientSite.id}/assets/reorder`, {
+    method: "POST",
+    body: { sourceSlotId: slotId, targetSlotId: target.id, position: direction === "earlier" ? "before" : "after" },
+  });
+  if (response?.error) {
+    toast(formatApiError(response.error), "error");
+    return false;
+  }
+  state.clientSite = response.site || state.clientSite;
+  state.clientAssets = { ...(state.clientAssets || {}), assets: response.assets || [] };
+  state.livePreviewVersion = Date.now();
+  state.sectionNotice = { sectionId: "gallery", type: "success", message: "סדר התמונות עודכן באתר" };
+  toast("סדר התמונות עודכן", "success");
+  renderClient();
+  window.setTimeout(() => showSectionEditor("gallery"), 0);
+  return true;
 }
 
 function metric(label, value, note) {

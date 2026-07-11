@@ -136,6 +136,8 @@ When a client has a runtime image config, its production assets are the only gal
 
 Deleting any gallery image removes its corresponding runtime gallery slot, including the first gallery slot. This prevents a later static-site deployment from restoring a deleted default image into the live gallery.
 
+Gallery order is stored in the runtime `imageSlots` order and the matching live HTML frames. The client can reorder with drag-and-drop or move controls; static client deployments rebuild their gallery using that saved config order.
+
 Deleting a gallery asset also removes its matching live gallery frame from HTML before deleting the image file. Optional `gallery_N` slots are removed from the runtime config so deleted gallery images do not remain as empty placeholders.
 
 Text editing uses `textSlots` in the same config. Each slot points to an absolute HTML file path inside `siteRoot` and a `data-manager-text` marker. The server updates plain text only, requires exactly one matching marker, backs up the HTML file before writing, and rejects over-limit text.
