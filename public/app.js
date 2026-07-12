@@ -44,7 +44,6 @@ const state = {
   adminAuditFilter: "all",
   lastProof: null,
   sectionNotice: null,
-  clientDrawerOpen: false,
   clientPreviewInitialized: false,
   clientWorkspaceMode: "edit",
   livePreviewVersion: Date.now(),
@@ -177,38 +176,34 @@ function renderLogin(error = "") {
   const loginPrefill = readLoginPrefill();
   app.className = "login-view login-rtl";
   app.innerHTML = `
-    <main class="login-shell" dir="rtl" lang="he">
-      <section class="login-panel">
-        <div class="brand-row">
+    <main class="login-shell editorial-login" dir="rtl" lang="he">
+      <section class="login-panel editorial-login-panel">
+        <div class="brand-row editorial-brand">
           <span class="mark">MS</span>
-          <span>
-            <strong>ניהול אתרים</strong>
-            <small>מערכת ניהול אתרים פרטית</small>
-          </span>
+          <span><strong>האתר שלי</strong><small>סטודיו פרטי לעדכון האתר</small></span>
         </div>
-        <div class="login-copy">
-          <p class="eyebrow">כניסה מאובטחת</p>
-          <h1>מרכז שקט לניהול תמונות האתר.</h1>
-          <p>הלקוחות נכנסים לאזור האישי שהוגדר להם, מעדכנים תמונות, בודקים סטטוס ומנהלים את הקישור לאתר.</p>
+        <div class="login-copy editorial-login-copy">
+          <p class="eyebrow">הכניסה הפרטית שלך</p>
+          <h1>האתר שלך,<br /><em>בידיים שלך.</em></h1>
+          <p>נכנסים, רואים את האתר כפי שהוא עכשיו ומעדכנים בדיוק את מה שצריך.</p>
         </div>
-        <form class="login-form" id="loginForm">
-          <label>שם משתמש<input name="username" autocomplete="username" placeholder="miryam_zelig" value="${escapeAttr(loginPrefill.username)}" dir="ltr" required /></label>
-          <label>סיסמה<input name="password" type="password" autocomplete="current-password" value="${escapeAttr(loginPrefill.password)}" dir="ltr" required /></label>
-          ${error ? `<div class="form-error">${escapeHtml(error)}</div>` : ""}
-          <button class="primary-button" type="submit"><i data-lucide="log-in"></i>כניסה למערכת</button>
+        <form class="login-form editorial-login-form" id="loginForm">
+          <label><span>שם משתמש</span><input name="username" autocomplete="username" placeholder="שם המשתמש שלך" value="${escapeAttr(loginPrefill.username)}" dir="ltr" required /></label>
+          <label><span>סיסמה</span><input name="password" type="password" autocomplete="current-password" value="${escapeAttr(loginPrefill.password)}" dir="ltr" required /></label>
+          ${error ? `<div class="form-error" role="alert">${escapeHtml(error)}</div>` : ""}
+          <button class="primary-button editorial-login-button" type="submit"><span>כניסה לסטודיו</span><i data-lucide="arrow-left"></i></button>
         </form>
+        <small class="login-security"><i data-lucide="lock-keyhole"></i>אזור מאובטח המיועד ללקוחות בלבד</small>
       </section>
-      <aside class="login-art" aria-label="תצוגת אזור לקוח">
-        <div class="art-window">
-          <div class="window-bar"><span></span><span></span><span></span></div>
-          <div class="client-card lifted">
-            <small>אזור לקוח</small>
-            <strong dir="ltr">/client/miryam_zelig</strong>
-            <p>אזורי תמונה מסודרים, תצוגת אתר ופעולות פשוטות במקום אחד.</p>
-          </div>
-          <div class="image-rack"><span></span><span></span><span></span></div>
-          <div class="admin-chip">המנהל שולט במשתמשים, הרשאות וגישה</div>
+      <aside class="login-art editorial-login-art" aria-label="הצצה לסטודיו האישי">
+        <div class="login-proof-label"><span>הסטודיו האישי</span><bdi>VIEW / EDIT / SHARE</bdi></div>
+        <div class="editorial-proof-sheet" aria-hidden="true">
+          <div class="proof-sheet-top"><span></span><span></span><span></span><bdi>YOUR WEBSITE</bdi></div>
+          <div class="proof-sheet-hero"><i></i><strong>01</strong></div>
+          <div class="proof-sheet-grid"><span></span><span></span><span></span></div>
+          <div class="proof-sheet-line"><i></i><i></i></div>
         </div>
+        <p class="login-art-caption"><span>01—05</span> כל התמונות והטקסטים של האתר, מסודרים במקום אחד ברור.</p>
       </aside>
     </main>
   `;
@@ -342,13 +337,13 @@ function renderClient() {
   if (!state.clientPreviewInitialized) {
     state.previewMode = isMobileViewport ? "mobile" : "desktop";
     state.clientWorkspaceMode = isMobileViewport ? "edit" : "preview";
-    state.clientDrawerOpen = isMobileViewport;
     state.clientPreviewInitialized = true;
   }
   if (isMobileViewport) state.previewMode = "mobile";
   const sections = clientEditorSections(site);
   const isAdminPreview = state.me.role === "admin";
   const clientName = isAdminPreview ? state.clientUsername : state.me.displayName;
+  const studioName = site.name || clientName;
   const visibleWebsiteUrl = state.clientAssets?.client?.publicUrl || site.websiteUrl;
   const showLivePreview = !isMobileViewport || state.clientWorkspaceMode === "preview";
   app.className = `app-view client-mode client-rtl ${state.me.role === "admin" ? "admin-preview" : ""}`;
@@ -362,8 +357,9 @@ function renderClient() {
       }
       <header class="client-studio-header">
         <div class="studio-identity">
-          <span class="studio-kicker">האתר שלך</span>
-          <h1>${escapeHtml(clientName)}</h1>
+          <span class="studio-kicker">הסטודיו של ${escapeHtml(clientName)}</span>
+          <h1>${escapeHtml(studioName)}</h1>
+          <bdi class="studio-url">${escapeHtml(shortUrlLabel(visibleWebsiteUrl))}</bdi>
         </div>
         <div class="studio-mode-switch" role="tablist" aria-label="מצב עבודה">
           <button class="${state.clientWorkspaceMode === "preview" ? "active" : ""}" type="button" data-client-workspace-mode="preview" aria-pressed="${state.clientWorkspaceMode === "preview"}"><i data-lucide="monitor"></i><span>תצוגה</span></button>
@@ -380,15 +376,17 @@ function renderClient() {
                 <label>קישור האתר<input name="websiteUrl" value="${escapeAttr(visibleWebsiteUrl)}" dir="ltr" ${can("canEditLinks") ? "" : "disabled"} /></label>
                 <button class="ghost-button" type="submit" ${can("canEditLinks") ? "" : "disabled"}><i data-lucide="${can("canEditLinks") ? "save" : "lock"}"></i>שמירה</button>
               </form>
+              <button class="ghost-button studio-menu-logout" type="button" data-client-logout><i data-lucide="log-out"></i>יציאה מהסטודיו</button>
             </div>
           </details>
         </div>
       </header>
 
       <section class="client-studio-layout">
-        <article class="website-preview managed-preview studio-preview" data-preview-mode="${state.previewMode}">
+        <article class="website-preview managed-preview studio-preview" data-preview-mode="${state.previewMode}" aria-label="תצוגת האתר החי">
+          <div class="studio-proof-mark" aria-hidden="true"><span>LIVE PROOF</span><bdi>${new Date().getFullYear()}</bdi></div>
           <div class="preview-toolbar studio-preview-toolbar">
-            <div class="studio-preview-title"><span>כך האתר נראה</span></div>
+            <div class="studio-preview-title"><span>האתר כפי שהוא עכשיו</span><small>תצוגה חיה</small></div>
             <div class="preview-toggle" role="tablist" aria-label="בחירת תצוגה">
               <button class="${state.previewMode === "desktop" ? "active" : ""}" type="button" data-preview-mode="desktop"><i data-lucide="monitor"></i>מחשב</button>
               <button class="${state.previewMode === "mobile" ? "active" : ""}" type="button" data-preview-mode="mobile"><i data-lucide="smartphone"></i>נייד</button>
@@ -411,14 +409,9 @@ function renderClient() {
             </div>
           </div>
         </article>
-        <aside class="client-edit-drawer ${state.clientDrawerOpen ? "open" : ""}">
-          <button class="client-drawer-handle" type="button" data-toggle-client-drawer aria-expanded="${state.clientDrawerOpen}">
-            <span class="drawer-grip" aria-hidden="true"></span>
-            <span><small>עריכת האתר</small><strong>בחירת אזור</strong></span>
-            <i data-lucide="chevron-up"></i>
-          </button>
+        <aside class="client-edit-drawer studio-index" aria-label="אזורי עריכה באתר">
           <div class="client-drawer-body">
-            <div class="client-drawer-heading"><strong>עריכת האתר</strong><span>${sections.length} אזורים</span></div>
+            <div class="client-drawer-heading"><span class="studio-index-number">${String(sections.length).padStart(2, "0")}</span><div><small>תוכן האתר</small><strong>מה תרצו לערוך?</strong></div></div>
             ${clientSectionGroups(sections)}
           </div>
         </aside>
@@ -432,14 +425,9 @@ function renderClient() {
   });
   document.querySelector("[data-refresh-preview]")?.addEventListener("click", refreshSitePreview);
   document.querySelector("[data-refresh-preview-inline]")?.addEventListener("click", refreshSitePreview);
-  document.querySelector("[data-toggle-client-drawer]")?.addEventListener("click", () => {
-    state.clientDrawerOpen = !state.clientDrawerOpen;
-    renderClient();
-  });
   document.querySelectorAll("[data-client-workspace-mode]").forEach((button) => {
     button.addEventListener("click", () => {
       state.clientWorkspaceMode = button.dataset.clientWorkspaceMode === "preview" ? "preview" : "edit";
-      state.clientDrawerOpen = state.clientWorkspaceMode === "edit";
       renderClient();
     });
   });
@@ -847,27 +835,10 @@ function sectionIdForTextSlot(slot) {
 }
 
 function clientSectionGroups(sections) {
-  const visualSections = sections.filter((section) => section.imageSlots.length > 0 && !section.textSlots.length);
-  const contentSections = sections.filter((section) => section.textSlots.length > 0);
-  const group = (title, className, items) => {
-    if (!items.length) return "";
-    return `
-      <section class="client-section-group ${className}">
-        <header class="client-section-group-heading">
-          <h2>${title}</h2>
-          <span>${items.length}</span>
-        </header>
-        <div class="section-editor-grid studio-section-grid">${items.map(sectionCard).join("")}</div>
-      </section>
-    `;
-  };
-  return [
-    group("תמונות באתר", "visual-section-group", visualSections),
-    group("תוכן באתר", "content-section-group", contentSections),
-  ].join("");
+  return `<div class="section-editor-grid studio-section-grid">${sections.map((section, index) => sectionCard(section, index)).join("")}</div>`;
 }
 
-function sectionCard(section) {
+function sectionCard(section, index = 0) {
   const imageCount = section.imageSlots.reduce((total, slot) => total + slot.images.length, 0);
   const textCount = section.textSlots.filter((slot) => String(slot.value || "").trim()).length;
   const isTextSection = section.textSlots.length > 0;
@@ -880,12 +851,13 @@ function sectionCard(section) {
       : "להתחלת עריכה";
   return `
     <button class="section-editor-card section-${escapeAttr(section.id)} ${section.ready ? "ready" : "empty"} ${isTextSection ? "text-section" : "image-section"}" type="button" data-edit-section="${escapeAttr(section.id)}">
+      <span class="section-card-index">${String(index + 1).padStart(2, "0")}</span>
       ${sectionCardMedia(section)}
       <span class="section-card-copy">
         <strong>${escapeHtml(section.title)}</strong>
         <small>${escapeHtml(contentLabel)}</small>
       </span>
-      <span class="section-card-action"><i data-lucide="${isTextSection ? "text-cursor-input" : "arrow-up-left"}"></i><span>${isTextSection ? "עריכת טקסט" : "עריכה"}</span></span>
+      <span class="section-card-action"><span>עריכה</span><i data-lucide="arrow-left"></i></span>
     </button>
   `;
 }
@@ -983,7 +955,7 @@ function showSectionEditor(sectionId) {
   document.body.appendChild(modal);
   icons();
 
-  const close = () => modal.remove();
+  const close = createDialogController(modal);
   modal.querySelector(".modal-close").addEventListener("click", close);
   modal.addEventListener("click", (event) => {
     if (event.target === modal) close();
@@ -1785,7 +1757,7 @@ function showReviewNoteModal(siteId, imageId) {
   `;
   document.body.appendChild(modal);
   icons();
-  const close = () => modal.remove();
+  const close = createDialogController(modal);
   modal.querySelector(".modal-close").addEventListener("click", close);
   modal.querySelector("[data-clear-note]").addEventListener("click", async () => {
     const saved = await saveReviewNote(siteId, imageId, "");
@@ -2122,7 +2094,7 @@ function showTextEditModal(slotId) {
   `;
   document.body.appendChild(modal);
   icons();
-  const close = () => modal.remove();
+  const close = createDialogController(modal);
   const input = modal.querySelector("[name='value']");
   const counter = modal.querySelector("[data-text-count]");
   const updateCounter = () => {
@@ -2238,10 +2210,11 @@ function showImageActionModal(slotId) {
   const replaceButton = modal.querySelector("[data-replace-slot]");
   const cropButton = modal.querySelector("[data-crop-slot]");
   const confirmReplaceButton = modal.querySelector("[data-confirm-replace]");
-  const cleanup = () => {
+  const cleanupModal = () => {
     if (selectedUrl) URL.revokeObjectURL(selectedUrl);
     modal.remove();
   };
+  const cleanup = createDialogController(modal, cleanupModal);
   modal.querySelector(".modal-close").addEventListener("click", cleanup);
   preview.addEventListener("click", () => {
     const previewImage = preview.querySelector("img");
@@ -2397,6 +2370,7 @@ function showCropToolModal(slot, image, options = {}) {
   `;
   document.body.appendChild(modal);
   icons();
+  const close = createDialogController(modal);
   const imageNode = modal.querySelector("[data-crop-image]");
   const updateCropPreview = () => {
     const zoom = Number(modal.querySelector("[data-crop-zoom]").value);
@@ -2405,8 +2379,8 @@ function showCropToolModal(slot, image, options = {}) {
     imageNode.style.transform = `translate(${x * 0.45}%, ${y * 0.45}%) scale(${zoom})`;
   };
   modal.querySelectorAll("[data-crop-zoom], [data-crop-x], [data-crop-y]").forEach((input) => input.addEventListener("input", updateCropPreview));
-  modal.querySelector(".modal-close").addEventListener("click", () => modal.remove());
-  modal.querySelector("[data-cancel]").addEventListener("click", () => modal.remove());
+  modal.querySelector(".modal-close").addEventListener("click", close);
+  modal.querySelector("[data-cancel]").addEventListener("click", close);
   modal.querySelector("[data-save-crop]").addEventListener("click", async () => {
     try {
       await waitForImageLoad(imageNode);
@@ -2417,7 +2391,7 @@ function showCropToolModal(slot, image, options = {}) {
         y: Number(modal.querySelector("[data-crop-y]").value),
       });
       const saved = options.onSave ? await options.onSave(blob) : await uploadImageToSlot(slot.id, blob, `${slot.id}-crop.jpg`);
-      if (saved !== false) modal.remove();
+      if (saved !== false) close();
     } catch (error) {
       toast("לא ניתן לחתוך את התמונה הזו כרגע", "error");
     }
@@ -2600,7 +2574,6 @@ async function loadClient(username) {
   state.clientUsername = username || state.me.username;
   if (previousUsername !== state.clientUsername) {
     state.clientPreviewInitialized = false;
-    state.clientDrawerOpen = false;
     state.clientWorkspaceMode = "edit";
   }
   const sitesResponse = await api("/api/sites");
@@ -2679,14 +2652,55 @@ async function api(path, options = {}) {
 }
 
 function bindShell() {
-  document.querySelector("#logoutButton").addEventListener("click", async () => {
+  const logout = async () => {
     const logoutRoute = state.me?.role === "admin" ? "/admin-login" : "/login";
     await api("/api/auth/logout", { method: "POST" });
     state.me = null;
     navigate(logoutRoute, true);
     if (logoutRoute === "/admin-login") renderAdminLogin();
     else renderLogin();
+  };
+  document.querySelectorAll("#logoutButton, [data-client-logout]").forEach((button) => button.addEventListener("click", logout));
+}
+
+function createDialogController(backdrop, onClose = () => backdrop.remove()) {
+  const previouslyFocused = document.activeElement;
+  const dialog = backdrop.querySelector('[role="dialog"]') || backdrop;
+  let closed = false;
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    onClose();
+    if (previouslyFocused instanceof HTMLElement && document.contains(previouslyFocused)) {
+      previouslyFocused.focus();
+    }
+  };
+  backdrop.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      close();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = [...dialog.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), summary, [tabindex]:not([tabindex="-1"])')].filter(
+      (element) => !element.hidden && element.offsetParent !== null,
+    );
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
   });
+  window.setTimeout(() => {
+    const preferred = dialog.querySelector(".modal-close, input:not([disabled]), textarea:not([disabled]), button:not([disabled])");
+    preferred?.focus();
+  }, 0);
+  return close;
 }
 
 function confirmAction({ title, body, confirmText, onConfirm }) {
@@ -2705,11 +2719,12 @@ function confirmAction({ title, body, confirmText, onConfirm }) {
   `;
   document.body.appendChild(modal);
   icons();
-  modal.querySelector("[data-cancel]").addEventListener("click", () => modal.remove());
-  modal.querySelector(".modal-close").addEventListener("click", () => modal.remove());
+  const close = createDialogController(modal);
+  modal.querySelector("[data-cancel]").addEventListener("click", close);
+  modal.querySelector(".modal-close").addEventListener("click", close);
   modal.querySelector("[data-confirm]").addEventListener("click", async () => {
     await onConfirm();
-    modal.remove();
+    close();
   });
 }
 
