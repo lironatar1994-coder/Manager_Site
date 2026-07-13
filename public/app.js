@@ -46,6 +46,13 @@ const state = {
   sectionNotice: null,
   clientPreviewInitialized: false,
   clientWorkspaceMode: "edit",
+  selectedSectionId: null,
+  selectedSlotId: null,
+  selectedTextSlotId: null,
+  lastEditedSectionId: null,
+  recentlySavedSectionId: null,
+  recentlySavedMessage: "",
+  recentSaveTimer: null,
   livePreviewVersion: Date.now(),
 };
 
@@ -339,7 +346,12 @@ function renderClient() {
     state.clientWorkspaceMode = isMobileViewport ? "edit" : "preview";
     state.clientPreviewInitialized = true;
   }
-  if (isMobileViewport) state.previewMode = "mobile";
+  if (isMobileViewport) {
+    state.previewMode = "mobile";
+    state.selectedSectionId = null;
+    state.selectedSlotId = null;
+    state.selectedTextSlotId = null;
+  }
   const sections = clientEditorSections(site);
   const isAdminPreview = state.me.role === "admin";
   const clientName = isAdminPreview ? state.clientUsername : state.me.displayName;
@@ -367,7 +379,6 @@ function renderClient() {
         </div>
         <div class="studio-actions">
           <a class="studio-action studio-open" href="${escapeAttr(visibleWebsiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i><span>פתיחת האתר</span></a>
-          <button class="studio-action" type="button" data-share-website="${escapeAttr(visibleWebsiteUrl)}"><i data-lucide="share-2"></i><span>שיתוף</span></button>
           <details class="studio-site-menu">
             <summary aria-label="אפשרויות אתר"><i data-lucide="ellipsis"></i></summary>
             <div class="studio-site-menu-panel">
@@ -376,6 +387,7 @@ function renderClient() {
                 <label>קישור האתר<input name="websiteUrl" value="${escapeAttr(visibleWebsiteUrl)}" dir="ltr" ${can("canEditLinks") ? "" : "disabled"} /></label>
                 <button class="ghost-button" type="submit" ${can("canEditLinks") ? "" : "disabled"}><i data-lucide="${can("canEditLinks") ? "save" : "lock"}"></i>שמירה</button>
               </form>
+              <button class="ghost-button studio-menu-share" type="button" data-share-website="${escapeAttr(visibleWebsiteUrl)}"><i data-lucide="share-2"></i>שיתוף האתר</button>
               <button class="ghost-button studio-menu-logout" type="button" data-client-logout><i data-lucide="log-out"></i>יציאה מהסטודיו</button>
             </div>
           </details>
@@ -383,8 +395,8 @@ function renderClient() {
       </header>
 
       <section class="client-studio-layout">
-        <article class="website-preview managed-preview studio-preview" data-preview-mode="${state.previewMode}" aria-label="תצוגת האתר החי">
-          <div class="studio-proof-mark" aria-hidden="true"><span>LIVE PROOF</span><bdi>${new Date().getFullYear()}</bdi></div>
+        <article class="website-preview managed-preview studio-preview ${state.recentlySavedSectionId ? "preview-updated" : ""}" data-preview-mode="${state.previewMode}" aria-label="תצוגת האתר החי">
+          <div class="studio-proof-mark" aria-hidden="true"><span>אתר חי</span><bdi>${new Date().getFullYear()}</bdi></div>
           <div class="preview-toolbar studio-preview-toolbar">
             <div class="studio-preview-title"><span>האתר כפי שהוא עכשיו</span><small>תצוגה חיה</small></div>
             <div class="preview-toggle" role="tablist" aria-label="בחירת תצוגה">
@@ -410,10 +422,7 @@ function renderClient() {
           </div>
         </article>
         <aside class="client-edit-drawer studio-index" aria-label="אזורי עריכה באתר">
-          <div class="client-drawer-body">
-            <div class="client-drawer-heading"><span class="studio-index-number">${String(sections.length).padStart(2, "0")}</span><div><small>תוכן האתר</small><strong>מה תרצו לערוך?</strong></div></div>
-            ${clientSectionGroups(sections)}
-          </div>
+          ${clientInspector(sections)}
         </aside>
       </section>
     </main>
@@ -436,14 +445,24 @@ function renderClient() {
   });
   bindLivePreview();
   document.querySelectorAll("[data-edit-section]").forEach((button) => {
-    button.addEventListener("click", () => showSectionEditor(button.dataset.editSection));
+    button.addEventListener("click", () => {
+      state.lastEditedSectionId = button.dataset.editSection;
+      if (isMobileViewport) return showSectionEditor(button.dataset.editSection);
+      state.selectedSectionId = button.dataset.editSection;
+      state.selectedSlotId = null;
+      state.selectedTextSlotId = null;
+      renderClient();
+    });
   });
   // The previous slot grid and standalone upload form are intentionally not rendered.
   // Image actions now live inside the section editor to keep one clear workflow.
   document.querySelectorAll("[data-image-action-slot]").forEach((button) => {
     button.addEventListener("click", () => {
       if (button.dataset.justDragged === "true") return;
-      showImageActionModal(button.dataset.imageActionSlot);
+      if (isMobileViewport) return showImageActionModal(button.dataset.imageActionSlot);
+      state.selectedSlotId = button.dataset.imageActionSlot;
+      state.selectedTextSlotId = null;
+      renderClient();
     });
   });
   document.querySelectorAll("[data-delete-image]").forEach((button) => {
@@ -469,8 +488,14 @@ function renderClient() {
     });
   });
   document.querySelectorAll("[data-edit-text-slot]").forEach((button) => {
-    button.addEventListener("click", () => showTextEditModal(button.dataset.editTextSlot));
+    button.addEventListener("click", () => {
+      if (isMobileViewport) return showTextEditModal(button.dataset.editTextSlot);
+      state.selectedTextSlotId = button.dataset.editTextSlot;
+      state.selectedSlotId = null;
+      renderClient();
+    });
   });
+  bindClientInspector();
   bindImageDragAndDrop();
   document.querySelectorAll("[data-admin-status]").forEach((button) => {
     button.addEventListener("click", () => updateSiteStatus(button.dataset.siteId, button.dataset.adminStatus));
@@ -834,6 +859,96 @@ function sectionIdForTextSlot(slot) {
   return "about";
 }
 
+function clientInspector(sections) {
+  const section = sections.find((item) => item.id === state.selectedSectionId);
+  if (!section) {
+    return `
+      <div class="client-drawer-body inspector-overview">
+        <div class="client-drawer-heading"><span class="studio-index-number">${String(sections.length).padStart(2, "0")}</span><div><small>תוכן האתר</small><strong>מה תרצו לערוך?</strong></div></div>
+        ${clientSectionGroups(sections)}
+      </div>
+    `;
+  }
+
+  const slot = state.selectedSlotId ? section.imageSlots.find((item) => item.id === state.selectedSlotId) : null;
+  const textSlot = state.selectedTextSlotId ? section.textSlots.find((item) => item.id === state.selectedTextSlotId) : null;
+  const nested = Boolean(slot || textSlot);
+  const title = slot ? slotDisplayLabel(slot) : textSlot ? textSlot.label || textSlot.id : section.title;
+  const saved = state.recentlySavedSectionId === section.id;
+  return `
+    <div class="client-drawer-body studio-inspector-shell ${nested ? "nested" : "section-level"}" data-inspector-section="${escapeAttr(section.id)}">
+      <header class="studio-inspector-header">
+        <button class="inspector-back" type="button" data-inspector-back="${nested ? "section" : "overview"}" aria-label="חזרה"><i data-lucide="arrow-right"></i></button>
+        <span><small>${nested ? escapeHtml(section.title) : "עריכת אזור"}</small><strong>${escapeHtml(title)}</strong></span>
+        <span class="inspector-saved ${saved ? "visible" : ""}" aria-live="polite"><i data-lucide="check"></i>${saved ? escapeHtml(state.recentlySavedMessage || "נשמר") : ""}</span>
+      </header>
+      <div class="studio-inspector-content">
+        ${slot ? inspectorImageEditor(slot) : textSlot ? inspectorTextEditor(textSlot) : inspectorSectionEditor(section)}
+      </div>
+    </div>
+  `;
+}
+
+function inspectorSectionEditor(section) {
+  const hasImages = section.imageSlots.length > 0;
+  const hasText = section.textSlots.length > 0;
+  return `
+    <div class="inspector-section-intro">
+      <p>${escapeHtml(section.description)}</p>
+      ${state.recentlySavedSectionId === section.id ? `<span class="section-inline-saved"><i data-lucide="check-circle-2"></i>${escapeHtml(state.recentlySavedMessage || "נשמר באתר")}</span>` : ""}
+    </div>
+    ${sectionNotice(section.id)}
+    ${hasImages ? `<section class="inspector-editor-group"><h3>${section.id === "gallery" ? "תמונות בגלריה" : "תמונות באזור"}</h3>${section.id === "gallery" && can("canUpload") ? galleryAddButton() : ""}${section.id === "gallery" ? gallerySortList(section) : `<div class="section-item-list">${section.imageSlots.map(sectionImageRow).join("")}</div>`}</section>` : ""}
+    ${hasText ? `<section class="inspector-editor-group"><h3>טקסטים באזור</h3><div class="section-item-list">${section.textSlots.map(sectionTextRow).join("")}</div></section>` : ""}
+  `;
+}
+
+function inspectorImageEditor(slot) {
+  const image = slot.images?.[0] || imagesForSlot(state.clientSite, slot.id)[0];
+  const canRestore = image?.source === "production" && Number(image.backupCount || 0) > 0 && can("canUpload");
+  return `
+    <div class="inspector-image-editor" data-inline-image-editor="${escapeAttr(slot.id)}">
+      <button class="inspector-image-preview ${image ? "filled" : "empty"}" type="button" data-inspector-preview ${image ? "" : "disabled"}>
+        ${image ? `<img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" data-inline-preview-media />` : `<i data-lucide="image-plus"></i><span>עדיין אין תמונה באזור הזה</span>`}
+      </button>
+      <p class="inspector-action-message" data-inline-action-message>${image ? "אפשר להחליף, לחתוך או לשחזר את התמונה." : "בחרו תמונה מתאימה כדי להוסיף אותה לאתר."}</p>
+      <details class="modal-details inspector-details">
+        <summary><i data-lucide="info"></i>מידע על התמונה</summary>
+        <div class="modal-details-body">
+          ${image ? imageQualityChips(image, slot) : `<span class="image-meta-chips"><small><i data-lucide="scan"></i>מומלץ ${escapeHtml(recommendedSizeText(slot))}</small></span>`}
+          ${renderBackupStatus(image)}
+          <div class="quality-panel" data-inline-quality hidden></div>
+        </div>
+      </details>
+      <input type="file" accept="image/*" data-inline-file hidden ${can("canUpload") ? "" : "disabled"} />
+      <div class="inspector-image-actions">
+        <button class="primary-button" type="button" data-inline-replace ${can("canUpload") ? "" : "disabled"}><i data-lucide="${image ? "replace" : "image-plus"}"></i>${image ? "בחירת תמונה חדשה" : "הוספת תמונה"}</button>
+        <button class="ghost-button" type="button" data-inline-crop ${image ? "" : "disabled"}><i data-lucide="crop"></i>חיתוך</button>
+        <button class="ghost-button" type="button" data-inline-restore ${canRestore ? "" : "disabled"}><i data-lucide="rotate-ccw"></i>שחזור</button>
+        <button class="danger-button" type="button" data-inline-delete ${image && can("canDelete") ? "" : "disabled"}><i data-lucide="trash-2"></i>מחיקה</button>
+      </div>
+      <div class="inspector-pending-actions" data-inline-pending hidden>
+        <button class="ghost-button" type="button" data-inline-clear>ביטול בחירה</button>
+        <button class="primary-button" type="button" data-inline-confirm><i data-lucide="check"></i>שמירה באתר</button>
+      </div>
+    </div>
+  `;
+}
+
+function inspectorTextEditor(slot) {
+  const multiline = slot.inputType === "long";
+  const field = multiline
+    ? `<textarea name="value" maxlength="${slot.maxLength}" rows="9" required>${escapeHtml(slot.value || "")}</textarea>`
+    : `<input name="value" maxlength="${slot.maxLength}" value="${escapeAttr(slot.value || "")}" required />`;
+  return `
+    <form class="inspector-text-form" data-inspector-text-form="${escapeAttr(slot.id)}">
+      <label><span>הטקסט שיופיע באתר</span>${field}</label>
+      <div class="text-edit-footer"><small><bdi data-text-count>${String(slot.value || "").length}</bdi>/${slot.maxLength}</small><span>${slot.fileName ? escapeHtml(slot.fileName) : "קובץ האתר"}</span></div>
+      <button class="primary-button" type="submit"><i data-lucide="save"></i>שמירת הטקסט באתר</button>
+    </form>
+  `;
+}
+
 function clientSectionGroups(sections) {
   return `<div class="section-editor-grid studio-section-grid">${sections.map((section, index) => sectionCard(section, index)).join("")}</div>`;
 }
@@ -842,22 +957,29 @@ function sectionCard(section, index = 0) {
   const imageCount = section.imageSlots.reduce((total, slot) => total + slot.images.length, 0);
   const textCount = section.textSlots.filter((slot) => String(slot.value || "").trim()).length;
   const isTextSection = section.textSlots.length > 0;
-  const contentLabel = isTextSection
+  const missingRequired = section.imageSlots.some((slot) => slot.required && !slot.images.length);
+  const recentlySaved = state.recentlySavedSectionId === section.id;
+  const contentLabel = recentlySaved
+    ? state.recentlySavedMessage || "נשמר עכשיו"
+    : missingRequired
+      ? "חסרה תמונה"
+      : isTextSection
     ? textCount
       ? `${textCount} טקסטים${imageCount ? " + תמונה" : ""}`
       : "להתחלת כתיבה"
     : imageCount
       ? `${imageCount} ${imageCount === 1 ? "תמונה" : "תמונות"}`
       : "להתחלת עריכה";
+  const actionLabel = section.id === "gallery" ? "ניהול גלריה" : section.id === "before_after" ? "עריכת השוואה" : isTextSection ? "עריכת תוכן" : imageCount ? "החלפת תמונה" : "הוספת תמונה";
   return `
-    <button class="section-editor-card section-${escapeAttr(section.id)} ${section.ready ? "ready" : "empty"} ${isTextSection ? "text-section" : "image-section"}" type="button" data-edit-section="${escapeAttr(section.id)}">
+    <button class="section-editor-card section-${escapeAttr(section.id)} ${section.ready ? "ready" : "empty"} ${isTextSection ? "text-section" : "image-section"} ${state.selectedSectionId === section.id || state.lastEditedSectionId === section.id ? "selected" : ""} ${recentlySaved ? "recently-saved" : ""}" type="button" data-edit-section="${escapeAttr(section.id)}">
       <span class="section-card-index">${String(index + 1).padStart(2, "0")}</span>
       ${sectionCardMedia(section)}
       <span class="section-card-copy">
         <strong>${escapeHtml(section.title)}</strong>
         <small>${escapeHtml(contentLabel)}</small>
       </span>
-      <span class="section-card-action"><span>עריכה</span><i data-lucide="arrow-left"></i></span>
+      <span class="section-card-action"><span>${escapeHtml(actionLabel)}</span><i data-lucide="${recentlySaved ? "check" : "arrow-left"}"></i></span>
     </button>
   `;
 }
@@ -1022,6 +1144,191 @@ function showSectionEditor(sectionId) {
     });
   }
   bindImageDragAndDrop();
+}
+
+function bindClientInspector() {
+  const inspector = document.querySelector(".studio-inspector-shell");
+  if (!inspector) return;
+
+  inspector.querySelector("[data-inspector-back]")?.addEventListener("click", (event) => {
+    if (event.currentTarget.dataset.inspectorBack === "section") {
+      state.selectedSlotId = null;
+      state.selectedTextSlotId = null;
+    } else {
+      state.selectedSectionId = null;
+    }
+    renderClient();
+  });
+
+  inspector.querySelectorAll("[data-gallery-move]").forEach((button) => {
+    button.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      button.disabled = true;
+      const moved = await moveGalleryImage(button.dataset.gallerySlot, button.dataset.galleryMove);
+      if (!moved) button.disabled = false;
+    });
+  });
+
+  const addGalleryButton = inspector.querySelector("[data-add-gallery-image]");
+  const addGalleryInput = inspector.querySelector("[data-add-gallery-file]");
+  if (addGalleryButton && addGalleryInput) {
+    const feedback = inspector.querySelector("[data-gallery-add-feedback]");
+    addGalleryButton.addEventListener("click", () => addGalleryInput.click());
+    addGalleryInput.addEventListener("change", async () => {
+      const file = addGalleryInput.files?.[0];
+      if (!file) return;
+      if (feedback) {
+        feedback.hidden = true;
+        feedback.textContent = "";
+      }
+      addGalleryButton.disabled = true;
+      addGalleryButton.innerHTML = `<i data-lucide="loader-circle"></i>מוסיפים לגלריה`;
+      icons();
+      const saved = await addGalleryImage(file);
+      if (!saved) {
+        addGalleryButton.disabled = false;
+        addGalleryButton.innerHTML = `<i data-lucide="image-plus"></i>הוספת תמונה לגלריה`;
+        if (feedback) {
+          feedback.textContent = state.galleryAddError || "לא הצלחנו להוסיף את התמונה. נסו קובץ JPG, PNG או WebP עד 16MB.";
+          feedback.hidden = false;
+        }
+        addGalleryInput.value = "";
+        icons();
+      }
+    });
+  }
+
+  const textForm = inspector.querySelector("[data-inspector-text-form]");
+  if (textForm) {
+    const input = textForm.querySelector("[name='value']");
+    const counter = textForm.querySelector("[data-text-count]");
+    input.addEventListener("input", () => {
+      counter.textContent = String(input.value.length);
+      counter.classList.toggle("limit", input.value.length > Number(input.maxLength) * 0.9);
+    });
+    textForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const submit = textForm.querySelector("button[type='submit']");
+      submit.disabled = true;
+      const saved = await saveTextSlot(textForm.dataset.inspectorTextForm, input.value);
+      if (!saved) submit.disabled = false;
+    });
+  }
+
+  bindInlineImageInspector(inspector);
+}
+
+function bindInlineImageInspector(inspector) {
+  const editor = inspector.querySelector("[data-inline-image-editor]");
+  if (!editor) return;
+  const slotId = editor.dataset.inlineImageEditor;
+  const slot = displaySlots(state.clientSite).find((item) => item.id === slotId) || { id: slotId };
+  const image = imagesForSlot(state.clientSite, slotId)[0];
+  const canRestore = image?.source === "production" && Number(image.backupCount || 0) > 0 && can("canUpload");
+  const preview = editor.querySelector("[data-inspector-preview]");
+  const fileInput = editor.querySelector("[data-inline-file]");
+  const message = editor.querySelector("[data-inline-action-message]");
+  const qualityPanel = editor.querySelector("[data-inline-quality]");
+  const pendingActions = editor.querySelector("[data-inline-pending]");
+  const replaceButton = editor.querySelector("[data-inline-replace]");
+  const cropButton = editor.querySelector("[data-inline-crop]");
+  const confirmButton = editor.querySelector("[data-inline-confirm]");
+  let selectedFile = null;
+  let selectedUrl = "";
+
+  const releaseSelectedUrl = () => {
+    if (selectedUrl) URL.revokeObjectURL(selectedUrl);
+    selectedUrl = "";
+  };
+  const resetSelection = () => {
+    releaseSelectedUrl();
+    selectedFile = null;
+    fileInput.value = "";
+    preview.disabled = !image;
+    preview.className = `inspector-image-preview ${image ? "filled" : "empty"}`;
+    preview.innerHTML = image ? `<img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" data-inline-preview-media />` : `<i data-lucide="image-plus"></i><span>עדיין אין תמונה באזור הזה</span>`;
+    message.textContent = image ? "אפשר להחליף, לחתוך או לשחזר את התמונה." : "בחרו תמונה מתאימה כדי להוסיף אותה לאתר.";
+    qualityPanel.hidden = true;
+    qualityPanel.innerHTML = "";
+    pendingActions.hidden = true;
+    cropButton.disabled = !image;
+    icons();
+  };
+  const setPendingFile = async (file) => {
+    if (!file) return;
+    releaseSelectedUrl();
+    selectedFile = file;
+    selectedUrl = URL.createObjectURL(file);
+    preview.disabled = false;
+    preview.className = "inspector-image-preview filled pending";
+    preview.innerHTML = `<img src="${escapeAttr(selectedUrl)}" alt="${escapeAttr(file.name)}" data-inline-preview-media />`;
+    message.textContent = "התמונה מוכנה. שמרו כדי לעדכן את האתר.";
+    pendingActions.hidden = false;
+    cropButton.disabled = false;
+    try {
+      const metadata = await readImageMetadata(selectedUrl);
+      qualityPanel.hidden = false;
+      qualityPanel.innerHTML = renderQualityReport(slot, file, metadata);
+    } catch (error) {
+      qualityPanel.hidden = false;
+      qualityPanel.innerHTML = `<div class="quality-status warn"><i data-lucide="triangle-alert"></i><span>לא ניתן לקרוא את גודל התמונה לפני ההעלאה</span></div>`;
+    }
+    icons();
+  };
+
+  preview.addEventListener("click", () => {
+    const imageNode = preview.querySelector("img");
+    if (imageNode) showFullImagePreview(imageNode.src, imageNode.alt || slotDisplayLabel(slot));
+  });
+  replaceButton.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", () => setPendingFile(fileInput.files?.[0]));
+  editor.querySelector("[data-inline-clear]")?.addEventListener("click", resetSelection);
+  confirmButton.addEventListener("click", async () => {
+    if (!selectedFile) return;
+    confirmButton.disabled = true;
+    confirmButton.innerHTML = `<i data-lucide="loader-circle"></i>שומרים באתר`;
+    icons();
+    const uploaded = await uploadImageToSlot(slotId, selectedFile, selectedFile.name);
+    releaseSelectedUrl();
+    if (!uploaded) {
+      confirmButton.disabled = false;
+      confirmButton.innerHTML = `<i data-lucide="check"></i>שמירה באתר`;
+      icons();
+    }
+  });
+  cropButton.addEventListener("click", () => {
+    const cropSource = selectedFile ? { url: selectedUrl, name: selectedFile.name || `${slot.id}.jpg` } : image;
+    if (!cropSource?.url) return;
+    showCropToolModal(slot, cropSource, {
+      saveLabel: selectedFile ? "אישור חיתוך" : "שמירה והחלפה",
+      onSave: async (blob) => {
+        const cropped = namedImageBlob(blob, cropFileName(selectedFile?.name, slot.id));
+        if (selectedFile) {
+          await setPendingFile(cropped);
+          return true;
+        }
+        return uploadImageToSlot(slot.id, cropped, cropped.name || `${slot.id}-crop.jpg`);
+      },
+    });
+  });
+  editor.querySelector("[data-inline-delete]")?.addEventListener("click", () => {
+    if (!image) return;
+    confirmAction({
+      title: "להסיר את התמונה?",
+      body: `${slotDisplayLabel(slot)} תוסר מהאזור הזה לאחר גיבוי אם זו תמונת אתר חיה.`,
+      confirmText: "הסרה",
+      onConfirm: () => (image.source === "production" ? deleteAsset(image.slotId) : deleteImage(image.id)),
+    });
+  });
+  editor.querySelector("[data-inline-restore]")?.addEventListener("click", () => {
+    if (!canRestore) return;
+    confirmAction({
+      title: "לשחזר את התמונה הקודמת?",
+      body: `${slotDisplayLabel(slot)} יוחזר מהגיבוי האחרון. התמונה הנוכחית תגובה לפני השחזור.`,
+      confirmText: "שחזור",
+      onConfirm: () => restoreAsset(slotId),
+    });
+  });
 }
 
 function sectionImagePane(section, active) {
@@ -1519,9 +1826,10 @@ async function moveGalleryImage(slotId, direction) {
   state.clientAssets = { ...(state.clientAssets || {}), assets: response.assets || [] };
   state.livePreviewVersion = Date.now();
   state.sectionNotice = { sectionId: "gallery", type: "success", message: "סדר התמונות עודכן באתר" };
+  markSectionSaved("gallery", "הסדר נשמר");
   toast("סדר התמונות עודכן", "success");
   renderClient();
-  window.setTimeout(() => showSectionEditor("gallery"), 0);
+  if (window.matchMedia("(max-width: 760px)").matches) window.setTimeout(() => showSectionEditor("gallery"), 0);
   return true;
 }
 
@@ -1889,6 +2197,23 @@ function openCredentialShare(userId, channel) {
   showCredentialShareModal(user, channel);
 }
 
+function markSectionSaved(sectionId, message = "נשמר באתר") {
+  if (!sectionId) return;
+  state.selectedSectionId = sectionId;
+  state.lastEditedSectionId = sectionId;
+  state.recentlySavedSectionId = sectionId;
+  state.recentlySavedMessage = message;
+  if (state.recentSaveTimer) window.clearTimeout(state.recentSaveTimer);
+  state.recentSaveTimer = window.setTimeout(() => {
+    state.recentlySavedSectionId = null;
+    state.recentlySavedMessage = "";
+    state.recentSaveTimer = null;
+    const onClientRoute = stripBase(location.pathname).startsWith("/client/");
+    const dialogOpen = document.querySelector(".modal-backdrop, .section-editor-backdrop");
+    if (onClientRoute && !dialogOpen) renderClient();
+  }, 2400);
+}
+
 async function onUpdateSite(event) {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
@@ -1919,6 +2244,7 @@ async function onUploadImage(event) {
     previewOk: true,
     previewText: "התצוגה החיה רועננה בדפדפן",
   };
+  markSectionSaved(sectionIdForImageSlot(selectedSlot), "התמונה נשמרה");
   toast("התמונה עודכנה והתצוגה רועננה", "success");
   renderClient();
 }
@@ -1949,6 +2275,7 @@ async function uploadImageToSlot(slotId, file, name = "") {
     previewOk: true,
     previewText: "התצוגה החיה רועננה בדפדפן",
   };
+  markSectionSaved(sectionIdForImageSlot(slotId), "התמונה נשמרה");
   toast("התמונה עודכנה והתצוגה רועננה", "success");
   renderClient();
   return true;
@@ -1988,9 +2315,10 @@ async function addGalleryImage(file, options = {}) {
     previewOk: true,
     previewText: "התצוגה החיה רועננה בדפדפן",
   };
+  markSectionSaved("gallery", "התמונה נוספה");
   toast("התמונה נוספה לגלריה ומופיעה באתר", "success");
   renderClient();
-  if (options.reopenGallery) {
+  if (options.reopenGallery && window.matchMedia("(max-width: 760px)").matches) {
     window.setTimeout(() => showSectionEditor("gallery"), 0);
   }
   return true;
@@ -2010,9 +2338,11 @@ async function reportGalleryUploadFailure(file, error) {
 }
 
 async function deleteImage(imageId) {
+  const image = (state.clientSite?.images || []).find((item) => item.id === imageId);
   const response = await api(`/api/sites/${state.clientSite.id}/images/${imageId}`, { method: "DELETE" });
   if (response?.error) return toast(formatApiError(response.error), "error");
   state.clientSite = response.site;
+  markSectionSaved(sectionIdForImageSlot(image?.slotId || "gallery"), "התמונה הוסרה");
   toast("התמונה הוסרה", "success");
   renderClient();
 }
@@ -2038,9 +2368,10 @@ async function deleteAsset(slotId) {
     previewOk: true,
     previewText: "התצוגה החיה רועננה בדפדפן",
   };
+  markSectionSaved(sectionIdForImageSlot(slotId), "התמונה הוסרה");
   toast("התמונה הוסרה מקובץ האתר", "success");
   renderClient();
-  if (isGalleryAsset) {
+  if (isGalleryAsset && window.matchMedia("(max-width: 760px)").matches) {
     window.setTimeout(() => showSectionEditor("gallery"), 0);
   }
 }
@@ -2058,6 +2389,7 @@ async function restoreAsset(slotId) {
     previewOk: true,
     previewText: "התצוגה החיה רועננה בדפדפן",
   };
+  markSectionSaved(sectionIdForImageSlot(slotId), "התמונה שוחזרה");
   toast("התמונה שוחזרה מהגיבוי האחרון", "success");
   renderClient();
 }
@@ -2128,6 +2460,8 @@ async function saveTextSlot(slotId, value) {
     previewOk: true,
     previewText: "התצוגה החיה רועננה בדפדפן",
   };
+  const savedSlot = (state.clientText?.textSlots || []).find((item) => item.id === slotId) || { id: slotId };
+  markSectionSaved(sectionIdForTextSlot(savedSlot), "הטקסט נשמר");
   toast("הטקסט נשמר באתר", "success");
   renderClient();
   return true;
@@ -2575,6 +2909,11 @@ async function loadClient(username) {
   if (previousUsername !== state.clientUsername) {
     state.clientPreviewInitialized = false;
     state.clientWorkspaceMode = "edit";
+    state.selectedSectionId = null;
+    state.selectedSlotId = null;
+    state.selectedTextSlotId = null;
+    state.lastEditedSectionId = null;
+    state.recentlySavedSectionId = null;
   }
   const sitesResponse = await api("/api/sites");
   const sites = sitesResponse.sites || [];
