@@ -21,6 +21,12 @@ const UPLOAD_FILE_LIMIT_BYTES = 16 * 1024 * 1024;
 const ERROR_ALERT_EMAIL = process.env.ERROR_ALERT_EMAIL || "lironatar94@gmail.com";
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const EMAIL_FROM = process.env.EMAIL_FROM || "Manager Site <onboarding@resend.dev>";
+const MONITOR_ANALYTICS_URL = String(
+  process.env.MONITOR_ANALYTICS_URL || "http://127.0.0.1:4010/serve-monitor/api/visitor-analytics/manager-site"
+).replace(/\/+$/, "");
+const MONITOR_ANALYTICS_KEY_FILE = process.env.MONITOR_ANALYTICS_KEY_FILE || path.join(DATA_DIR, ".monitor-analytics-key");
+const MONITOR_ANALYTICS_KEY = process.env.MONITOR_ANALYTICS_KEY || readOptionalSecret(MONITOR_ANALYTICS_KEY_FILE);
+const MONITOR_ANALYTICS_TIMEOUT_MS = Math.max(1000, Number(process.env.MONITOR_ANALYTICS_TIMEOUT_MS || 8000));
 const IMAGE_SLOTS = [
   { id: "hero", label: "Hero image", ratio: "16:9", required: true },
   { id: "logo", label: "Logo", ratio: "1:1", required: true },
@@ -29,6 +35,15 @@ const IMAGE_SLOTS = [
   { id: "gallery", label: "Gallery", ratio: "free", required: false },
 ];
 const SITE_STATUSES = ["draft", "published", "needs_attention"];
+
+function readOptionalSecret(filePath) {
+  if (!filePath) return "";
+  try {
+    return fs.readFileSync(filePath, "utf8").trim();
+  } catch {
+    return "";
+  }
+}
 
 const app = express();
 const sessions = new Map();
@@ -206,6 +221,18 @@ router.get("/api/sites", requireAuth, async (req, res) => {
 
 router.get("/api/sites/:siteId", requireSiteAccess, async (req, res) => {
   res.json({ site: req.site });
+});
+
+router.get("/api/sites/:siteId/visitor-analytics", requireSiteAccess, async (req, res) => {
+  await proxyClientAnalytics(req, res, "site", ["from", "to"]);
+});
+
+router.get("/api/sites/:siteId/visitor-analytics/visitors", requireSiteAccess, async (req, res) => {
+  await proxyClientAnalytics(req, res, "site/visitors", ["from", "to", "page", "limit", "search", "classification", "sort", "direction"]);
+});
+
+router.get("/api/sites/:siteId/visitor-analytics/timeline", requireSiteAccess, async (req, res) => {
+  await proxyClientAnalytics(req, res, "site/timeline", ["from", "to", "ip"]);
 });
 
 router.get("/api/sites/:siteId/assets", requireSiteAccess, async (req, res) => {
@@ -656,7 +683,7 @@ router.get("/api/admin/audit", requireAdmin, async (req, res) => {
   res.json({ audit: store.audit.slice(-80).reverse() });
 });
 
-router.get(["/", "/login", "/admin-login", "/admin", "/client/:username"], sendSpaShell);
+router.get(["/", "/login", "/admin-login", "/admin", "/client/:username", "/client/:username/visitors"], sendSpaShell);
 
 app.use(BASE_PATH || "/", router);
 if (BASE_PATH) {
@@ -1867,6 +1894,55 @@ async function requireAdmin(req, res, next) {
     }
     next();
   });
+}
+
+async function proxyClientAnalytics(req, res, resource, allowedQueryKeys) {
+  res.setHeader("Cache-Control", "private, no-store");
+  if (!MONITOR_ANALYTICS_KEY) {
+    res.status(503).json({ error: "Visitor analytics is not configured", code: "analytics_unavailable" });
+    return;
+  }
+
+  let upstreamUrl;
+  try {
+    upstreamUrl = new URL(`${MONITOR_ANALYTICS_URL}/${resource}`);
+  } catch {
+    res.status(503).json({ error: "Visitor analytics is not configured", code: "analytics_unavailable" });
+    return;
+  }
+  upstreamUrl.searchParams.set("site_url", req.site.websiteUrl);
+  allowedQueryKeys.forEach((key) => {
+    const value = Array.isArray(req.query[key]) ? req.query[key][0] : req.query[key];
+    if (value !== undefined && value !== null && String(value).length <= 240) {
+      upstreamUrl.searchParams.set(key, String(value));
+    }
+  });
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), MONITOR_ANALYTICS_TIMEOUT_MS);
+  try {
+    const response = await fetch(upstreamUrl, {
+      headers: {
+        Accept: "application/json",
+        "x-manager-site-analytics-key": MONITOR_ANALYTICS_KEY,
+      },
+      signal: controller.signal,
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (response.status === 401 || response.status >= 500) {
+      res.status(503).json({ error: "Visitor analytics is temporarily unavailable", code: "analytics_unavailable" });
+      return;
+    }
+    res.status(response.status).json(payload);
+  } catch (error) {
+    console.error("Visitor analytics request failed", error?.name || error?.message || "unknown error");
+    res.status(error?.name === "AbortError" ? 504 : 503).json({
+      error: "Visitor analytics is temporarily unavailable",
+      code: "analytics_unavailable",
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function requireSiteAccess(req, res, next) {

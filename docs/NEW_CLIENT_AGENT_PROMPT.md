@@ -20,7 +20,9 @@ Your job:
 7. If you also need a committed fallback/template, mirror the config under `clients/<username>/client.config.json`.
 8. Verify through the Manager Site API that all slots appear and existing files are detected.
 9. Verify the client UI route, including that the first section is client-safe and the live desktop/mobile preview loads.
-10. Commit, push, and deploy only when the setup is verified.
+10. Confirm ServerMonitor has one exact monitored-app URL match, including host-aware logging and a path filter when the site shares a domain.
+11. Verify `/client/<username>/visitors` shows only this site's visitor candidates and filtered bots.
+12. Commit, push, and deploy only when the setup is verified.
 
 Do not ask me to explain the whole system again. The workflow file is the source of truth.
 ```

@@ -78,6 +78,19 @@ The client image rail should read as a practical task list. Each image area shou
 
 On mobile, image modals must be tap-first and minimal: image preview, short title, primary action, crop/replace controls, and sticky confirmation. File size, dimensions, backup state, and quality checks belong inside collapsed details, not in the main flow.
 
+## Client Visitor Workspace
+
+The separate `מבקרים` page should work as a compact traffic ledger, not a generic dashboard:
+
+- lead with unique visitor candidates and current activity
+- keep page views, new/returning candidates, and filtered bot requests scannable above the fold
+- provide range controls for 24 hours, 7, 30, and 90 days
+- show traffic over time, active hours, pages, locations, sources, and devices
+- keep explicit `מבקרים`, `בוטים`, and `הכול` tabs; never blend bots into the visitor count
+- let a row open the IP activity timeline while keeping IPs, URLs, and paths LTR
+- explain once that a candidate is an IP not identified as a bot, not a verified person
+- replace the desktop table with touch-friendly cards on mobile
+
 ## Admin Workflow
 
 The admin should quickly:
@@ -107,6 +120,8 @@ Before finishing UI changes:
 - verify desktop/mobile live preview loads or fails gracefully if the client website blocks framing
 - verify the first client section does not expose internal review/status/approval wording
 - verify login still has no English operational copy
+- verify visitor range, search, bot separation, pagination, and activity timeline work
+- verify visitor controls are at least 44px on mobile and the table becomes cards at `390px`
 
 ## Hebrew Editing Note
 

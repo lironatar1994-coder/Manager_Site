@@ -11,6 +11,8 @@ APP_PORT="3027"
 NGINX_SITE="/etc/nginx/sites-available/vee-app.co.il.conf"
 NGINX_SNIPPET="/etc/nginx/snippets/${APP_NAME}-locations.conf"
 NODE_ENV_FILE="${REMOTE_DIR}/.env"
+ANALYTICS_KEY_FILE="/root/.manager-site-analytics-key"
+MONITOR_ANALYTICS_ENDPOINT="http://127.0.0.1:4010/serve-monitor/api/visitor-analytics/manager-site"
 
 echo "[INFO] Starting ${APP_NAME} deployment..."
 
@@ -94,6 +96,13 @@ fi
 
 chmod 600 "${NODE_ENV_FILE}"
 
+if [ ! -s "${ANALYTICS_KEY_FILE}" ]; then
+  echo "[INFO] Creating the shared visitor analytics service key..."
+  umask 077
+  openssl rand -hex 32 > "${ANALYTICS_KEY_FILE}"
+fi
+chmod 600 "${ANALYTICS_KEY_FILE}"
+
 echo "[INFO] Starting PM2 process..."
 if ! command -v pm2 >/dev/null 2>&1; then
   npm install -g pm2
@@ -103,6 +112,9 @@ set -a
 # shellcheck disable=SC1090
 . "${NODE_ENV_FILE}"
 set +a
+export MONITOR_ANALYTICS_URL="${MONITOR_ANALYTICS_ENDPOINT}"
+export MONITOR_ANALYTICS_KEY_FILE="${ANALYTICS_KEY_FILE}"
+unset MONITOR_ANALYTICS_KEY
 
 pm2 start server.js --name "${PM2_NAME}" --update-env || pm2 restart "${PM2_NAME}" --update-env
 pm2 save

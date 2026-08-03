@@ -26,6 +26,7 @@ The client is responsible for:
 - reviewing a managed desktop/mobile preview of the website
 - changing the website link if permitted
 - uploading, replacing, or removing images if permitted
+- reviewing visitor candidates, page views, popular pages, traffic sources, devices, and filtered bot activity for their own website only
 
 ## Core Product Rules
 
@@ -39,6 +40,8 @@ The client is responsible for:
 - Backend routes remain stable English routes, especially `/client/:username`.
 - The first client workspace section should be client-safe and must not expose internal review/status/approval wording.
 - The client workspace should show a live desktop/mobile preview of the configured public website when the website allows framing.
+- The client visitor workspace must resolve analytics from the account's stored website URL and must never allow access to another monitored website.
+- Traffic not identified as a bot is an estimate, not proof of a person. The UI must say so and count only successful page navigations as engagement.
 
 ## Website Live Preview
 

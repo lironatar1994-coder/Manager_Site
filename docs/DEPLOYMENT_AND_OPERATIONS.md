@@ -44,6 +44,7 @@ The PowerShell deploy script:
 - lowercase route redirect
 - Nginx reload
 - local app health check
+- shared ServerMonitor analytics-key creation/preservation and PM2 environment wiring
 
 ## Production Secrets and Data
 
@@ -54,8 +55,11 @@ Do not commit or overwrite:
 - `/root/Manager_Site/data/uploads`
 - `/root/Manager_Site/data/initial-admin.txt`
 - `/root/Manager_Site/data/clients`
+- `/root/.manager-site-analytics-key`
 
 Runtime-created client workspaces live under `data/clients` so they survive Git deploys.
+
+The analytics key is shared only by the two backend processes. Deploy ServerMonitor before Manager Site when introducing or changing the integration so port `4010` is serving the internal endpoints before the client UI goes live. Neither deployment prints the key.
 
 Repo-visible templates and starter examples live under `clients/`.
 
@@ -91,11 +95,23 @@ Check live assets:
 node -e "fetch('https://vee-app.co.il/Manager_Site/app.js').then(r=>r.text()).then(t=>console.log(t.includes('slotRatioLabel')))"
 ```
 
+Check the internal analytics link from the server without printing the key:
+
+```bash
+KEY="$(cat /root/.manager-site-analytics-key)"
+curl -fsS -H "x-manager-site-analytics-key: $KEY" \
+  "http://127.0.0.1:4010/serve-monitor/api/visitor-analytics/manager-site/site?site_url=https%3A%2F%2Fvee-app.co.il%2FMiryam_Zelig%2F" \
+  | jq '.app.name, .summary.unique_candidates'
+unset KEY
+```
+
 ## Expected Health
 
 - `/Manager_Site/login` returns `200`
 - `/manager_site/login` returns `301` to `/Manager_Site/login`
 - PM2 process `manager-site` is online
+- PM2 process `server-monitor` is online on port `4010`
+- the internal URL match returns only the expected monitored app
 - Nginx config test passes
 
 ## Rollback

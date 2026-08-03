@@ -180,7 +180,21 @@ The client-facing desktop/mobile preview is a live iframe pointed at the configu
 
    If the live website cannot be framed, do not install Playwright or Chromium as a workaround. Leave a short note in `data/clients/<username>/AGENTS.md` explaining the framing block and fix the website headers if that site is under our control.
 
-8. Sync production config.
+9. Connect and verify visitor analytics.
+
+   The client visitor page resolves its data from the exact stored `websiteUrl`. Confirm that ServerMonitor has one monitored app whose canonical URL matches the client URL, including the path when multiple apps share a host.
+
+   Verify:
+
+   - host-aware Nginx logging is enabled for the website
+   - the ServerMonitor app uses exact `log_host` boundaries
+   - a path-hosted website also has the correct `log_filter`
+   - the URL resolves to exactly one app; never use a host-only fallback
+   - `/client/<username>/visitors` shows candidates and filtered bots only for this website
+
+   If the website is not monitored yet, configure and deploy it through the ServerMonitor workflow before treating the client setup as complete.
+
+10. Sync production config.
 
    After committing and deploying the repo, Manager Site may still prefer the runtime config under `data/clients`.
 
@@ -192,7 +206,7 @@ The client-facing desktop/mobile preview is a live iframe pointed at the configu
    chmod 600 /root/Manager_Site/data/clients/<username>/client.config.json
    ```
 
-9. Verify through Manager Site API.
+11. Verify through Manager Site API.
 
    Log in as admin and check the assets endpoint:
 
@@ -222,7 +236,7 @@ The client-facing desktop/mobile preview is a live iframe pointed at the configu
    - each required slot has `exists: true`
    - paths point to the intended live files
 
-10. Verify UI behavior.
+12. Verify UI behavior.
 
    Open:
 
@@ -240,6 +254,7 @@ The client-facing desktop/mobile preview is a live iframe pointed at the configu
    - upload/replace targets are understandable
    - drag-and-drop works for reorderable existing images
    - refresh on the client route does not get stuck on the `MS` boot screen
+   - the visitor route loads the matching site analytics, separates visitors from bots, and opens an activity timeline
 
 ## Naming Pattern
 
@@ -279,6 +294,7 @@ The setup is complete only when:
 - runtime production config is synced when live
 - Manager Site API returns the expected slots
 - live UI shows those slots and the live desktop/mobile iframe preview
+- ServerMonitor resolves the exact client URL and the protected visitor page shows only that website
 - uploads/replacements affect the intended live website files
 - live public page references are cache-busted or otherwise proven to show the new image immediately
 - before/after slots, CSS background images, and lazy-loaded images are verified on the actual public URL

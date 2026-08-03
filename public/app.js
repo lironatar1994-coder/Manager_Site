@@ -29,6 +29,26 @@ const HEBREW_SLOT_LABELS = {
 const UPLOAD_FILE_LIMIT_BYTES = 16 * 1024 * 1024;
 const ALLOWED_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"]);
 const ALLOWED_IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"];
+const CLIENT_VISITOR_RANGES = [
+  { days: 1, label: "24 שעות" },
+  { days: 7, label: "7 ימים" },
+  { days: 30, label: "30 ימים" },
+  { days: 90, label: "90 ימים" },
+];
+const CLIENT_VISITOR_BREAKDOWNS = [
+  { id: "pages", label: "עמודים", empty: "אין צפיות בעמודים בטווח הזה" },
+  { id: "locations", label: "מיקומים", empty: "אין עדיין נתוני מיקום" },
+  { id: "referrers", label: "מקורות", empty: "רוב הכניסות היו ישירות" },
+  { id: "devices", label: "מכשירים", empty: "אין עדיין נתוני מכשיר" },
+];
+const BOT_REASON_LABELS = {
+  "bot user agent": "זוהה לפי חתימת כלי אוטומטי",
+  "scanner path": "סריקה של נתיב חשוד",
+  "scanner user agent": "חתימת סורק אוטומטי",
+  "automation user agent": "דפדפן אוטומטי",
+  "known bot": "בוט מוכר",
+  "suspicious path": "בקשה לנתיב חשוד",
+};
 
 const state = {
   me: null,
@@ -54,6 +74,16 @@ const state = {
   recentlySavedMessage: "",
   recentSaveTimer: null,
   livePreviewVersion: Date.now(),
+  clientVisitorRangeDays: 7,
+  clientVisitorAnalytics: null,
+  clientVisitorList: { visitors: [], total: 0, page: 1, limit: 25 },
+  clientVisitorPage: 1,
+  clientVisitorSearch: "",
+  clientVisitorClassification: "candidate",
+  clientVisitorBreakdown: "pages",
+  clientVisitorLoading: false,
+  clientVisitorTableLoading: false,
+  clientVisitorError: null,
 };
 
 const app = document.querySelector("#app");
@@ -107,13 +137,26 @@ async function route() {
     return;
   }
   if (path.startsWith("/client/")) {
-    const username = decodeURIComponent(path.split("/")[2] || "");
+    const pathParts = path.split("/");
+    const username = decodeURIComponent(pathParts[2] || "");
+    const clientView = pathParts[3] || "studio";
     if (state.me?.role !== "admin" && username !== state.me?.username) {
       navigate(`/client/${state.me.username}`, true);
       await route();
       return;
     }
-    await loadClient(username);
+    if (!["studio", "visitors"].includes(clientView) || pathParts.length > 4) {
+      navigate(`/client/${username}`, true);
+      await route();
+      return;
+    }
+    await loadClient(username, { includeWorkspace: clientView !== "visitors" });
+    if (clientView === "visitors") {
+      state.clientVisitorLoading = true;
+      renderClientVisitors();
+      await refreshClientVisitorDashboard();
+      return;
+    }
     renderClient();
     return;
   }
@@ -378,6 +421,7 @@ function renderClient() {
           <button class="${state.clientWorkspaceMode === "edit" ? "active" : ""}" type="button" data-client-workspace-mode="edit" aria-pressed="${state.clientWorkspaceMode === "edit"}"><i data-lucide="sliders-horizontal"></i><span>עריכה</span></button>
         </div>
         <div class="studio-actions">
+          <a class="studio-action studio-visitors" href="${href(`/client/${state.clientUsername}/visitors`)}"><i data-lucide="users-round"></i><span>מבקרים</span></a>
           <a class="studio-action studio-open" href="${escapeAttr(visibleWebsiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i><span>פתיחת האתר</span></a>
           <details class="studio-site-menu">
             <summary aria-label="אפשרויות אתר"><i data-lucide="ellipsis"></i></summary>
@@ -505,6 +549,533 @@ function renderClient() {
   markBootReady();
 }
 
+function renderClientVisitors() {
+  setDocumentLocale("he", "rtl");
+  const site = state.clientSite;
+  if (!site) return renderForbidden();
+  const isAdminPreview = state.me.role === "admin";
+  const clientName = isAdminPreview ? state.clientUsername : state.me.displayName;
+  const analytics = state.clientVisitorAnalytics;
+  const summary = analytics?.summary || {};
+  const comparison = analytics?.comparison || {};
+  const visitorList = state.clientVisitorList || { visitors: [], total: 0, page: 1, limit: 25 };
+  const breakdown = CLIENT_VISITOR_BREAKDOWNS.find((item) => item.id === state.clientVisitorBreakdown) || CLIENT_VISITOR_BREAKDOWNS[0];
+  const websiteUrl = analytics?.app?.url || site.websiteUrl;
+  const pageCount = Math.max(1, Math.ceil((Number(visitorList.total) || 0) / (Number(visitorList.limit) || 25)));
+  const classificationMeta = clientVisitorClassificationMeta();
+
+  app.className = `app-view client-mode client-rtl traffic-mode ${isAdminPreview ? "admin-preview" : ""}`;
+  app.innerHTML = `
+    ${shell("visitors")}
+    <main class="workspace client-traffic-workspace" dir="rtl" lang="he">
+      ${
+        isAdminPreview
+          ? `<section class="preview-banner traffic-preview-banner"><i data-lucide="eye"></i><span>תצוגת מנהל עבור ${escapeHtml(state.clientUsername)}</span><a href="${href("/admin")}">חזרה לניהול</a></section>`
+          : ""
+      }
+      <header class="traffic-page-head">
+        <div class="traffic-title-block">
+          <span class="traffic-kicker">יומן התנועה · ${escapeHtml(site.name || clientName)}</span>
+          <h1>המבקרים באתר שלך</h1>
+          <a href="${escapeAttr(websiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i><bdi>${escapeHtml(shortUrlLabel(websiteUrl))}</bdi></a>
+        </div>
+        <nav class="client-area-switcher" aria-label="אזור הלקוח">
+          <a href="${href(`/client/${state.clientUsername}`)}"><i data-lucide="images"></i><span>עריכת האתר</span></a>
+          <a class="active" href="${href(`/client/${state.clientUsername}/visitors`)}" aria-current="page"><i data-lucide="users-round"></i><span>מבקרים</span></a>
+        </nav>
+        <div class="traffic-head-controls">
+          <div class="traffic-range-picker" role="group" aria-label="טווח נתונים">
+            ${CLIENT_VISITOR_RANGES.map(
+              (range) => `<button class="${state.clientVisitorRangeDays === range.days ? "active" : ""}" type="button" data-traffic-range="${range.days}" aria-pressed="${state.clientVisitorRangeDays === range.days}">${range.label}</button>`
+            ).join("")}
+          </div>
+          <button class="traffic-refresh" type="button" data-traffic-refresh ${state.clientVisitorLoading ? "disabled" : ""}><i data-lucide="refresh-cw"></i><span>רענון</span></button>
+        </div>
+      </header>
+
+      ${renderClientTrafficBody({ analytics, summary, comparison, visitorList, breakdown, pageCount, classificationMeta })}
+    </main>
+  `;
+
+  bindShell();
+  document.querySelectorAll("[data-traffic-range]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const days = Number(button.dataset.trafficRange);
+      if (!days || days === state.clientVisitorRangeDays) return;
+      state.clientVisitorRangeDays = days;
+      state.clientVisitorPage = 1;
+      state.clientVisitorLoading = true;
+      state.clientVisitorError = null;
+      renderClientVisitors();
+      await refreshClientVisitorDashboard();
+    });
+  });
+  document.querySelector("[data-traffic-refresh]")?.addEventListener("click", async () => {
+    state.clientVisitorLoading = true;
+    state.clientVisitorError = null;
+    renderClientVisitors();
+    await refreshClientVisitorDashboard();
+  });
+  document.querySelectorAll("[data-traffic-breakdown]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.clientVisitorBreakdown = button.dataset.trafficBreakdown;
+      renderClientVisitors();
+    });
+  });
+  document.querySelectorAll("[data-traffic-classification]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const classification = button.dataset.trafficClassification;
+      if (classification === state.clientVisitorClassification) return;
+      state.clientVisitorClassification = classification;
+      state.clientVisitorPage = 1;
+      state.clientVisitorTableLoading = true;
+      renderClientVisitors();
+      await refreshClientVisitorTable();
+    });
+  });
+  document.querySelector("#trafficSearchForm")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    state.clientVisitorSearch = String(new FormData(event.currentTarget).get("search") || "").trim();
+    state.clientVisitorPage = 1;
+    state.clientVisitorTableLoading = true;
+    renderClientVisitors();
+    await refreshClientVisitorTable();
+  });
+  document.querySelector("[data-clear-traffic-search]")?.addEventListener("click", async () => {
+    state.clientVisitorSearch = "";
+    state.clientVisitorPage = 1;
+    state.clientVisitorTableLoading = true;
+    renderClientVisitors();
+    await refreshClientVisitorTable();
+  });
+  document.querySelectorAll("[data-traffic-page]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      state.clientVisitorPage = Math.min(pageCount, Math.max(1, Number(button.dataset.trafficPage) || 1));
+      state.clientVisitorTableLoading = true;
+      renderClientVisitors();
+      await refreshClientVisitorTable();
+    });
+  });
+  document.querySelectorAll("[data-visitor-ip]").forEach((button) => {
+    button.addEventListener("click", () => showClientVisitorTimeline(button.dataset.visitorIp));
+  });
+  interceptInternalLinks();
+  icons();
+  markBootReady();
+}
+
+function renderClientTrafficBody({ analytics, summary, comparison, visitorList, breakdown, pageCount, classificationMeta }) {
+  if (state.clientVisitorLoading && !analytics) {
+    return `
+      <section class="traffic-loading" aria-live="polite" aria-busy="true">
+        <div class="traffic-loading-line"></div><div class="traffic-loading-line short"></div>
+        <div class="traffic-loading-grid"><span></span><span></span><span></span></div>
+      </section>
+    `;
+  }
+
+  if (state.clientVisitorError && !analytics) {
+    const notConfigured = state.clientVisitorError.code === "analytics_not_configured";
+    return `
+      <section class="traffic-empty-state">
+        <span class="traffic-empty-icon"><i data-lucide="${notConfigured ? "radar" : "cloud-off"}"></i></span>
+        <div>
+          <span class="traffic-kicker">${notConfigured ? "הניטור עדיין לא חובר" : "אין כרגע חיבור לנתונים"}</span>
+          <h2>${notConfigured ? "האתר הזה עדיין לא משויך ליומן מבקרים." : "נתוני המבקרים לא זמינים כרגע."}</h2>
+          <p>${notConfigured ? "מנהל המערכת יכול לחבר את כתובת האתר ל־ServerMonitor. לאחר החיבור, הנתונים יופיעו כאן אוטומטית." : "אפשר לנסות לרענן בעוד רגע. עריכת האתר ממשיכה לעבוד כרגיל."}</p>
+        </div>
+        <button class="traffic-refresh" type="button" data-traffic-refresh><i data-lucide="refresh-cw"></i>ניסיון נוסף</button>
+      </section>
+    `;
+  }
+
+  const uniqueCandidates = Number(summary.unique_candidates) || 0;
+  const pageViews = Number(summary.page_views) || 0;
+  const activeCandidates = Number(summary.active_candidates) || 0;
+  const newCandidates = Number(summary.new_candidates) || 0;
+  const returningCandidates = Number(summary.returning_candidates) || 0;
+  const botRequests = Number(summary.bot_requests) || 0;
+  const lastUpdated = analytics?.generated_at ? formatTrafficDateTime(analytics.generated_at) : "";
+
+  return `
+    <section class="traffic-overview" aria-label="תמונת מצב">
+      <article class="traffic-lead-stat">
+        <div class="traffic-lead-copy">
+          <span>מבקרים ייחודיים שלא זוהו כבוט</span>
+          <strong>${formatTrafficNumber(uniqueCandidates)}</strong>
+          ${trafficDelta(comparison.unique_candidates_percent)}
+        </div>
+        <div class="traffic-live-signal ${activeCandidates ? "is-active" : ""}">
+          <i aria-hidden="true"></i>
+          <span><strong>${formatTrafficNumber(activeCandidates)}</strong> פעילים עכשיו</span>
+          <small>בחמש הדקות האחרונות</small>
+        </div>
+        <details class="traffic-definition">
+          <summary><i data-lucide="info"></i>איך אנחנו מזהים מבקר?</summary>
+          <p>כל כתובת IP עם צפייה מוצלחת בעמוד שלא זוהתה כבוט נספרת כמבקר ייחודי. זו הערכה מדויקת מהלוגים, לא אימות של זהות אדם.</p>
+        </details>
+      </article>
+      <div class="traffic-ledger" role="list" aria-label="מדדי תנועה">
+        ${trafficLedgerRow("צפיות בעמודים", pageViews, "ניווטים מוצלחים בלבד", comparison.page_views_percent, "file-chart-column")}
+        ${trafficLedgerRow("מבקרים חדשים", newCandidates, "נראו לראשונה בטווח", null, "user-plus")}
+        ${trafficLedgerRow("מבקרים חוזרים", returningCandidates, "נראו גם לפני הטווח", null, "rotate-ccw")}
+        ${trafficLedgerRow("בקשות בוטים שסוננו", botRequests, "לא נספרו כמבקרים", null, "bot")}
+      </div>
+    </section>
+
+    <section class="traffic-story-grid">
+      <article class="traffic-panel traffic-chart-panel">
+        <header><div><span class="traffic-panel-index">תנועה</span><h2>צפיות לאורך זמן</h2></div><small>${lastUpdated ? `עודכן ${escapeHtml(lastUpdated)}` : ""}</small></header>
+        ${clientTrafficChart(analytics?.series || [])}
+      </article>
+      <article class="traffic-panel traffic-hours-panel">
+        <header><div><span class="traffic-panel-index">קצב</span><h2>מתי נכנסים</h2></div><small>שעון ישראל</small></header>
+        ${clientTrafficHourly(analytics?.hourly || [])}
+      </article>
+    </section>
+
+    <section class="traffic-panel traffic-breakdown-panel">
+      <header class="traffic-panel-head-wrap">
+        <div><span class="traffic-panel-index">פירוט</span><h2>מה מעניין את המבקרים</h2></div>
+        <div class="traffic-breakdown-tabs" role="tablist" aria-label="סוג הפירוט">
+          ${CLIENT_VISITOR_BREAKDOWNS.map(
+            (item) => `<button class="${state.clientVisitorBreakdown === item.id ? "active" : ""}" type="button" data-traffic-breakdown="${item.id}" role="tab" aria-selected="${state.clientVisitorBreakdown === item.id}">${item.label}</button>`
+          ).join("")}
+        </div>
+      </header>
+      ${clientTrafficRankedList(analytics?.[breakdown.id] || [], breakdown)}
+    </section>
+
+    <section class="traffic-panel traffic-visitors-panel">
+      <header class="traffic-visitors-head">
+        <div><span class="traffic-panel-index">יומן</span><h2>${classificationMeta.title}</h2><p>${classificationMeta.description}</p></div>
+        <form id="trafficSearchForm" class="traffic-search" role="search">
+          <i data-lucide="search"></i>
+          <input name="search" value="${escapeAttr(state.clientVisitorSearch)}" placeholder="IP, עמוד, עיר..." aria-label="חיפוש ביומן המבקרים" dir="ltr" />
+          ${state.clientVisitorSearch ? `<button type="button" data-clear-traffic-search aria-label="ניקוי חיפוש"><i data-lucide="x"></i></button>` : ""}
+          <button type="submit">חיפוש</button>
+        </form>
+      </header>
+      <div class="traffic-classification-tabs" role="tablist" aria-label="סוג תנועה">
+        ${trafficClassificationButton("candidate", "מבקרים", "user-round-check")}
+        ${trafficClassificationButton("bot", "בוטים", "bot")}
+        ${trafficClassificationButton("all", "הכול", "rows-3")}
+      </div>
+      ${renderClientVisitorRecords(visitorList, classificationMeta)}
+      ${pageCount > 1 ? renderClientVisitorPagination(pageCount, visitorList.total) : ""}
+    </section>
+
+    <footer class="traffic-method-note">
+      <i data-lucide="shield-check"></i>
+      <span><strong>הנתונים שייכים רק לאתר הזה.</strong> קבצי עיצוב, תמונות, API ובקשות שנכשלו אינם נספרים כצפיות בעמוד.</span>
+    </footer>
+  `;
+}
+
+function trafficLedgerRow(label, value, foot, delta, icon) {
+  return `
+    <article role="listitem">
+      <span class="traffic-ledger-icon"><i data-lucide="${icon}"></i></span>
+      <span><strong>${escapeHtml(label)}</strong><small>${escapeHtml(foot)}</small></span>
+      <b>${formatTrafficNumber(value)}</b>
+      ${delta === null || delta === undefined ? `<em aria-hidden="true">—</em>` : trafficDelta(delta, true)}
+    </article>
+  `;
+}
+
+function trafficDelta(value, compact = false) {
+  const numeric = Number(value) || 0;
+  const direction = numeric > 0.05 ? "up" : numeric < -0.05 ? "down" : "flat";
+  const icon = direction === "up" ? "trending-up" : direction === "down" ? "trending-down" : "minus";
+  const label = `${Math.abs(numeric).toLocaleString("he-IL", { maximumFractionDigits: 0 })}%`;
+  return `<span class="traffic-delta ${direction} ${compact ? "compact" : ""}"><i data-lucide="${icon}"></i>${label}<small>${compact ? "" : " מול התקופה הקודמת"}</small></span>`;
+}
+
+function clientTrafficChart(series) {
+  const points = (series || []).map((item) => ({ bucket: item.bucket, value: Number(item.page_views) || 0 }));
+  if (!points.length || !points.some((item) => item.value > 0)) {
+    return `<div class="traffic-inline-empty"><i data-lucide="activity"></i><span>אין צפיות בטווח שנבחר</span></div>`;
+  }
+  const width = 760;
+  const height = 238;
+  const insetX = 18;
+  const insetTop = 18;
+  const insetBottom = 38;
+  const chartHeight = height - insetTop - insetBottom;
+  const max = Math.max(...points.map((item) => item.value), 1);
+  const coordinates = points.map((item, index) => {
+    const x = points.length === 1 ? width / 2 : insetX + (index / (points.length - 1)) * (width - insetX * 2);
+    const y = insetTop + chartHeight - (item.value / max) * chartHeight;
+    return { ...item, x, y };
+  });
+  const line = coordinates.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
+  const area = `${insetX},${height - insetBottom} ${line} ${width - insetX},${height - insetBottom}`;
+  const labelIndexes = [...new Set([0, Math.floor((coordinates.length - 1) / 2), coordinates.length - 1])];
+  return `
+    <div class="traffic-chart" role="img" aria-label="גרף צפיות בעמודים לאורך הטווח שנבחר">
+      <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
+        <defs><linearGradient id="trafficAreaFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f6658" stop-opacity="0.25"/><stop offset="1" stop-color="#2f6658" stop-opacity="0"/></linearGradient></defs>
+        <line x1="${insetX}" y1="${insetTop + chartHeight * 0.25}" x2="${width - insetX}" y2="${insetTop + chartHeight * 0.25}" />
+        <line x1="${insetX}" y1="${insetTop + chartHeight * 0.65}" x2="${width - insetX}" y2="${insetTop + chartHeight * 0.65}" />
+        <polygon points="${area}" fill="url(#trafficAreaFill)" />
+        <polyline points="${line}" fill="none" stroke="#2f6658" stroke-width="4" vector-effect="non-scaling-stroke" />
+        ${coordinates.map((point) => `<circle cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="3.5"><title>${formatTrafficNumber(point.value)} צפיות · ${escapeHtml(formatTrafficBucket(point.bucket))}</title></circle>`).join("")}
+        ${labelIndexes.map((index) => `<text x="${coordinates[index].x.toFixed(1)}" y="${height - 8}" text-anchor="${index === 0 ? "start" : index === coordinates.length - 1 ? "end" : "middle"}">${escapeHtml(formatTrafficBucket(coordinates[index].bucket))}</text>`).join("")}
+      </svg>
+    </div>
+  `;
+}
+
+function clientTrafficHourly(hourlyItems) {
+  const values = Array.from({ length: 24 }, (_, hour) => {
+    const found = (hourlyItems || []).find((item) => Number(item.hour) === hour);
+    return { hour, value: Number(found?.page_views) || 0 };
+  });
+  const max = Math.max(...values.map((item) => item.value), 1);
+  const total = values.reduce((sum, item) => sum + item.value, 0);
+  if (!total) return `<div class="traffic-inline-empty compact"><i data-lucide="clock-3"></i><span>עוד אין מספיק פעילות</span></div>`;
+  const peak = values.reduce((best, item) => (item.value > best.value ? item : best), values[0]);
+  return `
+    <div class="traffic-hours" aria-label="התפלגות צפיות לפי שעות">
+      ${values.map((item) => `<span title="${String(item.hour).padStart(2, "0")}:00 · ${formatTrafficNumber(item.value)} צפיות"><i style="height:${Math.max(3, (item.value / max) * 100).toFixed(1)}%"></i><small>${item.hour % 6 === 0 ? String(item.hour).padStart(2, "0") : ""}</small></span>`).join("")}
+    </div>
+    <p class="traffic-peak-note"><i data-lucide="sun-medium"></i>השעה הפעילה ביותר: <strong>${String(peak.hour).padStart(2, "0")}:00</strong></p>
+  `;
+}
+
+function clientTrafficRankedList(items, breakdown) {
+  if (!items.length) return `<div class="traffic-inline-empty compact"><i data-lucide="list-filter"></i><span>${escapeHtml(breakdown.empty)}</span></div>`;
+  const max = Math.max(...items.map((item) => Number(item.requests) || 0), 1);
+  return `
+    <ol class="traffic-ranked-list">
+      ${items.map((item, index) => {
+        const label = trafficBreakdownLabel(breakdown.id, item.label);
+        const requests = Number(item.requests) || 0;
+        return `
+          <li>
+            <span class="traffic-rank">${String(index + 1).padStart(2, "0")}</span>
+            <span class="traffic-rank-copy"><bdi dir="${breakdown.id === "pages" || breakdown.id === "referrers" ? "ltr" : "rtl"}">${escapeHtml(label)}</bdi><i style="width:${Math.max(4, (requests / max) * 100).toFixed(1)}%"></i></span>
+            <span class="traffic-rank-value"><strong>${formatTrafficNumber(requests)}</strong><small>צפיות</small></span>
+          </li>
+        `;
+      }).join("")}
+    </ol>
+  `;
+}
+
+function renderClientVisitorRecords(visitorList, classificationMeta) {
+  const visitors = visitorList.visitors || [];
+  if (!visitors.length) {
+    const text = state.clientVisitorSearch ? "לא נמצאו תוצאות לחיפוש הזה" : classificationMeta.empty;
+    return `<div class="traffic-inline-empty traffic-records-empty"><i data-lucide="${classificationMeta.icon}"></i><span>${escapeHtml(text)}</span></div>`;
+  }
+  const countLabel = state.clientVisitorClassification === "candidate" ? "צפיות" : "בקשות";
+  return `
+    <div class="traffic-table-wrap ${state.clientVisitorTableLoading ? "is-loading" : ""}">
+      <table class="traffic-table">
+        <thead><tr><th>מזהה רשת</th><th>מיקום ומכשיר</th><th>${countLabel}</th><th>נראה לאחרונה</th><th>עמוד אחרון</th><th><span class="sr-only">פתיחה</span></th></tr></thead>
+        <tbody>
+          ${visitors.map((visitor) => `
+            <tr>
+              <td><bdi dir="ltr">${escapeHtml(visitor.ip)}</bdi>${visitor.bot_reason ? `<small class="traffic-bot-reason">${escapeHtml(botReasonLabel(visitor.bot_reason))}</small>` : ""}</td>
+              <td><span>${escapeHtml(visitor.city || visitor.region || "לא ידוע")}</span><small>${escapeHtml(trafficDeviceLabel(visitor.device_type))}</small></td>
+              <td><strong>${formatTrafficNumber(visitor.requests)}</strong></td>
+              <td><time>${escapeHtml(formatTrafficDateTime(visitor.last_seen))}</time></td>
+              <td><bdi dir="ltr" class="traffic-path">${escapeHtml(visitor.latest_path || "—")}</bdi></td>
+              <td><button class="traffic-open-visitor" type="button" data-visitor-ip="${escapeAttr(visitor.ip)}" aria-label="פתיחת פעילות עבור ${escapeAttr(visitor.ip)}"><i data-lucide="chevron-left"></i></button></td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+      <div class="traffic-record-list">
+        ${visitors.map((visitor) => `
+          <button type="button" data-visitor-ip="${escapeAttr(visitor.ip)}">
+            <span class="traffic-record-top"><bdi dir="ltr">${escapeHtml(visitor.ip)}</bdi><strong>${formatTrafficNumber(visitor.requests)} <small>${countLabel}</small></strong></span>
+            <span>${escapeHtml(visitor.city || visitor.region || "מיקום לא ידוע")} · ${escapeHtml(trafficDeviceLabel(visitor.device_type))} · ${escapeHtml(formatTrafficDateTime(visitor.last_seen))}</span>
+            <bdi dir="ltr">${escapeHtml(visitor.latest_path || "—")}</bdi>
+            ${visitor.bot_reason ? `<em>${escapeHtml(botReasonLabel(visitor.bot_reason))}</em>` : ""}
+          </button>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderClientVisitorPagination(pageCount, total) {
+  return `
+    <nav class="traffic-pagination" aria-label="עמודי מבקרים">
+      <button type="button" data-traffic-page="${state.clientVisitorPage - 1}" ${state.clientVisitorPage <= 1 ? "disabled" : ""}><i data-lucide="chevron-right"></i><span>הקודם</span></button>
+      <span>עמוד <strong>${state.clientVisitorPage}</strong> מתוך ${pageCount} · ${formatTrafficNumber(total)} רשומות</span>
+      <button type="button" data-traffic-page="${state.clientVisitorPage + 1}" ${state.clientVisitorPage >= pageCount ? "disabled" : ""}><span>הבא</span><i data-lucide="chevron-left"></i></button>
+    </nav>
+  `;
+}
+
+function trafficClassificationButton(id, label, icon) {
+  return `<button class="${state.clientVisitorClassification === id ? "active" : ""}" type="button" data-traffic-classification="${id}" role="tab" aria-selected="${state.clientVisitorClassification === id}"><i data-lucide="${icon}"></i>${label}</button>`;
+}
+
+function clientVisitorClassificationMeta() {
+  if (state.clientVisitorClassification === "bot") {
+    return { title: "בוטים שסוננו", description: "בקשות שזוהו ככלים אוטומטיים ואינן נספרות כמבקרים.", empty: "לא זוהו בוטים בטווח הזה", icon: "bot" };
+  }
+  if (state.clientVisitorClassification === "all") {
+    return { title: "כל התנועה", description: "מבקרים ובוטים יחד, לצורך בדיקה מלאה של הלוג.", empty: "אין תנועה בטווח הזה", icon: "rows-3" };
+  }
+  return { title: "יומן המבקרים", description: "כתובות IP עם צפייה מוצלחת בעמוד שלא זוהו כבוט.", empty: "אין מבקרים בטווח הזה", icon: "user-round-search" };
+}
+
+async function refreshClientVisitorDashboard() {
+  if (!state.clientSite?.id) return;
+  state.clientVisitorLoading = true;
+  const range = clientVisitorRange();
+  const common = trafficRangeQuery(range);
+  const visitorQuery = trafficVisitorQuery(range);
+  const [analytics, visitorList] = await Promise.all([
+    api(`/api/sites/${state.clientSite.id}/visitor-analytics?${common}`),
+    api(`/api/sites/${state.clientSite.id}/visitor-analytics/visitors?${visitorQuery}`),
+  ]);
+  if (analytics?.error) {
+    state.clientVisitorError = { message: analytics.error, code: analytics.code || "analytics_unavailable" };
+    state.clientVisitorAnalytics = null;
+  } else {
+    state.clientVisitorAnalytics = analytics;
+    state.clientVisitorError = null;
+  }
+  state.clientVisitorList = visitorList?.error ? { visitors: [], total: 0, page: 1, limit: 25 } : visitorList;
+  state.clientVisitorLoading = false;
+  state.clientVisitorTableLoading = false;
+  renderClientVisitors();
+}
+
+async function refreshClientVisitorTable() {
+  if (!state.clientSite?.id) return;
+  state.clientVisitorTableLoading = true;
+  const range = state.clientVisitorAnalytics?.range || clientVisitorRange();
+  const visitorList = await api(`/api/sites/${state.clientSite.id}/visitor-analytics/visitors?${trafficVisitorQuery(range)}`);
+  if (!visitorList?.error) state.clientVisitorList = visitorList;
+  else toast("לא ניתן לטעון את רשימת המבקרים כרגע", "error");
+  state.clientVisitorTableLoading = false;
+  renderClientVisitors();
+}
+
+function clientVisitorRange() {
+  const to = new Date();
+  const from = new Date(to.getTime() - state.clientVisitorRangeDays * 24 * 60 * 60 * 1000);
+  return { from: from.toISOString(), to: to.toISOString() };
+}
+
+function trafficRangeQuery(range) {
+  const query = new URLSearchParams();
+  query.set("from", range.from);
+  query.set("to", range.to);
+  return query.toString();
+}
+
+function trafficVisitorQuery(range) {
+  const query = new URLSearchParams(trafficRangeQuery(range));
+  query.set("page", String(state.clientVisitorPage));
+  query.set("limit", "25");
+  query.set("classification", state.clientVisitorClassification);
+  query.set("sort", "last_seen");
+  query.set("direction", "desc");
+  if (state.clientVisitorSearch) query.set("search", state.clientVisitorSearch);
+  return query.toString();
+}
+
+async function showClientVisitorTimeline(ip) {
+  const modal = document.createElement("div");
+  modal.className = "traffic-drawer-backdrop";
+  modal.innerHTML = `
+    <aside class="traffic-drawer" role="dialog" aria-modal="true" aria-labelledby="trafficDrawerTitle">
+      <header><div><span class="traffic-panel-index">ציר פעילות</span><h2 id="trafficDrawerTitle" dir="ltr">${escapeHtml(ip)}</h2></div><button type="button" class="traffic-drawer-close" aria-label="סגירה"><i data-lucide="x"></i></button></header>
+      <div class="traffic-drawer-body" aria-live="polite"><div class="traffic-timeline-loading"><span></span><span></span><span></span></div></div>
+    </aside>
+  `;
+  document.body.appendChild(modal);
+  icons();
+  const close = createDialogController(modal);
+  modal.querySelector(".traffic-drawer-close").addEventListener("click", close);
+  modal.addEventListener("mousedown", (event) => {
+    if (event.target === modal) close();
+  });
+  const range = state.clientVisitorAnalytics?.range || clientVisitorRange();
+  const query = new URLSearchParams(trafficRangeQuery(range));
+  query.set("ip", ip);
+  const result = await api(`/api/sites/${state.clientSite.id}/visitor-analytics/timeline?${query}`);
+  if (!document.body.contains(modal)) return;
+  const body = modal.querySelector(".traffic-drawer-body");
+  if (result?.error) {
+    body.innerHTML = `<div class="traffic-inline-empty"><i data-lucide="cloud-off"></i><span>לא ניתן לטעון את ציר הפעילות</span></div>`;
+    icons();
+    return;
+  }
+  const events = result.events || [];
+  body.innerHTML = events.length
+    ? `<ol class="traffic-timeline">${events.map((event) => `
+        <li class="${event.is_bot ? "is-bot" : "is-candidate"}">
+          <i aria-hidden="true"></i>
+          <time>${escapeHtml(formatTrafficDateTime(event.occurred_at))}</time>
+          <bdi dir="ltr">${escapeHtml(event.path || "—")}</bdi>
+          <span>${escapeHtml(trafficDeviceLabel(event.device_type))}${event.city || event.region ? ` · ${escapeHtml(event.city || event.region)}` : ""}${event.status ? ` · ${escapeHtml(String(event.status))}` : ""}</span>
+          ${event.referrer && event.referrer !== "-" ? `<small dir="ltr">מקור: ${escapeHtml(event.referrer)}</small>` : ""}
+          ${event.is_bot ? `<em><i data-lucide="bot"></i>${escapeHtml(botReasonLabel(event.bot_reason))}</em>` : ""}
+        </li>
+      `).join("")}</ol>`
+    : `<div class="traffic-inline-empty"><i data-lucide="history"></i><span>לא נמצאה פעילות בטווח הזה</span></div>`;
+  icons();
+}
+
+function formatTrafficNumber(value) {
+  return new Intl.NumberFormat("he-IL").format(Number(value) || 0);
+}
+
+function formatTrafficDateTime(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("he-IL", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Jerusalem",
+  }).format(date);
+}
+
+function formatTrafficBucket(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value || "");
+  return new Intl.DateTimeFormat("he-IL", state.clientVisitorRangeDays === 1
+    ? { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jerusalem" }
+    : { day: "2-digit", month: "2-digit", timeZone: "Asia/Jerusalem" }).format(date);
+}
+
+function trafficBreakdownLabel(type, value) {
+  const label = String(value || "").trim();
+  if (!label || label === "לא ידוע" || label === "-") return type === "referrers" ? "כניסה ישירה" : "לא ידוע";
+  if (type === "devices") return trafficDeviceLabel(label);
+  if (type === "referrers") {
+    try {
+      return new URL(label).hostname.replace(/^www\./, "");
+    } catch {
+      return label;
+    }
+  }
+  return label;
+}
+
+function trafficDeviceLabel(value) {
+  const labels = { mobile: "טלפון נייד", desktop: "מחשב", tablet: "טאבלט", bot: "כלי אוטומטי", unknown: "מכשיר לא ידוע" };
+  return labels[String(value || "").toLowerCase()] || value || "מכשיר לא ידוע";
+}
+
+function botReasonLabel(value) {
+  const normalized = String(value || "").toLowerCase();
+  return BOT_REASON_LABELS[normalized] || (value ? String(value) : "זוהה ככלי אוטומטי");
+}
+
 function shell(active) {
   return `
     <aside class="side-rail">
@@ -513,7 +1084,10 @@ function shell(active) {
         ${
           state.me?.role === "admin"
             ? `<a class="${active === "admin" ? "active" : ""}" href="${href("/admin")}"><i data-lucide="shield"></i><span>ניהול</span></a>`
-            : `<a class="${active === "client" ? "active" : ""}" href="${href(`/client/${state.me.username}`)}"><i data-lucide="images"></i><span>האתר שלי</span></a>`
+            : `
+                <a class="${active === "client" ? "active" : ""}" href="${href(`/client/${state.me.username}`)}"><i data-lucide="images"></i><span>האתר שלי</span></a>
+                <a class="${active === "visitors" ? "active" : ""}" href="${href(`/client/${state.me.username}/visitors`)}"><i data-lucide="users-round"></i><span>מבקרים</span></a>
+              `
         }
       </nav>
       <button class="logout-button" id="logoutButton" type="button"><i data-lucide="log-out"></i><span>יציאה</span></button>
@@ -2903,7 +3477,7 @@ async function loadAdmin() {
   state.audit = auditResponse.audit || [];
 }
 
-async function loadClient(username) {
+async function loadClient(username, { includeWorkspace = true } = {}) {
   const previousUsername = state.clientUsername;
   state.clientUsername = username || state.me.username;
   if (previousUsername !== state.clientUsername) {
@@ -2914,6 +3488,12 @@ async function loadClient(username) {
     state.selectedTextSlotId = null;
     state.lastEditedSectionId = null;
     state.recentlySavedSectionId = null;
+    state.clientVisitorAnalytics = null;
+    state.clientVisitorList = { visitors: [], total: 0, page: 1, limit: 25 };
+    state.clientVisitorPage = 1;
+    state.clientVisitorSearch = "";
+    state.clientVisitorClassification = "candidate";
+    state.clientVisitorError = null;
   }
   const sitesResponse = await api("/api/sites");
   const sites = sitesResponse.sites || [];
@@ -2927,7 +3507,7 @@ async function loadClient(username) {
   } else {
     state.clientSite = sites[0] || state.clientSite;
   }
-  await Promise.all([loadClientAssets(), loadClientText()]);
+  if (includeWorkspace) await Promise.all([loadClientAssets(), loadClientText()]);
 }
 
 async function loadClientAssets() {
@@ -2977,12 +3557,12 @@ async function api(path, options = {}) {
       }
     }
 
-    if (response.status === 413) return { error: "Uploaded image is too large" };
-    if (response.status === 415) return { error: payload.error || "Upload type not allowed" };
-    if (response.status === 408 || response.status === 504) return { error: "Request timed out" };
-    if (response.status === 429) return { error: "Too many requests" };
-    if (response.status >= 500) return { error: "Server unavailable" };
-    if (!response.ok && !options.allow401) return { error: payload.error || "Request failed" };
+    if (response.status === 413) return { ...payload, error: "Uploaded image is too large" };
+    if (response.status === 415) return { ...payload, error: payload.error || "Upload type not allowed" };
+    if (response.status === 408 || response.status === 504) return { ...payload, error: payload.error || "Request timed out" };
+    if (response.status === 429) return { ...payload, error: payload.error || "Too many requests" };
+    if (response.status >= 500) return { ...payload, error: payload.error || "Server unavailable" };
+    if (!response.ok && !options.allow401) return { ...payload, error: payload.error || "Request failed" };
     return payload;
   } catch (error) {
     console.error("API request failed", path, error);

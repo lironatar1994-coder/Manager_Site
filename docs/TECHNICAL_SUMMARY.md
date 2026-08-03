@@ -114,6 +114,16 @@ Sites:
 - `GET /api/sites/:siteId/text`
 - `PATCH /api/sites/:siteId/text/:slotId`
 
+Visitor analytics:
+
+- `GET /api/sites/:siteId/visitor-analytics`
+- `GET /api/sites/:siteId/visitor-analytics/visitors`
+- `GET /api/sites/:siteId/visitor-analytics/timeline`
+
+All three routes use `requireSiteAccess`. Manager Site derives the monitored website from `req.site.websiteUrl` and proxies only allowlisted query parameters to ServerMonitor over loopback. The browser cannot provide a ServerMonitor app ID or the upstream website URL.
+
+ServerMonitor resolves the stored URL to exactly one monitored app, including the path for sites that share `vee-app.co.il`. Missing or ambiguous matches fail closed. Production authentication uses the shared key file `/root/.manager-site-analytics-key`; the key is read server-side and never returned to the SPA.
+
 ## Client Asset Configs
 
 Each client can have a human file and a machine config:
@@ -165,6 +175,7 @@ The SPA routes are:
 - `/login`
 - `/admin`
 - `/client/:username`
+- `/client/:username/visitors`
 
 Do not change `/client/:username` to a Hebrew backend path unless the user explicitly asks for backend routing changes. Hebrew applies to client-facing UI text and direction.
 
