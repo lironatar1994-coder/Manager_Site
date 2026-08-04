@@ -1,4 +1,15 @@
 (function () {
+  // Applied here, in the synchronous boot script, so the stored theme is on
+  // <html> before first paint. Doing it in app.js (deferred) would flash the
+  // light canvas first.
+  try {
+    const stored = localStorage.getItem("manager-site-theme");
+    if (stored === "dark") document.documentElement.classList.add("theme-dark");
+    else if (stored === "light") document.documentElement.classList.add("theme-light");
+  } catch (error) {
+    /* storage blocked: fall back to prefers-color-scheme */
+  }
+
   const app = document.querySelector("#app");
   const baseMeta = document.querySelector("meta[name='manager-site-base']");
   const basePath = (baseMeta?.getAttribute("content") || "/Manager_Site").replace(/\/+$/, "");

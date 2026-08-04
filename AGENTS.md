@@ -36,7 +36,7 @@ There is no public registration.
 
 - `server.js` - Express app, auth, sessions, APIs, data store, upload handling.
 - `public/app.js` - SPA routing, login/admin/client views, UI text, API calls.
-- `public/styles.css` - visual design, RTL rules, desktop/mobile responsive layout.
+- `public/styles.css` - visual design, RTL rules, desktop/mobile responsive layout. See "Design System" below.
 - `public/index.html` - app shell and browser title.
 - `deploy.ps1` - Windows deploy entrypoint.
 - `deploy_linux.sh` - remote Linux deployment, PM2, Nginx route snippet, production env setup.
@@ -47,6 +47,33 @@ There is no public registration.
 - `data/clients/<username>/client.config.json` - runtime machine-readable allowlist for real production image paths.
 - `clients/<username>/client.config.json` - optional repo fallback/template config; runtime `data/clients` takes priority.
 - The client preview is a browser iframe pointed at the configured public website URL. Do not add Playwright/Chromium or static screenshot generation just for Manager Site previews.
+
+## Design System
+
+The visual system is "Lumen", defined entirely in the token block at the top of
+`public/styles.css`. Read that block before changing anything visual.
+
+- **Never hardcode a color.** Every color in the sheet is a token. If you need a
+  new one, add it to both the light `:root` block and the two dark blocks.
+- **Never write `--token: var(--other-token)`.** Tokens hold literal values.
+  Chromium does not reliably re-resolve a `var()` chain when the theme class
+  changes on `<html>`, so an aliased token leaves panels painted in the old
+  theme after a toggle. This is why the old `--studio-*` / `--paper` / `--panel`
+  aliases were removed.
+- **Dark theme is defined twice on purpose**: `@media (prefers-color-scheme: dark)
+  :root:not(.theme-light)` for users who never touch the control, and
+  `:root.theme-dark` for the manual toggle. Keep the two in sync.
+- **Pick the right variant.** `--brand` is a text color; `--brand-solid` is the
+  filled-button background. On the hero and stage bands — dark in *both* themes —
+  use `--on-dark`, `--on-brand`, and `--accent-on-dark`, never `--ink` or
+  `--surface`, which invert.
+- **Fonts**: `--font-sans` (Assistant) and `--font-display` (Frank Ruhl Libre)
+  both ship full Hebrew. Do not add a Latin-only face such as Archivo or IBM
+  Plex Sans — Hebrew set in those falls back silently to an OS font.
+- **Accessibility is a constraint, not a review step.** All four views pass WCAG
+  2.1 AA in both themes: 4.5:1 text, 3:1 control borders, 24x24 minimum targets
+  (44x44 on coarse pointers), no horizontal overflow at 375px. Re-check after
+  visual changes.
 
 ## New Client Setup
 

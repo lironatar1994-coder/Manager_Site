@@ -1090,8 +1090,53 @@ function shell(active) {
               `
         }
       </nav>
-      <button class="logout-button" id="logoutButton" type="button"><i data-lucide="log-out"></i><span>יציאה</span></button>
+      <div class="rail-footer">
+        ${themeToggle()}
+        <button class="logout-button" id="logoutButton" type="button"><i data-lucide="log-out"></i><span>יציאה</span></button>
+      </div>
     </aside>
+  `;
+}
+
+const THEME_KEY = "manager-site-theme";
+
+/* Themes: "system" follows prefers-color-scheme, the other two pin it.
+   The class is written to <html> so the CSS override wins over the media
+   query without either one needing !important. */
+function storedTheme() {
+  try {
+    const value = localStorage.getItem(THEME_KEY);
+    return value === "light" || value === "dark" ? value : "system";
+  } catch {
+    return "system";
+  }
+}
+
+function applyTheme(theme) {
+  const root = document.documentElement;
+  root.classList.toggle("theme-dark", theme === "dark");
+  root.classList.toggle("theme-light", theme === "light");
+  try {
+    if (theme === "system") localStorage.removeItem(THEME_KEY);
+    else localStorage.setItem(THEME_KEY, theme);
+  } catch {
+    /* private mode: the theme still applies for this session */
+  }
+}
+
+function resolvedTheme(theme) {
+  if (theme !== "system") return theme;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function themeToggle() {
+  const theme = storedTheme();
+  const dark = resolvedTheme(theme) === "dark";
+  const label = dark ? "מעבר למצב בהיר" : "מעבר למצב כהה";
+  return `
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="${label}" title="${label}" aria-pressed="${dark}">
+      <i data-lucide="${dark ? "sun" : "moon"}"></i><span>${dark ? "מצב בהיר" : "מצב כהה"}</span>
+    </button>
   `;
 }
 
@@ -3580,6 +3625,20 @@ function bindShell() {
     else renderLogin();
   };
   document.querySelectorAll("#logoutButton, [data-client-logout]").forEach((button) => button.addEventListener("click", logout));
+
+  const toggle = document.getElementById("themeToggle");
+  if (toggle) {
+    toggle.addEventListener("click", () => {
+      applyTheme(resolvedTheme(storedTheme()) === "dark" ? "light" : "dark");
+      const nextDark = resolvedTheme(storedTheme()) === "dark";
+      const label = nextDark ? "מעבר למצב בהיר" : "מעבר למצב כהה";
+      toggle.setAttribute("aria-label", label);
+      toggle.setAttribute("title", label);
+      toggle.setAttribute("aria-pressed", String(nextDark));
+      toggle.innerHTML = `<i data-lucide="${nextDark ? "sun" : "moon"}"></i><span>${nextDark ? "מצב בהיר" : "מצב כהה"}</span>`;
+      if (window.lucide?.createIcons) window.lucide.createIcons();
+    });
+  }
 }
 
 function createDialogController(backdrop, onClose = () => backdrop.remove()) {
