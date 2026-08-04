@@ -159,68 +159,13 @@
    `.theme-dark` is the manual override written by the toggle; the media
    query covers users who never touch it.
    ========================================================================== */
-@media (prefers-color-scheme: dark) {
-  :root:not(.theme-light) {
-    color-scheme: dark;
-
-    --surface: #1a1722;
-    --surface-2: #201c29;
-    --bg: #121016;
-    --surface-sunken: #231e2d;
-    --surface-inset: #2d2739;
-  --surface-veil: rgba(45, 39, 57, 0.74);
-  --surface-veil-2: rgba(45, 39, 57, 0.5);
-    --surface-veil: rgba(45, 39, 57, 0.74);
-    --surface-veil-2: rgba(45, 39, 57, 0.5);
-
-    --ink: #f3f0f7;
-    --ink-soft: #d5cee0;
-    --muted: #a79eb4;
-
-    --brand: #d79ac8; /* text/icon brand on dark */
-    --brand-hover: #e6b2d6;
-    --brand-active: #f0c6e2;
-    --brand-solid: #8c3a7d; /* filled buttons keep white text at 7:1 */
-    --brand-hover-solid: #a4498f;
-    --fill-ink: #383046;
-    --fill-ink-hover: #453c55;
-    --brand-soft: #2b1f2b;
-    --brand-border: #4a3546;
-
-    --accent: #e9a06a;
-    --accent-fill: #d98847;
-    --accent-soft: #2e2318;
-    --accent-border: #4b3927;
-
-    --state-ok: #5fc79b;
-    --state-ok-soft: #162b23;
-    --state-warn: #e0ac5e;
-    --state-warn-soft: #2b2317;
-    --state-danger: #f08b85;
-    --state-danger-soft: #2e1c1c;
-    --state-info: #8fb3f0;
-    --state-info-soft: #1a2032;
-
-    --stage: #0d0b11;
-    --stage-2: #171320;
-    --hero-from: #2a1226;
-    --hero-via: #40182f;
-    --hero-to: #17121c;
-
-    --line-soft: rgba(243, 240, 247, 0.07);
-    --line: rgba(243, 240, 247, 0.14);
-    --line-strong: #736a82;
-
-    --elev-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.3);
-    --elev-2: 0 2px 6px rgba(0, 0, 0, 0.45), 0 10px 24px rgba(0, 0, 0, 0.4);
-    --elev-3: 0 8px 20px rgba(0, 0, 0, 0.5), 0 28px 64px rgba(0, 0, 0, 0.55);
-    --elev-brand: 0 6px 18px rgba(0, 0, 0, 0.5);
-
-    --focus-ring: 0 0 0 3px rgba(215, 154, 200, 0.45);
-    --focus-ring-color: #d79ac8;
-  }
-}
-
+/* ==========================================================================
+   Dark theme. Opt-in only: the app is light by default regardless of the
+   OS setting, and dark applies solely when the toggle has written
+   `.theme-dark` onto <html>. Only the primitives are restated here —
+   every component references these names directly, so the whole app
+   follows.
+   ========================================================================== */
 :root.theme-dark {
   color-scheme: dark;
 

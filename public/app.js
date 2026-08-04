@@ -1100,15 +1100,14 @@ function shell(active) {
 
 const THEME_KEY = "manager-site-theme";
 
-/* Themes: "system" follows prefers-color-scheme, the other two pin it.
-   The class is written to <html> so the CSS override wins over the media
-   query without either one needing !important. */
+/* Light is the default for everyone, regardless of the OS setting; dark is
+   opt-in and only applies once the toggle has stored it. The class goes on
+   <html>, which is the only place the dark palette is defined. */
 function storedTheme() {
   try {
-    const value = localStorage.getItem(THEME_KEY);
-    return value === "light" || value === "dark" ? value : "system";
+    return localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light";
   } catch {
-    return "system";
+    return "light";
   }
 }
 
@@ -1117,21 +1116,15 @@ function applyTheme(theme) {
   root.classList.toggle("theme-dark", theme === "dark");
   root.classList.toggle("theme-light", theme === "light");
   try {
-    if (theme === "system") localStorage.removeItem(THEME_KEY);
-    else localStorage.setItem(THEME_KEY, theme);
+    if (theme === "dark") localStorage.setItem(THEME_KEY, "dark");
+    else localStorage.removeItem(THEME_KEY);
   } catch {
     /* private mode: the theme still applies for this session */
   }
 }
 
-function resolvedTheme(theme) {
-  if (theme !== "system") return theme;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
-
 function themeToggle() {
-  const theme = storedTheme();
-  const dark = resolvedTheme(theme) === "dark";
+  const dark = storedTheme() === "dark";
   const label = dark ? "מעבר למצב בהיר" : "מעבר למצב כהה";
   return `
     <button class="theme-toggle" id="themeToggle" type="button" aria-label="${label}" title="${label}" aria-pressed="${dark}">
@@ -3629,8 +3622,8 @@ function bindShell() {
   const toggle = document.getElementById("themeToggle");
   if (toggle) {
     toggle.addEventListener("click", () => {
-      applyTheme(resolvedTheme(storedTheme()) === "dark" ? "light" : "dark");
-      const nextDark = resolvedTheme(storedTheme()) === "dark";
+      applyTheme(storedTheme() === "dark" ? "light" : "dark");
+      const nextDark = storedTheme() === "dark";
       const label = nextDark ? "מעבר למצב בהיר" : "מעבר למצב כהה";
       toggle.setAttribute("aria-label", label);
       toggle.setAttribute("title", label);

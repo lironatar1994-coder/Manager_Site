@@ -1,13 +1,13 @@
 (function () {
-  // Applied here, in the synchronous boot script, so the stored theme is on
-  // <html> before first paint. Doing it in app.js (deferred) would flash the
-  // light canvas first.
+  // Applied here, in the synchronous boot script, so a stored dark preference
+  // is on <html> before first paint. Doing it in app.js (deferred) would flash
+  // the light canvas first. No stored value means light, which is the default.
   try {
-    const stored = localStorage.getItem("manager-site-theme");
-    if (stored === "dark") document.documentElement.classList.add("theme-dark");
-    else if (stored === "light") document.documentElement.classList.add("theme-light");
+    if (localStorage.getItem("manager-site-theme") === "dark") {
+      document.documentElement.classList.add("theme-dark");
+    }
   } catch (error) {
-    /* storage blocked: fall back to prefers-color-scheme */
+    /* storage blocked: stay on the default light theme */
   }
 
   const app = document.querySelector("#app");
