@@ -76,9 +76,11 @@
         themes, so their text tokens are theme-independent. -- */
   --on-dark: #f7f4f9;
   --on-dark-muted: rgba(247, 244, 249, 0.76);
-  /* Accent for links on permanently-dark bands. Theme-independent, because
-     the band it sits on is dark in light mode too. */
-  --accent-on-dark: #e9a06a;
+  /* Accent for text and links on permanently-dark bands. Theme-independent,
+     because those bands are dark in light mode too. Lighter than --accent-fill
+     so it still clears 4.5:1 against the lightest point of the hero gradient,
+     where the plum wash lifts the backdrop to about rgb(102 53 94). */
+  --accent-on-dark: #f2b98c;
   --stage: #171320; /* preview/crop stage behind client artwork */
   --stage-2: #221b2c;
   --hero-from: #2c1229;
@@ -109,6 +111,11 @@
   --fs-2xl: 2.25rem; /* 36 */
   --fs-3xl: 2.75rem; /* 44 */
 
+  /* Display headings sit just above 1. Latin display type is usually set
+     tighter than this, but Hebrew finals (ך ן ף ץ) drop well below the
+     baseline with no x-height slack to absorb them, so sub-1 leading makes
+     a wrapped heading's descenders collide with the line beneath. */
+  --lh-display: 1.02;
   --lh-tight: 1.2;
   --lh-snug: 1.4;
   --lh-body: 1.6;
@@ -606,13 +613,23 @@ label,
   text-transform: uppercase;
 }
 
+/* --accent is tuned for light surfaces. On the hero and stage bands, which
+   are dark in both themes, it drops to about 1.5:1 — these need the on-dark
+   tone instead. */
+.admin-command .eyebrow,
+.client-hero-page .eyebrow,
+.login-art .eyebrow,
+.crop-stage .eyebrow {
+  color: var(--accent-on-dark);
+}
+
 .login-copy h1,
 .page-head h1,
 .client-hero h1 {
   max-width: 860px;
   margin-bottom: 14px;
   font-size: clamp(2.2rem, 5vw, 4.8rem);
-  line-height: 0.92;
+  line-height: var(--lh-display);
 }
 
 .login-copy p {
@@ -936,7 +953,7 @@ select:disabled {
   margin-bottom: 10px;
   font-family: var(--font-display);
   font-size: clamp(2rem, 4vw, 4rem);
-  line-height: 0.92;
+  line-height: var(--lh-display);
 }
 
 .admin-lockup p {
@@ -1068,18 +1085,22 @@ select:disabled {
   margin-top: auto;
 }
 
+/* Matches .logout-button exactly: the two sit side by side in the rail
+   footer and reading as a pair is the point. */
 .theme-toggle {
+  justify-content: center;
   width: 100%;
   color: var(--on-dark-muted);
   font-size: var(--fs-label);
-  text-align: start;
+  font-weight: 600;
   background: transparent;
-  border: 0;
+  border: 1px solid rgba(247, 244, 249, 0.22);
 }
 
 .theme-toggle:hover {
   color: var(--on-dark);
-  background: rgba(247, 244, 249, 0.09);
+  background: rgba(247, 244, 249, 0.1);
+  border-color: rgba(247, 244, 249, 0.36);
 }
 
 .side-rail a i,
@@ -1127,7 +1148,7 @@ select:disabled {
   margin: 0 0 10px;
   color: var(--on-brand);
   font-size: clamp(2.25rem, 4.8vw, 5rem);
-  line-height: 0.92;
+  line-height: var(--lh-display);
 }
 
 .admin-command p:not(.eyebrow) {
@@ -1586,11 +1607,14 @@ select:disabled {
   min-width: 0;
 }
 
+/* The amber gradient inverts between themes, so no single label color held
+   4.5:1 against both ends of it. A brand fill does, and it matches the
+   wordmark in the rail. */
 .premium-user-card .avatar {
   width: 52px;
   height: 52px;
-  color: var(--ink);
-  background: linear-gradient(180deg, var(--accent-border), var(--accent-fill));
+  color: var(--on-brand);
+  background: var(--brand-solid);
   border: 1px solid rgba(25, 19, 32, 0.1);
 }
 
@@ -2160,7 +2184,7 @@ button.review-thumb:hover {
 .managed-copy strong {
   font-family: var(--font-display);
   font-size: clamp(1.7rem, 4vw, 3.4rem);
-  line-height: 0.95;
+  line-height: var(--lh-display);
 }
 
 .managed-copy p {
@@ -2548,7 +2572,7 @@ button.review-thumb:hover {
   margin: 0 0 12px;
   color: var(--on-brand);
   font-size: clamp(2.3rem, 4.4vw, 4.6rem);
-  line-height: 0.92;
+  line-height: var(--lh-display);
 }
 
 .client-hero-copy .client-hero-subtitle {
@@ -4652,14 +4676,53 @@ svg.lucide {
   }
 
   .side-rail a,
-  .logout-button {
+  .logout-button,
+  .theme-toggle {
     min-height: 46px;
     padding: 0 12px;
     white-space: nowrap;
   }
 
+  /* The rail is a row here, so its footer has to be one too — as a grid it
+     stacked the theme and logout buttons into two rows and doubled the bar's
+     height. */
+  .rail-footer {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    margin: 0;
+  }
+
+  /* In a horizontal bar the vertical edge rule reads as a stray tick beside
+     the pill, so the active route is underlined instead. */
+  .side-rail a.active::before {
+    inset: auto 20% 0;
+    width: auto;
+    height: 3px;
+  }
+
   .logout-button {
     margin: 0;
+  }
+
+  /* Labels are the first thing to go when the bar runs out of room; the
+     icons and their accessible names carry the meaning. */
+  @media (max-width: 460px) {
+    .logout-button span,
+    .theme-toggle span {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .logout-button,
+    .theme-toggle {
+      width: 46px;
+      padding: 0;
+    }
   }
 
   .workspace,
@@ -4736,7 +4799,7 @@ svg.lucide {
 
   .login-copy h1 {
     font-size: clamp(2.35rem, 13vw, 3.25rem);
-    line-height: 0.98;
+    line-height: var(--lh-display);
   }
 
   .login-copy p {
@@ -4765,7 +4828,7 @@ svg.lucide {
 
   .page-head h1 {
     font-size: clamp(2.1rem, 10vw, 2.9rem);
-    line-height: 0.98;
+    line-height: var(--lh-display);
   }
 
   .page-head .primary-button {
@@ -5285,8 +5348,13 @@ svg.lucide {
   font-size: var(--fs-meta);
 }
 
+/* `margin-top: auto` used to absorb every spare pixel in the 100vh column,
+   which on a short viewport opened an ~80px void under the wordmark while
+   the form stayed pinned to the bottom. Cap it so the copy drifts down a
+   little on tall screens but the block still reads as one group. */
 .editorial-login-copy {
-  margin: auto 0 34px;
+  margin: 0 0 34px;
+  padding-top: clamp(var(--sp-6), 6vh, var(--sp-12));
 }
 
 .editorial-login-copy .eyebrow {
@@ -5303,7 +5371,7 @@ svg.lucide {
   color: var(--ink);
   font-size: clamp(3.1rem, 6.5vw, 6.3rem);
   font-weight: 600;
-  line-height: 0.83;
+  line-height: var(--lh-display);
   letter-spacing: -0.045em;
 }
 
@@ -5671,7 +5739,7 @@ svg.lucide {
   color: var(--ink);
   font-size: clamp(1.75rem, 2.7vw, 3rem);
   font-weight: 600;
-  line-height: 0.96;
+  line-height: var(--lh-display);
   letter-spacing: -0.025em;
 }
 
@@ -6594,14 +6662,17 @@ svg.lucide {
     border: 0;
   }
 
+  /* 12vh of top margin plus the base padding pushed the headline a third of
+     the way down a phone screen, leaving the wordmark stranded. The base
+     padding already gives this block its breathing room. */
   .editorial-login-copy {
-    margin: clamp(58px, 12vh, 110px) 0 30px;
+    margin: 0 0 30px;
   }
 
   .editorial-login-copy h1 {
     margin-bottom: 18px;
     font-size: clamp(3.35rem, 17vw, 5.2rem);
-    line-height: 0.84;
+    line-height: var(--lh-display);
   }
 
   .editorial-login-copy > p:last-child { max-width: 330px; font-size: var(--fs-body); }
@@ -6861,7 +6932,7 @@ svg.lucide {
   color: var(--ink);
   font-size: clamp(2rem, 3.3vw, 3.55rem);
   font-weight: 600;
-  line-height: 0.95;
+  line-height: var(--lh-display);
   letter-spacing: -0.035em;
 }
 
