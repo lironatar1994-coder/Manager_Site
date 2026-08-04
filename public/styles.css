@@ -5849,7 +5849,7 @@ svg.lucide {
   grid-template-areas:
     "index media copy"
     "index media action";
-  gap: 9px 11px;
+  gap: 5px 11px;
   align-items: center;
   min-height: 96px;
   padding: 11px 0;
@@ -6026,6 +6026,9 @@ svg.lucide {
 .studio-section-grid .section-card-action {
   display: flex;
   align-items: center;
+  /* The base rule centres this; on its own row that floated the label away
+     from the right-aligned title and chip, breaking the RTL reading line. */
+  justify-content: flex-start;
   gap: 5px;
   width: auto;
   min-width: 0;
