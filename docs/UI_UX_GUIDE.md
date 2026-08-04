@@ -6,7 +6,7 @@ The product should feel premium, minimal, fast, and practical. It is not a marke
 
 Current visual language:
 
-- restrained black, cream, gold, and blue accents
+- restrained ink, cream, forest, and brass
 - strong typography
 - sharp cards and panels
 - dense but clean operational layout
@@ -14,6 +14,66 @@ Current visual language:
 - the client workspace may use a hero-style first section when it is functional: live preview, site identity, image readiness, and primary actions
 
 Avoid generic dashboard styling. The UI should feel custom, professional, and client-ready.
+
+## Design Tokens
+
+Everything visual comes from the `:root` block at the top of `public/styles.css`.
+Login, client studio, and admin share one system; the older `--ink/--paper/--gold`
+names are kept as aliases so legacy admin rules inherit it.
+
+**Do not add a raw hex, a raw font size, or a raw spacing value to a component
+rule.** If nothing in the scale fits, add a token — that is a deliberate,
+reviewable decision. Ad-hoc values are how this file previously accumulated 65
+distinct font sizes and nine near-identical greys.
+
+### Colour
+
+| Token | Use |
+| --- | --- |
+| `--studio-white` / `--studio-paper` / `--studio-canvas` / `--studio-canvas-deep` | surfaces, lightest to deepest |
+| `--studio-ink` / `--studio-ink-soft` | primary text, dark fills |
+| `--studio-muted` / `--studio-muted-strong` | secondary text |
+| `--studio-forest` / `--studio-forest-hover` | primary actions everywhere |
+| `--studio-brass` | decorative only: rules, marks, borders |
+| `--studio-brass-ink` | brass *text* |
+| `--studio-brass-soft` | brass fills that carry ink text |
+| `--state-ok` / `--state-warn` / `--state-danger` / `--state-info` | status |
+
+Contrast rules that the palette is built around:
+
+- `--studio-muted` clears 4.5:1 on every surface including `--studio-canvas-deep`.
+- `--studio-brass-ink` clears 4.5:1 on white/paper/canvas. It lands at 3.9:1 on
+  `--studio-canvas-deep` — keep brass text off that surface.
+- `--studio-brass` cannot carry ink text (3.84:1). Use `--studio-brass-soft` for
+  a gold fill with ink on it, or `--studio-forest` with `--studio-on-dark`.
+
+### Type
+
+Hebrew has no ascender/descender cues to lean on, so it needs more size than
+Latin at the same rank. **13px is a hard floor** — `--fs-micro` is the smallest
+legal size, reserved for overlines, index numerals, and badges.
+
+`--fs-micro` 13 · `--fs-meta` 14 · `--fs-label` 15 · `--fs-body` 16 ·
+`--fs-md` 18 · `--fs-lg` 22 · `--fs-xl` 28 · `--fs-2xl` 36 · `--fs-3xl` 44
+
+Display headings may use `clamp()`, but never with a minimum below `1rem`.
+
+A bare `<small>` inherits the UA's `smaller` keyword and compounds downward, so
+`small` is floored globally at `max(var(--fs-micro), 0.875em)`.
+
+### Spacing, elevation, motion
+
+`--sp-1` … `--sp-12` on a 4px base. `--elev-1/2/3`. `--dur-fast/--dur/--dur-slow`
+with `--ease`. `--control-h` is the 44px touch target. `--focus-ring` and the
+global `:focus-visible` outline apply to every surface — do not re-declare them
+per view.
+
+Touch sizing is enforced once, in the `@media (pointer: coarse), (max-width: 760px)`
+block near the end of the file. It fires on both a coarse pointer and a phone-width
+viewport, because pointer queries do not fire in a resized desktop window — which
+is where this actually gets verified. A component that pins an explicit `height`
+outranks the blanket rule, so add it by name to that block rather than fighting
+specificity.
 
 ## Language and Direction Rules
 
@@ -122,6 +182,40 @@ Before finishing UI changes:
 - verify login still has no English operational copy
 - verify visitor range, search, bot separation, pagination, and activity timeline work
 - verify visitor controls are at least 44px on mobile and the table becomes cards at `390px`
+
+Rather than eyeballing the last four, run the measurement probe in the browser
+console on each view at `1440`, `390`, and `360`. It reports every rendered
+string under 13px, every text/background pair under its WCAG AA threshold, every
+control under the minimum target for that width, and any horizontal overflow.
+The current baseline on all four views at all three widths is zero of each.
+
+```js
+(() => {
+  const lum=c=>{const s=c.map(v=>{v/=255;return v<=0.03928?v/12.92:((v+0.055)/1.055)**2.4});return .2126*s[0]+.7152*s[1]+.0722*s[2]};
+  const parse=s=>{const m=String(s).match(/rgba?\(([^)]+)\)/);if(!m)return null;const p=m[1].split(',').map(parseFloat);return{rgb:p.slice(0,3),a:p[3]??1}};
+  const bgOf=el=>{let n=el;while(n&&n!==document.documentElement){const cs=getComputedStyle(n),b=parse(cs.backgroundColor);if(b&&b.a>.5)return b.rgb;if(/gradient|url/.test(cs.backgroundImage))return null;n=n.parentElement}return null};
+  const cr=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05)};
+  const dead=el=>{let n=el;while(n&&n!==document.documentElement){const cs=getComputedStyle(n);if(cs.pointerEvents==='none'||cs.opacity==='0'||cs.display==='none'||cs.visibility==='hidden')return true;n=n.parentElement}return false};
+  const MIN=innerWidth<=760?44:24, out={tiny:[],low:[],small:[]};
+  document.querySelectorAll('body *').forEach(el=>{
+    const cs=getComputedStyle(el), rect=el.getBoundingClientRect();
+    if(cs.display==='none'||cs.visibility==='hidden'||!rect.width)return;
+    const t=(el.textContent||'').trim().slice(0,18)||el.tagName;
+    if([...el.childNodes].some(n=>n.nodeType===3&&n.textContent.trim())){
+      const px=parseFloat(cs.fontSize);
+      if(px>0&&px<12.5)out.tiny.push({t,px});
+      const fg=parse(cs.color), bg=bgOf(el);
+      if(fg&&fg.a>.35&&bg){const r=cr(fg.rgb,bg), need=(px>=24||(px>=18.66&&parseInt(cs.fontWeight)>=700))?3:4.5;
+        if(r<need-.01)out.low.push({t,cr:+r.toFixed(2),px})}
+    }
+    if(el.matches('button,a[href],input:not([type=hidden]),select,summary')&&!dead(el)){
+      const r=(el.closest('label')||el).getBoundingClientRect();
+      if(!el.matches('p a[href],li a[href],span a[href]')&&(r.height<MIN||r.width<MIN))out.small.push({t,w:0|r.width,h:0|r.height})}
+  });
+  return {vw:innerWidth, hOverflow:document.documentElement.scrollWidth-innerWidth,
+          tiny:out.tiny.length, lowContrast:out.low.length, smallTargets:out.small.length, detail:out};
+})()
+```
 
 ## Hebrew Editing Note
 
