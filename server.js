@@ -235,6 +235,10 @@ router.get("/api/sites/:siteId/visitor-analytics/timeline", requireSiteAccess, a
   await proxyClientAnalytics(req, res, "site/timeline", ["from", "to", "ip"]);
 });
 
+router.get("/api/sites/:siteId/visitor-analytics/engagement", requireSiteAccess, async (req, res) => {
+  await proxyClientAnalytics(req, res, "site/engagement", ["from", "to"]);
+});
+
 router.get("/api/sites/:siteId/assets", requireSiteAccess, async (req, res) => {
   const config = await loadClientConfig(req.site.ownerUsername);
   if (!config) {

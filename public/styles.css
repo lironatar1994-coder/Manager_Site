@@ -7604,3 +7604,35 @@ svg.lucide {
     scroll-behavior: auto !important;
   }
 }
+
+/* ---------- אזורים חמים ---------- */
+.traffic-hotzones-panel .hz-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+  gap:18px 26px;margin-top:14px;
+}
+.traffic-hotzones-panel .hz-col-wide{grid-column:span 2}
+.traffic-hotzones-panel h3{
+  font-size:.82rem;letter-spacing:.04em;opacity:.72;margin:0 0 10px;font-weight:600;
+}
+.traffic-hotzones-panel ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.traffic-hotzones-panel li{
+  display:grid;grid-template-columns:minmax(84px,auto) 1fr auto;
+  align-items:center;gap:10px;font-size:.86rem;
+}
+.traffic-hotzones-panel .hz-zone-name{
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;
+}
+.traffic-hotzones-panel .hz-track{
+  height:8px;border-radius:999px;background:currentColor;opacity:.14;position:relative;overflow:hidden;
+}
+.traffic-hotzones-panel .hz-fill{
+  position:absolute;inset:0 auto 0 0;border-radius:999px;background:currentColor;opacity:1;
+}
+.traffic-hotzones-panel .hz-value{font-variant-numeric:tabular-nums;opacity:.85;min-width:52px;text-align:left;direction:ltr}
+.traffic-hotzones-panel .hz-value small{opacity:.6}
+.traffic-hotzones-panel .hz-empty{display:block;opacity:.6;font-size:.84rem}
+@media(max-width:720px){
+  .traffic-hotzones-panel .hz-col-wide{grid-column:span 1}
+  .traffic-hotzones-panel li{grid-template-columns:minmax(72px,auto) 1fr auto;font-size:.82rem}
+  .traffic-hotzones-panel .hz-zone-name{max-width:120px}
+}
