@@ -29,6 +29,7 @@ There is no public registration.
 - Client users must only see their own assigned website.
 - Client workspace starts with a clean Hebrew first section and a live desktop/mobile iframe preview of the client website when the public URL allows framing. Do not expose internal review/status/approval wording in the client first section.
 - Each client also has a protected `/client/:username/visitors` workspace. It may show only analytics resolved from that client's stored `websiteUrl`; the browser must never choose a ServerMonitor app ID or receive the shared service key.
+- A client’s stored `websiteUrl` must be the canonical public domain whose traffic the visitors workspace should report. Resolution is an exact match, so a preview or path-based URL silently resolves to the preview monitor and shows preview traffic as the client’s own.
 - Visitor terminology must stay honest: a visitor candidate is an IP with a successful page view that was not identified as a bot, not a verified person. Keep bots visibly separate and exclude assets, APIs, failed requests, and non-navigation traffic from page-view engagement.
 - Admin users can preview client workspaces and manage users, permissions, statuses, and client sites.
 
