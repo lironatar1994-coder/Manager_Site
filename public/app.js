@@ -1468,7 +1468,15 @@ function clientEditorSections(site) {
       id: "about",
       title: "אודות",
       icon: "user-round",
-      description: "הטקסט והתמונה שמספרים מי עומדת מאחורי האתר.",
+      description: "הטקסט והתמונה שמספרים מי עומד מאחורי האתר.",
+      imageSlots: [],
+      textSlots: [],
+    },
+    {
+      id: "content",
+      title: "תוכן ראשי",
+      icon: "layout-template",
+      description: "המסרים והתמונות שמלווים את העמודים המרכזיים.",
       imageSlots: [],
       textSlots: [],
     },
@@ -1477,6 +1485,14 @@ function clientEditorSections(site) {
       title: "שאלות נפוצות",
       icon: "message-circle-question",
       description: "שאלות ותשובות שמאפשרות ללקוחות להבין מהר.",
+      imageSlots: [],
+      textSlots: [],
+    },
+    {
+      id: "contact",
+      title: "יצירת קשר",
+      icon: "phone-call",
+      description: "הטקסטים והתמונות שמובילים את המבקרים ליצירת קשר.",
       imageSlots: [],
       textSlots: [],
     },
@@ -1515,8 +1531,11 @@ function enrichClientSection(site, section) {
 }
 
 function sectionIdForImageSlot(slotId = "") {
-  if (slotId === "hero") return "hero";
-  if (slotId === "about") return "about";
+  if (slotId === "hero" || slotId.startsWith("hero_")) return "hero";
+  if (slotId === "about" || slotId.startsWith("about_")) return "about";
+  if (slotId.startsWith("faq_")) return "faq";
+  if (slotId.startsWith("contact_") || slotId.startsWith("closing_")) return "contact";
+  if (slotId.startsWith("home_") || slotId.startsWith("practice_")) return "content";
   if (slotId.startsWith("before_after")) return "before_after";
   if (slotId.startsWith("gallery")) return "gallery";
   return "gallery";
@@ -1525,9 +1544,12 @@ function sectionIdForImageSlot(slotId = "") {
 function sectionIdForTextSlot(slot) {
   const group = String(slot.group || "").toLowerCase();
   const id = String(slot.id || "").toLowerCase();
+  if (group === "hero" || id.startsWith("hero.")) return "hero";
   if (group === "about" || id.startsWith("about.")) return "about";
   if (group === "faq" || id.startsWith("faq.")) return "faq";
-  return "about";
+  if (group === "contact" || id.startsWith("contact.")) return "contact";
+  if (group === "content" || id.startsWith("content.")) return "content";
+  return "content";
 }
 
 function clientInspector(sections) {
@@ -2607,6 +2629,10 @@ function formatApiError(error) {
     "Site access denied": "אין גישה לאתר הזה",
     "Image file is required": "חובה לבחור קובץ תמונה",
     "Only JPG, PNG, WebP, GIF, or SVG images are allowed": "אפשר להעלות רק תמונת JPG, PNG, WebP, GIF או SVG",
+    "Uploaded image must match the configured JPG format": "התמונה באזור הזה חייבת להיות בפורמט JPG.",
+    "Uploaded image must match the configured JPEG format": "התמונה באזור הזה חייבת להיות בפורמט JPG.",
+    "Uploaded image must match the configured PNG format": "התמונה באזור הזה חייבת להיות בפורמט PNG.",
+    "Uploaded image must match the configured WEBP format": "התמונה באזור הזה חייבת להיות בפורמט WebP.",
     "Uploaded image is too large": "התמונה גדולה מדי. אפשר להעלות עד 16MB",
     "Image not found": "התמונה לא נמצאה",
     "Asset slot not configured": "אזור התמונה לא מוגדר",
