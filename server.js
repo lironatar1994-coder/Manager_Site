@@ -238,6 +238,10 @@ router.get("/api/sites/:siteId/visitor-analytics/timeline", requireSiteAccess, a
   await proxyClientAnalytics(req, res, "site/timeline", ["from", "to", "ip"]);
 });
 
+router.get("/api/sites/:siteId/visitor-analytics/engagement", requireSiteAccess, async (req, res) => {
+  await proxyClientAnalytics(req, res, "site/engagement", ["from", "to"]);
+});
+
 router.get("/api/sites/:siteId/assets", requireSiteAccess, async (req, res) => {
   const config = await loadClientConfig(req.site.ownerUsername);
   if (!config) {
@@ -567,7 +571,7 @@ router.post(
     }
     let productionAsset = null;
     if (configSlot?.absolutePath && (await directoryExists(clientConfig.siteRoot))) {
-      productionAsset = await replaceConfiguredAsset(site, configSlot, req.file.path, clientConfig);
+      productionAsset = await replaceConfiguredAsset(site, configSlot, req.file.path, clientConfig, req.file.mimetype);
     }
     const image = {
       id: crypto.randomUUID(),
@@ -1314,7 +1318,8 @@ function escapeHtmlAttribute(value) {
   return escapeHtmlContent(value).replace(/"/g, "&quot;");
 }
 
-async function replaceConfiguredAsset(site, slot, uploadedPath, config = null) {
+async function replaceConfiguredAsset(site, slot, uploadedPath, config = null, uploadedMimeType = "") {
+  assertConfiguredAssetType(slot, uploadedMimeType);
   await fsp.mkdir(path.dirname(slot.absolutePath), { recursive: true });
   let backupPath = null;
   try {
@@ -1380,15 +1385,41 @@ async function refreshPublicAssetReferences(siteRoot, publicPath, version) {
 }
 
 async function listHtmlFiles(siteRoot) {
-  let entries = [];
-  try {
-    entries = await fsp.readdir(siteRoot, { withFileTypes: true });
-  } catch (error) {
-    return [];
+  const normalizedRoot = path.resolve(siteRoot);
+  const htmlFiles = [];
+  async function walk(directory) {
+    let entries = [];
+    try {
+      entries = await fsp.readdir(directory, { withFileTypes: true });
+    } catch (error) {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.name === ".manager-site-backups") continue;
+      const entryPath = path.resolve(directory, entry.name);
+      if (!isPathInside(normalizedRoot, entryPath)) continue;
+      if (entry.isDirectory()) await walk(entryPath);
+      if (entry.isFile() && /\.html?$/i.test(entry.name)) htmlFiles.push(entryPath);
+    }
   }
-  return entries
-    .filter((entry) => entry.isFile() && /\.html?$/i.test(entry.name))
-    .map((entry) => path.join(siteRoot, entry.name));
+  await walk(normalizedRoot);
+  return htmlFiles;
+}
+
+function assertConfiguredAssetType(slot, uploadedMimeType) {
+  const extension = path.extname(slot.absolutePath).toLowerCase();
+  const expectedMimeTypes = {
+    ".jpg": ["image/jpeg"],
+    ".jpeg": ["image/jpeg"],
+    ".png": ["image/png"],
+    ".webp": ["image/webp"],
+    ".gif": ["image/gif"],
+    ".svg": ["image/svg+xml"],
+  }[extension];
+  if (!expectedMimeTypes || expectedMimeTypes.includes(String(uploadedMimeType || "").toLowerCase())) return;
+  const error = new Error(`Uploaded image must match the configured ${extension.slice(1).toUpperCase()} format`);
+  error.statusCode = 415;
+  throw error;
 }
 
 function escapeRegExp(value) {

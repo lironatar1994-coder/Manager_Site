@@ -194,6 +194,12 @@ small { font-size: var(--fs-micro); }
 .traffic-panel-index { color: var(--muted); font-size: var(--fs-micro); letter-spacing: 0; font-weight: 500; }
 .traffic-chart { padding-inline: 14px; }
 .traffic-chart svg line { stroke: var(--line); }
+.traffic-hotzones-panel .hz-grid { grid-template-columns: minmax(0,1fr); gap: 24px; padding: 20px; margin: 0; }
+.traffic-hotzones-panel .hz-col-wide { grid-column: 1 / -1; }
+.traffic-hotzones-panel h3 { font-size: var(--fs-meta); letter-spacing: 0; color: var(--ink-soft); opacity: 1; }
+.traffic-hotzones-panel .hz-track { background: var(--surface-inset); opacity: 1; }
+.traffic-hotzones-panel .hz-fill { background: var(--brand); inset: 0 0 0 auto; }
+.traffic-hotzones-panel .hz-value, .traffic-hotzones-panel .hz-value small, .traffic-hotzones-panel .hz-empty { color: var(--muted); opacity: 1; }
 .traffic-breakdown-tabs, .traffic-classification-tabs { display: flex; padding: 4px; gap: 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-sunken); }
 .traffic-breakdown-tabs button, .traffic-classification-tabs button { flex: 1; min-height: 44px; min-width: 0; padding: 0 10px; border: 0; border-radius: 9px; background: transparent; font-size: var(--fs-micro); }
 .traffic-breakdown-tabs button.active, .traffic-classification-tabs button.active { background: var(--surface); color: var(--brand); }
@@ -469,6 +475,7 @@ small { font-size: var(--fs-micro); }
   .links-rows { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px; }
   .links-summary { grid-template-columns: repeat(4,minmax(0,1fr)); }
   .traffic-overview { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
+  .traffic-hotzones-panel .hz-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .admin-summary-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
   .links-filters { display: flex; }
   .links-table-head { display: none; }

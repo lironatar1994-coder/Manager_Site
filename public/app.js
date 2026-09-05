@@ -76,6 +76,7 @@ const state = {
   livePreviewVersion: Date.now(),
   clientVisitorRangeDays: 7,
   clientVisitorAnalytics: null,
+  clientVisitorEngagement: null,
   clientVisitorList: { visitors: [], total: 0, page: 1, limit: 25 },
   clientVisitorPage: 1,
   clientVisitorSearch: "",
@@ -673,6 +674,8 @@ function renderClientTrafficBody({ analytics, summary, comparison, visitorList, 
       ${clientTrafficRankedList(analytics?.[breakdown.id] || [], breakdown)}
     </section>
 
+    ${clientHotZonesPanel()}
+
     <section class="traffic-panel traffic-visitors-panel">
       <header class="traffic-visitors-head">
         <div><span class="traffic-panel-index">יומן</span><h2>${classificationMeta.title}</h2><p>${classificationMeta.description}</p></div>
@@ -852,16 +855,72 @@ function clientVisitorClassificationMeta() {
   return { title: "יומן המבקרים", description: "כתובות IP עם צפייה מוצלחת בעמוד שלא זוהו כבוט.", empty: "אין מבקרים בטווח הזה", icon: "user-round-search" };
 }
 
+
+/* אזורים חמים — עומק גלילה, נקודת עזיבה ואזורים שנלחצו.
+   מבוסס על אות דפדפן ראשוני; אינו מוכיח אדם, רק ריצת JavaScript. */
+function clientHotZonesPanel() {
+  const data = state.clientVisitorEngagement;
+  if (!data || !data.engagement_sessions) {
+    return `
+    <section class="traffic-panel traffic-hotzones-panel">
+      <header><div><span class="traffic-panel-index">אזורים חמים</span><h2>עדיין אין מספיק נתונים</h2><p>האות נאסף בעזיבת העמוד. הנתונים יופיעו אחרי מספר ביקורים.</p></div></header>
+    </section>`;
+  }
+  const reach = data.scroll_reach || {};
+  const bar = (label, value) => `
+    <li><span class="hz-label">${escapeHtml(label)}</span>
+      <span class="hz-track"><span class="hz-fill" data-traffic-width="${Math.max(0, Math.min(100, Number(value) || 0))}"></span></span>
+      <span class="hz-value">${formatTrafficNumber(value)}%</span></li>`;
+  const exits = (data.exit_bands || []).slice().sort((a, b) => b.share - a.share);
+  const zones = data.zones || [];
+  const maxTaps = zones.length ? Math.max(...zones.map((z) => z.taps)) : 0;
+  return `
+    <section class="traffic-panel traffic-hotzones-panel">
+      <header>
+        <div><span class="traffic-panel-index">אזורים חמים</span><h2>עד לאן מגיעים ובמה נוגעים</h2>
+        <p>מדגם של ${formatTrafficNumber(data.engagement_sessions)} ביקורים · עומק גלילה ממוצע ${formatTrafficNumber(data.average_scroll_depth)}% · שהייה ממוצעת ${formatTrafficNumber(data.average_dwell_seconds)} שניות</p></div>
+      </header>
+      <div class="hz-grid">
+        <div class="hz-col">
+          <h3>עד לאן גוללים</h3>
+          <ul class="hz-bars">
+            ${bar("רבע מהעמוד", reach.reached_25 || 0)}
+            ${bar("חצי מהעמוד", reach.reached_50 || 0)}
+            ${bar("שלושה רבעים", reach.reached_75 || 0)}
+            ${bar("עד הסוף", reach.reached_end || 0)}
+          </ul>
+        </div>
+        <div class="hz-col">
+          <h3>היכן עוזבים</h3>
+          <ul class="hz-bars">
+            ${exits.length ? exits.map((b) => bar(b.band + "% מהעמוד", b.share)).join("") : "<li class=\"hz-empty\">אין נתונים</li>"}
+          </ul>
+        </div>
+        <div class="hz-col hz-col-wide">
+          <h3>אזורים שנלחצו</h3>
+          <ul class="hz-zones">
+            ${zones.length ? zones.map((z) => `
+              <li><span class="hz-zone-name">${escapeHtml(z.zone)}</span>
+                <span class="hz-track"><span class="hz-fill" data-traffic-width="${maxTaps ? Math.max(0, Math.min(100, Math.round(Number(z.taps) / maxTaps * 100))) : 0}"></span></span>
+                <span class="hz-value">${formatTrafficNumber(z.taps)} <small>(${formatTrafficNumber(z.sessions)})</small></span></li>`).join("") : "<li class=\"hz-empty\">עדיין לא נרשמו לחיצות</li>"}
+          </ul>
+        </div>
+      </div>
+    </section>`;
+}
+
 async function refreshClientVisitorDashboard() {
   if (!state.clientSite?.id) return;
   state.clientVisitorLoading = true;
   const range = clientVisitorRange();
   const common = trafficRangeQuery(range);
   const visitorQuery = trafficVisitorQuery(range);
-  const [analytics, visitorList] = await Promise.all([
+  const [analytics, visitorList, engagement] = await Promise.all([
     api(`/api/sites/${state.clientSite.id}/visitor-analytics?${common}`),
     api(`/api/sites/${state.clientSite.id}/visitor-analytics/visitors?${visitorQuery}`),
+    api(`/api/sites/${state.clientSite.id}/visitor-analytics/engagement?${common}`),
   ]);
+  state.clientVisitorEngagement = engagement?.error ? null : engagement;
   if (analytics?.error) {
     state.clientVisitorError = { message: analytics.error, code: analytics.code || "analytics_unavailable" };
     state.clientVisitorAnalytics = null;
@@ -1317,7 +1376,15 @@ function clientEditorSections(site) {
       id: "about",
       title: "אודות",
       icon: "user-round",
-      description: "הטקסט והתמונה שמספרים מי עומדת מאחורי האתר.",
+      description: "הטקסט והתמונה שמספרים מי עומד מאחורי האתר.",
+      imageSlots: [],
+      textSlots: [],
+    },
+    {
+      id: "content",
+      title: "תוכן ראשי",
+      icon: "layout-template",
+      description: "המסרים והתמונות שמלווים את העמודים המרכזיים.",
       imageSlots: [],
       textSlots: [],
     },
@@ -1326,6 +1393,14 @@ function clientEditorSections(site) {
       title: "שאלות נפוצות",
       icon: "message-circle-question",
       description: "שאלות ותשובות שמאפשרות ללקוחות להבין מהר.",
+      imageSlots: [],
+      textSlots: [],
+    },
+    {
+      id: "contact",
+      title: "יצירת קשר",
+      icon: "phone-call",
+      description: "הטקסטים והתמונות שמובילים את המבקרים ליצירת קשר.",
       imageSlots: [],
       textSlots: [],
     },
@@ -1364,8 +1439,11 @@ function enrichClientSection(site, section) {
 }
 
 function sectionIdForImageSlot(slotId = "") {
-  if (slotId === "hero") return "hero";
-  if (slotId === "about") return "about";
+  if (slotId === "hero" || slotId.startsWith("hero_")) return "hero";
+  if (slotId === "about" || slotId.startsWith("about_")) return "about";
+  if (slotId.startsWith("faq_")) return "faq";
+  if (slotId.startsWith("contact_") || slotId.startsWith("closing_")) return "contact";
+  if (slotId.startsWith("home_") || slotId.startsWith("practice_")) return "content";
   if (slotId.startsWith("before_after")) return "before_after";
   if (slotId.startsWith("gallery")) return "gallery";
   return "gallery";
@@ -1374,9 +1452,12 @@ function sectionIdForImageSlot(slotId = "") {
 function sectionIdForTextSlot(slot) {
   const group = String(slot.group || "").toLowerCase();
   const id = String(slot.id || "").toLowerCase();
+  if (group === "hero" || id.startsWith("hero.")) return "hero";
   if (group === "about" || id.startsWith("about.")) return "about";
   if (group === "faq" || id.startsWith("faq.")) return "faq";
-  return "about";
+  if (group === "contact" || id.startsWith("contact.")) return "contact";
+  if (group === "content" || id.startsWith("content.")) return "content";
+  return "content";
 }
 
 function clientInspector(sections) {
@@ -2457,6 +2538,10 @@ function formatApiError(error) {
     "Site access denied": "אין גישה לאתר הזה",
     "Image file is required": "חובה לבחור קובץ תמונה",
     "Only JPG, PNG, WebP, GIF, or SVG images are allowed": "אפשר להעלות רק תמונת JPG, PNG, WebP, GIF או SVG",
+    "Uploaded image must match the configured JPG format": "התמונה באזור הזה חייבת להיות בפורמט JPG.",
+    "Uploaded image must match the configured JPEG format": "התמונה באזור הזה חייבת להיות בפורמט JPG.",
+    "Uploaded image must match the configured PNG format": "התמונה באזור הזה חייבת להיות בפורמט PNG.",
+    "Uploaded image must match the configured WEBP format": "התמונה באזור הזה חייבת להיות בפורמט WebP.",
     "Uploaded image is too large": "התמונה גדולה מדי. אפשר להעלות עד 16MB",
     "Image not found": "התמונה לא נמצאה",
     "Asset slot not configured": "אזור התמונה לא מוגדר",

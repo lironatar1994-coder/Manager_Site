@@ -1,0 +1,248 @@
+{
+  "username": "pinhas_ratzon",
+  "displayName": "פנחס רצון",
+  "websiteName": "אתר עו״ד פנחס רצון",
+  "productionServer": "vee-app.co.il",
+  "siteRoot": "/var/www/PinhasRatzon-domain",
+  "publicUrl": "https://pinhasratzon.co.il/",
+  "notes": "Production allowlist for the Pinhas Ratzon static website. Managed files are preserved across website deployments by site/apply-manager-content.mjs.",
+  "imageSlots": [
+    {
+      "id": "hero",
+      "labelHe": "תמונת פתיחה - מחשב",
+      "required": true,
+      "currentPath": "/var/www/PinhasRatzon-domain/assets/img/hero-room.jpg",
+      "publicPath": "/assets/img/hero-room.jpg"
+    },
+    {
+      "id": "hero_mobile",
+      "labelHe": "תמונת פתיחה - טלפון",
+      "required": true,
+      "currentPath": "/var/www/PinhasRatzon-domain/assets/img/hero-room-mobile-v2.jpg",
+      "publicPath": "/assets/img/hero-room-mobile-v2.jpg"
+    },
+    {
+      "id": "home_statement",
+      "labelHe": "תמונת המסר בעמוד הבית",
+      "required": true,
+      "currentPath": "/var/www/PinhasRatzon-domain/assets/img/band-statement.jpg",
+      "publicPath": "/assets/img/band-statement.jpg"
+    },
+    {
+      "id": "about",
+      "labelHe": "תמונת אודות בעמוד הבית - מחשב",
+      "required": true,
+      "currentPath": "/var/www/PinhasRatzon-domain/assets/img/pinchas-ratzon.jpg",
+      "publicPath": "/assets/img/pinchas-ratzon.jpg"
+    },
+    {
+      "id": "about_mobile",
+      "labelHe": "תמונת אודות בעמוד הבית - טלפון",
+      "required": true,
+      "currentPath": "/var/www/PinhasRatzon-domain/assets/img/about-mobile-portrait-v1.jpg",
+      "publicPath": "/assets/img/about-mobile-portrait-v1.jpg"
+    },
+    {
+      "id": "faq_band",
+      "labelHe": "תמונת שאלות נפוצות בעמוד הבית",
+      "required": true,
+      "currentPath": "/var/www/PinhasRatzon-domain/assets/img/band-stamp-light-v1.jpg",
+      "publicPath": "/assets/img/band-stamp-light-v1.jpg"
+    },
+    {
+      "id": "practice_index",
+      "labelHe": "תמונת תחומי עיסוק",
+      "required": true,
+      "currentPath": "/var/www/PinhasRatzon-domain/assets/img/practice-hero.jpg",
+      "publicPath": "/assets/img/practice-hero.jpg"
+    },
+    {
+      "id": "practice_quiet_plans",
+      "labelHe": "תמונת רקע - תוכניות ורישום",
+      "required": true,
+      "currentPath": "/var/www/PinhasRatzon-domain/assets/img/band-plans.jpg",
+      "publicPath": "/assets/img/band-plans.jpg"
+    },
+    {
+      "id": "practice_quiet_house",
+      "labelHe": "תמונת רקע - עסקאות מקרקעין",
+      "required": true,
+      "currentPath": "/var/www/PinhasRatzon-domain/assets/img/band-house.jpg",
+      "publicPath": "/assets/img/band-house.jpg"
+    },
+    {
+      "id": "practice_quiet_watch",
+      "labelHe": "תמונת רקע - ייפוי כוח מתמשך",
+      "required": true,
+      "currentPath": "/var/www/PinhasRatzon-domain/assets/img/band-watch.jpg",
+      "publicPath": "/assets/img/band-watch.jpg"
+    },
+    {
+      "id": "about_page",
+      "labelHe": "תמונת עמוד אודות",
+      "required": true,
+      "currentPath": "/var/www/PinhasRatzon-domain/assets/img/about-hero.jpg",
+      "publicPath": "/assets/img/about-hero.jpg"
+    },
+    {
+      "id": "contact_hero",
+      "labelHe": "תמונת יצירת קשר ושאלות נפוצות",
+      "required": true,
+      "currentPath": "/var/www/PinhasRatzon-domain/assets/img/contact-hero.jpg",
+      "publicPath": "/assets/img/contact-hero.jpg"
+    },
+    {
+      "id": "closing_background",
+      "labelHe": "תמונת סיום - מחשב",
+      "required": true,
+      "currentPath": "/var/www/PinhasRatzon-domain/assets/img/band-chairs.jpg",
+      "publicPath": "/assets/img/band-chairs.jpg"
+    },
+    {
+      "id": "closing_background_mobile",
+      "labelHe": "תמונת סיום - טלפון",
+      "required": true,
+      "currentPath": "/var/www/PinhasRatzon-domain/assets/img/closing-consultation-mobile.jpg",
+      "publicPath": "/assets/img/closing-consultation-mobile.jpg"
+    },
+    {
+      "id": "closing_portrait",
+      "labelHe": "דיוקן באזור הסיום",
+      "required": true,
+      "currentPath": "/var/www/PinhasRatzon-domain/assets/img/closing-listen.jpg",
+      "publicPath": "/assets/img/closing-listen.jpg"
+    }
+  ],
+  "textSlots": [
+    {
+      "id": "hero.subtitle",
+      "labelHe": "טקסט משנה בפתיחה",
+      "group": "hero",
+      "required": true,
+      "inputType": "long",
+      "maxLength": 260,
+      "filePath": "/var/www/PinhasRatzon-domain/index.html",
+      "marker": "hero.subtitle"
+    },
+    {
+      "id": "content.statement.title",
+      "labelHe": "כותרת המסר המרכזי",
+      "group": "content",
+      "required": true,
+      "inputType": "short",
+      "maxLength": 140,
+      "filePath": "/var/www/PinhasRatzon-domain/index.html",
+      "marker": "content.statement.title"
+    },
+    {
+      "id": "content.statement.paragraph1",
+      "labelHe": "המסר המרכזי - פסקה 1",
+      "group": "content",
+      "required": true,
+      "inputType": "long",
+      "maxLength": 500,
+      "filePath": "/var/www/PinhasRatzon-domain/index.html",
+      "marker": "content.statement.paragraph1"
+    },
+    {
+      "id": "content.statement.paragraph2",
+      "labelHe": "המסר המרכזי - פסקה 2",
+      "group": "content",
+      "required": true,
+      "inputType": "long",
+      "maxLength": 500,
+      "filePath": "/var/www/PinhasRatzon-domain/index.html",
+      "marker": "content.statement.paragraph2"
+    },
+    {
+      "id": "content.statement.paragraph3",
+      "labelHe": "המסר המרכזי - פסקה 3",
+      "group": "content",
+      "required": true,
+      "inputType": "long",
+      "maxLength": 500,
+      "filePath": "/var/www/PinhasRatzon-domain/index.html",
+      "marker": "content.statement.paragraph3"
+    },
+    {
+      "id": "about.home.lead",
+      "labelHe": "אודות בעמוד הבית - פתיחה",
+      "group": "about",
+      "required": true,
+      "inputType": "long",
+      "maxLength": 420,
+      "filePath": "/var/www/PinhasRatzon-domain/index.html",
+      "marker": "about.home.lead"
+    },
+    {
+      "id": "about.home.note",
+      "labelHe": "אודות בעמוד הבית - המשך",
+      "group": "about",
+      "required": true,
+      "inputType": "long",
+      "maxLength": 420,
+      "filePath": "/var/www/PinhasRatzon-domain/index.html",
+      "marker": "about.home.note"
+    },
+    {
+      "id": "faq.home.title",
+      "labelHe": "כותרת שאלות נפוצות בעמוד הבית",
+      "group": "faq",
+      "required": true,
+      "inputType": "short",
+      "maxLength": 140,
+      "filePath": "/var/www/PinhasRatzon-domain/index.html",
+      "marker": "faq.home.title"
+    },
+    {
+      "id": "about.page.lead",
+      "labelHe": "עמוד אודות - פתיחה",
+      "group": "about",
+      "required": true,
+      "inputType": "long",
+      "maxLength": 520,
+      "filePath": "/var/www/PinhasRatzon-domain/about/index.html",
+      "marker": "about.page.lead"
+    },
+    {
+      "id": "about.page.paragraph1",
+      "labelHe": "עמוד אודות - פסקה 1",
+      "group": "about",
+      "required": true,
+      "inputType": "long",
+      "maxLength": 700,
+      "filePath": "/var/www/PinhasRatzon-domain/about/index.html",
+      "marker": "about.page.paragraph1"
+    },
+    {
+      "id": "about.page.paragraph2",
+      "labelHe": "עמוד אודות - פסקה 2",
+      "group": "about",
+      "required": true,
+      "inputType": "long",
+      "maxLength": 700,
+      "filePath": "/var/www/PinhasRatzon-domain/about/index.html",
+      "marker": "about.page.paragraph2"
+    },
+    {
+      "id": "faq.page.lead",
+      "labelHe": "עמוד שאלות נפוצות - פתיחה",
+      "group": "faq",
+      "required": true,
+      "inputType": "long",
+      "maxLength": 400,
+      "filePath": "/var/www/PinhasRatzon-domain/faq/index.html",
+      "marker": "faq.page.lead"
+    },
+    {
+      "id": "contact.page.lead",
+      "labelHe": "עמוד יצירת קשר - פתיחה",
+      "group": "contact",
+      "required": true,
+      "inputType": "long",
+      "maxLength": 320,
+      "filePath": "/var/www/PinhasRatzon-domain/contact/index.html",
+      "marker": "contact.page.lead"
+    }
+  ]
+}
