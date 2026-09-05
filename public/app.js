@@ -145,12 +145,16 @@ async function route() {
       await route();
       return;
     }
-    if (!["studio", "visitors"].includes(clientView) || pathParts.length > 4) {
+    if (!["studio", "visitors", "links"].includes(clientView) || pathParts.length > 4) {
       navigate(`/client/${username}`, true);
       await route();
       return;
     }
-    await loadClient(username, { includeWorkspace: clientView !== "visitors" });
+    await loadClient(username, { includeWorkspace: clientView === "studio" });
+    if (clientView === "links") {
+      await openClientLinks();
+      return;
+    }
     if (clientView === "visitors") {
       state.clientVisitorLoading = true;
       renderClientVisitors();
@@ -168,7 +172,7 @@ function renderBootLoading() {
   app.className = "boot-screen boot-loading";
   app.innerHTML = `
     <main class="boot-card" dir="rtl" lang="he" aria-live="polite">
-      <div class="mark">MS</div>
+      ${currentMark()}
       <div>
         <strong>טוענים את מערכת ניהול האתר</strong>
         <span>בודקים חיבור והרשאות...</span>
@@ -177,91 +181,8 @@ function renderBootLoading() {
   `;
 }
 
-function renderAdminLogin(error = "") {
-  setDocumentLocale("he", "rtl");
-  app.className = "login-view admin-login-view admin-rtl";
-  app.innerHTML = `
-    <main class="login-shell admin-login-shell" dir="rtl" lang="he">
-      <section class="login-panel admin-login-panel">
-        <div class="brand-row">
-          <span class="mark">MS</span>
-          <span>
-            <strong>ניהול אתרים</strong>
-            <small>כניסת מנהל פרטית</small>
-          </span>
-        </div>
-        <div class="login-copy">
-          <p class="eyebrow">כניסת מנהל</p>
-          <h1>אזור ניהול נפרד, נקי ומאובטח.</h1>
-          <p>הכניסה הזו מיועדת לחשבון המנהל בלבד. לקוחות ממשיכים להיכנס דרך מסך הכניסה הרגיל בעברית.</p>
-        </div>
-        <form class="login-form" id="loginForm" data-admin-login="true">
-          <label>שם משתמש מנהל<input name="username" autocomplete="username" placeholder="admin" dir="ltr" required /></label>
-          <label>סיסמה<input name="password" type="password" autocomplete="current-password" dir="ltr" required /></label>
-          ${error ? `<div class="form-error">${escapeHtml(error)}</div>` : ""}
-          <button class="primary-button" type="submit"><i data-lucide="shield-check"></i>כניסה ללוח הניהול</button>
-        </form>
-      </section>
-      <aside class="login-art admin-login-art" aria-label="סקירת גישת מנהל">
-        <div class="art-window admin-window">
-          <div class="window-bar"><span></span><span></span><span></span></div>
-          <div class="admin-lockup">
-            <i data-lucide="lock-keyhole"></i>
-            <strong>מנהל בלבד</strong>
-            <p>משתמשים, נתיבים, הרשאות, איפוס סיסמאות ובדיקת אתרים נשארים מאחורי הכניסה הזו.</p>
-          </div>
-          <div class="admin-signal-grid" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
-          <div class="admin-chip">בדיקות הרשאה בשרת מגנות על כל פעולת ניהול.</div>
-        </div>
-      </aside>
-    </main>
-  `;
-  document.querySelector("#loginForm").addEventListener("submit", onLogin);
-  icons();
-  markBootReady();
-}
-
-function renderLogin(error = "") {
-  setDocumentLocale("he", "rtl");
-  const loginPrefill = readLoginPrefill();
-  app.className = "login-view login-rtl";
-  app.innerHTML = `
-    <main class="login-shell editorial-login" dir="rtl" lang="he">
-      <section class="login-panel editorial-login-panel">
-        <div class="brand-row editorial-brand">
-          <span class="mark">MS</span>
-          <span><strong>האתר שלי</strong><small>סטודיו פרטי לעדכון האתר</small></span>
-        </div>
-        <div class="login-copy editorial-login-copy">
-          <p class="eyebrow">הכניסה הפרטית שלך</p>
-          <h1>האתר שלך,<br /><em>בידיים שלך.</em></h1>
-          <p>נכנסים, רואים את האתר כפי שהוא עכשיו ומעדכנים בדיוק את מה שצריך.</p>
-        </div>
-        <form class="login-form editorial-login-form" id="loginForm">
-          <label><span>שם משתמש</span><input name="username" autocomplete="username" placeholder="שם המשתמש שלך" value="${escapeAttr(loginPrefill.username)}" dir="ltr" required /></label>
-          <label><span>סיסמה</span><input name="password" type="password" autocomplete="current-password" value="${escapeAttr(loginPrefill.password)}" dir="ltr" required /></label>
-          ${error ? `<div class="form-error" role="alert">${escapeHtml(error)}</div>` : ""}
-          <button class="primary-button editorial-login-button" type="submit"><span>כניסה לסטודיו</span><i data-lucide="arrow-left"></i></button>
-        </form>
-        <small class="login-security"><i data-lucide="lock-keyhole"></i>אזור מאובטח המיועד ללקוחות בלבד</small>
-      </section>
-      <aside class="login-art editorial-login-art" aria-label="הצצה לסטודיו האישי">
-        <div class="login-proof-label"><span>הסטודיו האישי</span><bdi>VIEW / EDIT / SHARE</bdi></div>
-        <div class="editorial-proof-sheet" aria-hidden="true">
-          <div class="proof-sheet-top"><span></span><span></span><span></span><bdi>YOUR WEBSITE</bdi></div>
-          <div class="proof-sheet-hero"><i></i><strong>01</strong></div>
-          <div class="proof-sheet-grid"><span></span><span></span><span></span></div>
-          <div class="proof-sheet-line"><i></i><i></i></div>
-        </div>
-        <p class="login-art-caption"><span>01—05</span> כל התמונות והטקסטים של האתר, מסודרים במקום אחד ברור.</p>
-      </aside>
-    </main>
-  `;
-  document.querySelector("#loginForm").addEventListener("submit", onLogin);
-  clearLoginPrefillFromUrl(loginPrefill);
-  icons();
-  markBootReady();
-}
+function renderAdminLogin(error = "") { renderAccessScreen(error, true); }
+function renderLogin(error = "") { renderAccessScreen(error, false); }
 
 function renderAdmin() {
   setDocumentLocale("he", "rtl");
@@ -280,9 +201,9 @@ function renderAdmin() {
     <main class="workspace admin-workspace" dir="rtl" lang="he">
       <header class="admin-command">
         <div class="admin-command-copy">
-          <p class="eyebrow">לוח ניהול</p>
-          <h1>ניהול לקוחות ואתרים</h1>
-          <p>מקום אחד לפתיחת לקוח, שליחת גישה, צפייה באתר ופעולות תחזוקה. מסודר, שקט ומהיר.</p>
+          <p class="eyebrow">סביבת הניהול</p>
+          <h1>מבט על הכול.</h1>
+          <p>הלקוחות, האתרים והעדכונים האחרונים שלך.</p>
         </div>
         <div class="admin-command-actions">
           <button class="primary-button" id="createUserTop" type="button"><i data-lucide="user-plus"></i>לקוח חדש</button>
@@ -297,6 +218,14 @@ function renderAdmin() {
       </section>
 
       <section class="admin-grid upgraded premium-admin-grid">
+        <article class="admin-panel users-panel admin-clients-panel" id="adminClients">
+          <div class="panel-title">
+            <h2>לקוחות</h2>
+            <span class="quiet">${clientUsers.length} נתיבים</span>
+          </div>
+          <div class="user-list route-list">${clientUsers.map(userCard).join("") || `<p class="empty">עדיין אין לקוחות.</p>`}</div>
+        </article>
+
         <article class="admin-panel create-panel admin-create-panel">
           <details id="createClientDetails" class="admin-create-details">
             <summary>
@@ -310,15 +239,7 @@ function renderAdmin() {
           </details>
         </article>
 
-        <article class="admin-panel users-panel admin-clients-panel">
-          <div class="panel-title">
-            <h2>לקוחות</h2>
-            <span class="quiet">${clientUsers.length} נתיבים</span>
-          </div>
-          <div class="user-list route-list">${clientUsers.map(userCard).join("") || `<p class="empty">עדיין אין לקוחות.</p>`}</div>
-        </article>
-
-        <article class="admin-panel audit-panel admin-activity-panel">
+        <article class="admin-panel audit-panel admin-activity-panel" id="adminActivity">
           <div class="panel-title">
             <h2>פעילות אחרונה</h2>
             <span class="quiet">${recentAuditRows.length} מתוך ${state.audit.length}</span>
@@ -339,9 +260,10 @@ function renderAdmin() {
   bindShell();
   document.querySelector("#createUserForm").addEventListener("submit", onCreateUser);
   document.querySelector("#createUserTop").addEventListener("click", () => {
+    setAdminNavigation('create');
     const panel = document.querySelector("#createClientDetails");
     if (panel) panel.open = true;
-    panel?.scrollIntoView({ behavior: "smooth", block: "start" });
+    panel?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: "start" });
     window.setTimeout(() => document.querySelector("#newUsername")?.focus(), 220);
   });
   document.querySelectorAll("[data-toggle-user]").forEach((button) => {
@@ -386,7 +308,7 @@ function renderClient() {
   const isMobileViewport = window.matchMedia("(max-width: 760px)").matches;
   if (!state.clientPreviewInitialized) {
     state.previewMode = isMobileViewport ? "mobile" : "desktop";
-    state.clientWorkspaceMode = isMobileViewport ? "edit" : "preview";
+    state.clientWorkspaceMode = "preview";
     state.clientPreviewInitialized = true;
   }
   if (isMobileViewport) {
@@ -412,17 +334,18 @@ function renderClient() {
       }
       <header class="client-studio-header">
         <div class="studio-identity">
-          <span class="studio-kicker">הסטודיו של ${escapeHtml(clientName)}</span>
+          <span class="studio-kicker">שלום, ${escapeHtml(clientName)}</span>
           <h1>${escapeHtml(studioName)}</h1>
           <bdi class="studio-url">${escapeHtml(shortUrlLabel(visibleWebsiteUrl))}</bdi>
         </div>
-        <div class="studio-mode-switch" role="tablist" aria-label="מצב עבודה">
-          <button class="${state.clientWorkspaceMode === "preview" ? "active" : ""}" type="button" data-client-workspace-mode="preview" aria-pressed="${state.clientWorkspaceMode === "preview"}"><i data-lucide="monitor"></i><span>תצוגה</span></button>
-          <button class="${state.clientWorkspaceMode === "edit" ? "active" : ""}" type="button" data-client-workspace-mode="edit" aria-pressed="${state.clientWorkspaceMode === "edit"}"><i data-lucide="sliders-horizontal"></i><span>עריכה</span></button>
+        <div class="studio-mode-switch" role="group" aria-label="מצב עבודה">
+          <button class="${state.clientWorkspaceMode === "preview" ? "active" : ""}" type="button" data-client-workspace-mode="preview" aria-label="תצוגת האתר" aria-pressed="${state.clientWorkspaceMode === "preview"}"><i data-lucide="monitor"></i><span>תצוגה</span></button>
+          <button class="${state.clientWorkspaceMode === "edit" ? "active" : ""}" type="button" data-client-workspace-mode="edit" aria-label="עריכת התוכן" aria-pressed="${state.clientWorkspaceMode === "edit"}"><i data-lucide="sliders-horizontal"></i><span>עריכה</span></button>
         </div>
         <div class="studio-actions">
-          <a class="studio-action studio-visitors" href="${href(`/client/${state.clientUsername}/visitors`)}"><i data-lucide="users-round"></i><span>מבקרים</span></a>
-          <a class="studio-action studio-open" href="${escapeAttr(visibleWebsiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i><span>פתיחת האתר</span></a>
+          <a class="studio-action" aria-label="לינקים" href="${href(`/client/${state.clientUsername}/links`)}"><i data-lucide="link"></i><span>לינקים</span></a>
+          <a class="studio-action studio-visitors" aria-label="מבקרים" href="${href(`/client/${state.clientUsername}/visitors`)}"><i data-lucide="users-round"></i><span>מבקרים</span></a>
+          <a class="studio-action studio-open" aria-label="פתיחת האתר" href="${escapeAttr(visibleWebsiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i><span>פתיחת האתר</span></a>
           <details class="studio-site-menu">
             <summary aria-label="אפשרויות אתר"><i data-lucide="ellipsis"></i></summary>
             <div class="studio-site-menu-panel">
@@ -575,13 +498,14 @@ function renderClientVisitors() {
       }
       <header class="traffic-page-head">
         <div class="traffic-title-block">
-          <span class="traffic-kicker">יומן התנועה · ${escapeHtml(site.name || clientName)}</span>
-          <h1>המבקרים באתר שלך</h1>
+          <span class="traffic-kicker">מכירים את הקהל שלך</span>
+          <h1>מי מגיע לאתר?</h1>
           <a href="${escapeAttr(websiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i><bdi>${escapeHtml(shortUrlLabel(websiteUrl))}</bdi></a>
         </div>
         <nav class="client-area-switcher" aria-label="אזור הלקוח">
           <a href="${href(`/client/${state.clientUsername}`)}"><i data-lucide="images"></i><span>עריכת האתר</span></a>
           <a class="active" href="${href(`/client/${state.clientUsername}/visitors`)}" aria-current="page"><i data-lucide="users-round"></i><span>מבקרים</span></a>
+          <a href="${href(`/client/${state.clientUsername}/links`)}"><i data-lucide="link"></i><span>לינקים</span></a>
         </nav>
         <div class="traffic-head-controls">
           <div class="traffic-range-picker" role="group" aria-label="טווח נתונים">
@@ -589,7 +513,7 @@ function renderClientVisitors() {
               (range) => `<button class="${state.clientVisitorRangeDays === range.days ? "active" : ""}" type="button" data-traffic-range="${range.days}" aria-pressed="${state.clientVisitorRangeDays === range.days}">${range.label}</button>`
             ).join("")}
           </div>
-          <button class="traffic-refresh" type="button" data-traffic-refresh ${state.clientVisitorLoading ? "disabled" : ""}><i data-lucide="refresh-cw"></i><span>רענון</span></button>
+          <button class="traffic-refresh" type="button" data-traffic-refresh aria-label="רענון נתוני מבקרים" ${state.clientVisitorLoading ? "disabled" : ""}><i data-lucide="refresh-cw"></i><span>רענון</span></button>
         </div>
       </header>
 
@@ -659,6 +583,9 @@ function renderClientVisitors() {
   document.querySelectorAll("[data-visitor-ip]").forEach((button) => {
     button.addEventListener("click", () => showClientVisitorTimeline(button.dataset.visitorIp));
   });
+  // Set individual CSS properties so the strict CSP can keep blocking style attributes.
+  document.querySelectorAll('[data-traffic-height]').forEach((bar) => { bar.style.height = `${bar.dataset.trafficHeight}%`; });
+  document.querySelectorAll('[data-traffic-width]').forEach((bar) => { bar.style.width = `${bar.dataset.trafficWidth}%`; });
   interceptInternalLinks();
   icons();
   markBootReady();
@@ -712,7 +639,7 @@ function renderClientTrafficBody({ analytics, summary, comparison, visitorList, 
         </div>
         <details class="traffic-definition">
           <summary><i data-lucide="info"></i>איך אנחנו מזהים מבקר?</summary>
-          <p>כל כתובת IP עם צפייה מוצלחת בעמוד שלא זוהתה כבוט נספרת כמבקר ייחודי. זו הערכה מדויקת מהלוגים, לא אימות של זהות אדם.</p>
+          <p>כל כתובת IP עם צפייה מוצלחת בעמוד שלא זוהתה כבוט נספרת כמבקר ייחודי. זהו אומדן מתוך הבקשות לאתר, ולא אימות של זהות אדם.</p>
         </details>
       </article>
       <div class="traffic-ledger" role="list" aria-label="מדדי תנועה">
@@ -814,11 +741,11 @@ function clientTrafficChart(series) {
   return `
     <div class="traffic-chart" role="img" aria-label="גרף צפיות בעמודים לאורך הטווח שנבחר">
       <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
-        <defs><linearGradient id="trafficAreaFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f6658" stop-opacity="0.25"/><stop offset="1" stop-color="#2f6658" stop-opacity="0"/></linearGradient></defs>
+        <defs><linearGradient id="trafficAreaFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--brand)" stop-opacity="0.25"/><stop offset="1" stop-color="var(--brand)" stop-opacity="0"/></linearGradient></defs>
         <line x1="${insetX}" y1="${insetTop + chartHeight * 0.25}" x2="${width - insetX}" y2="${insetTop + chartHeight * 0.25}" />
         <line x1="${insetX}" y1="${insetTop + chartHeight * 0.65}" x2="${width - insetX}" y2="${insetTop + chartHeight * 0.65}" />
         <polygon points="${area}" fill="url(#trafficAreaFill)" />
-        <polyline points="${line}" fill="none" stroke="#2f6658" stroke-width="4" vector-effect="non-scaling-stroke" />
+        <polyline points="${line}" fill="none" stroke="var(--brand)" stroke-width="4" vector-effect="non-scaling-stroke" />
         ${coordinates.map((point) => `<circle cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="3.5"><title>${formatTrafficNumber(point.value)} צפיות · ${escapeHtml(formatTrafficBucket(point.bucket))}</title></circle>`).join("")}
         ${labelIndexes.map((index) => `<text x="${coordinates[index].x.toFixed(1)}" y="${height - 8}" text-anchor="${index === 0 ? "start" : index === coordinates.length - 1 ? "end" : "middle"}">${escapeHtml(formatTrafficBucket(coordinates[index].bucket))}</text>`).join("")}
       </svg>
@@ -837,7 +764,7 @@ function clientTrafficHourly(hourlyItems) {
   const peak = values.reduce((best, item) => (item.value > best.value ? item : best), values[0]);
   return `
     <div class="traffic-hours" aria-label="התפלגות צפיות לפי שעות">
-      ${values.map((item) => `<span title="${String(item.hour).padStart(2, "0")}:00 · ${formatTrafficNumber(item.value)} צפיות"><i style="height:${Math.max(3, (item.value / max) * 100).toFixed(1)}%"></i><small>${item.hour % 6 === 0 ? String(item.hour).padStart(2, "0") : ""}</small></span>`).join("")}
+      ${values.map((item) => `<span title="${String(item.hour).padStart(2, "0")}:00 · ${formatTrafficNumber(item.value)} צפיות"><i data-traffic-height="${Math.max(3, (item.value / max) * 100).toFixed(1)}"></i><small>${item.hour % 6 === 0 ? String(item.hour).padStart(2, "0") : ""}</small></span>`).join("")}
     </div>
     <p class="traffic-peak-note"><i data-lucide="sun-medium"></i>השעה הפעילה ביותר: <strong>${String(peak.hour).padStart(2, "0")}:00</strong></p>
   `;
@@ -854,7 +781,7 @@ function clientTrafficRankedList(items, breakdown) {
         return `
           <li>
             <span class="traffic-rank">${String(index + 1).padStart(2, "0")}</span>
-            <span class="traffic-rank-copy"><bdi dir="${breakdown.id === "pages" || breakdown.id === "referrers" ? "ltr" : "rtl"}">${escapeHtml(label)}</bdi><i style="width:${Math.max(4, (requests / max) * 100).toFixed(1)}%"></i></span>
+            <span class="traffic-rank-copy"><bdi dir="${breakdown.id === "pages" || breakdown.id === "referrers" ? "ltr" : "rtl"}">${escapeHtml(label)}</bdi><i data-traffic-width="${Math.max(4, (requests / max) * 100).toFixed(1)}"></i></span>
             <span class="traffic-rank-value"><strong>${formatTrafficNumber(requests)}</strong><small>צפיות</small></span>
           </li>
         `;
@@ -1076,27 +1003,7 @@ function botReasonLabel(value) {
   return BOT_REASON_LABELS[normalized] || (value ? String(value) : "זוהה ככלי אוטומטי");
 }
 
-function shell(active) {
-  return `
-    <aside class="side-rail">
-      <div class="mark">MS</div>
-      <nav>
-        ${
-          state.me?.role === "admin"
-            ? `<a class="${active === "admin" ? "active" : ""}" href="${href("/admin")}"><i data-lucide="shield"></i><span>ניהול</span></a>`
-            : `
-                <a class="${active === "client" ? "active" : ""}" href="${href(`/client/${state.me.username}`)}"><i data-lucide="images"></i><span>האתר שלי</span></a>
-                <a class="${active === "visitors" ? "active" : ""}" href="${href(`/client/${state.me.username}/visitors`)}"><i data-lucide="users-round"></i><span>מבקרים</span></a>
-              `
-        }
-      </nav>
-      <div class="rail-footer">
-        ${themeToggle()}
-        <button class="logout-button" id="logoutButton" type="button"><i data-lucide="log-out"></i><span>יציאה</span></button>
-      </div>
-    </aside>
-  `;
-}
+function shell(active) { return applicationShell(active); }
 
 const THEME_KEY = "manager-site-theme";
 
@@ -1150,6 +1057,7 @@ function createUserForm() {
         ${permissionBox("canUpload", "העלאה", true)}
         ${permissionBox("canDelete", "מחיקה", true)}
         ${permissionBox("canEditLinks", "עריכת קישור", true)}
+        ${permissionBox("canManageTrackingLinks", "ניהול לינקים", true)}
         ${permissionBox("canEditText", "עריכת טקסט", true)}
         ${permissionBox("canPublish", "פרסום", false)}
       </div>
@@ -1476,7 +1384,7 @@ function clientInspector(sections) {
   if (!section) {
     return `
       <div class="client-drawer-body inspector-overview">
-        <div class="client-drawer-heading"><span class="studio-index-number">${String(sections.length).padStart(2, "0")}</span><div><small>תוכן האתר</small><strong>מה תרצו לערוך?</strong></div></div>
+        <div class="client-drawer-heading"><span class="studio-index-number">${String(sections.length).padStart(2, "0")}</span><div><small>הכול מתחיל בתוכן טוב</small><strong>מה מעדכנים היום?</strong></div></div>
         ${clientSectionGroups(sections)}
       </div>
     `;
@@ -2128,6 +2036,7 @@ function permissionChips(permissions = {}) {
     ["canUpload", "העלאה"],
     ["canDelete", "מחיקה"],
     ["canEditLinks", "עריכת קישור"],
+    ["canManageTrackingLinks", "ניהול לינקים"],
     ["canEditText", "עריכת טקסט"],
     ["canPublish", "פרסום"],
   ]
@@ -2597,6 +2506,12 @@ function validateImageFile(file) {
 
 async function onLogin(event) {
   event.preventDefault();
+  const loginForm = event.currentTarget;
+  const submit = loginForm.querySelector('[type="submit"]');
+  if (submit.disabled) return;
+  const originalLabel = submit.innerHTML;
+  submit.disabled = true;
+  submit.textContent = "מתחברים…";
   const isAdminLogin = event.currentTarget.dataset.adminLogin === "true";
   const form = new FormData(event.currentTarget);
   const response = await api("/api/auth/login", {
@@ -2604,7 +2519,13 @@ async function onLogin(event) {
     body: { username: form.get("username"), password: form.get("password") },
     allow401: true,
   });
-  if (response?.error) return isAdminLogin ? renderAdminLogin(formatApiError(response.error)) : renderLogin(formatApiError(response.error));
+  if (response?.error || !response?.user) {
+    let message = loginForm.querySelector('.form-error');
+    if (!message) { message = document.createElement('p'); message.className = 'form-error'; message.setAttribute('role', 'alert'); submit.before(message); }
+    message.textContent = formatApiError(response?.error || 'לא ניתן להתחבר כרגע. נסו שוב.');
+    submit.disabled = false; submit.innerHTML = originalLabel; icons();
+    return;
+  }
   if (isAdminLogin && response.user?.role !== "admin") {
     await api("/api/auth/logout", { method: "POST", allow401: true });
     state.me = null;
@@ -2628,6 +2549,7 @@ async function onCreateUser(event) {
       canUpload: form.has("canUpload"),
       canDelete: form.has("canDelete"),
       canEditLinks: form.has("canEditLinks"),
+      canManageTrackingLinks: form.has("canManageTrackingLinks"),
       canEditText: form.has("canEditText"),
       canPublish: form.has("canPublish"),
     },
@@ -2730,6 +2652,7 @@ function showEditUserModal(userId) {
           ${permissionBox("canUpload", "העלאה", Boolean(user.permissions?.canUpload))}
           ${permissionBox("canDelete", "מחיקה", Boolean(user.permissions?.canDelete))}
           ${permissionBox("canEditLinks", "עריכת קישור", Boolean(user.permissions?.canEditLinks))}
+          ${permissionBox("canManageTrackingLinks", "ניהול לינקים", Boolean(user.permissions?.canManageTrackingLinks))}
           ${permissionBox("canEditText", "עריכת טקסט", Boolean(user.permissions?.canEditText))}
           ${permissionBox("canPublish", "פרסום", Boolean(user.permissions?.canPublish))}
         </div>
@@ -2763,6 +2686,7 @@ async function saveUserProfile(userId, form) {
       canUpload: form.has("canUpload"),
       canDelete: form.has("canDelete"),
       canEditLinks: form.has("canEditLinks"),
+      canManageTrackingLinks: form.has("canManageTrackingLinks"),
       canEditText: form.has("canEditText"),
       canPublish: form.has("canPublish"),
     },
@@ -3299,7 +3223,7 @@ function showCropToolModal(slot, image, options = {}) {
         <h2>חיתוך תמונה</h2>
         <span class="quiet">${escapeHtml(slotDisplayLabel(slot))}</span>
       </div>
-      <div class="crop-stage" style="--crop-ratio:${aspect};">
+      <div class="crop-stage">
         <img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.name)}" data-crop-image />
         <span class="crop-frame"></span>
       </div>
@@ -3317,6 +3241,7 @@ function showCropToolModal(slot, image, options = {}) {
   document.body.appendChild(modal);
   icons();
   const close = createDialogController(modal);
+  modal.querySelector('.crop-stage').style.setProperty('--crop-ratio', String(aspect));
   const imageNode = modal.querySelector("[data-crop-image]");
   const updateCropPreview = () => {
     const zoom = Number(modal.querySelector("[data-crop-zoom]").value);
@@ -3609,6 +3534,7 @@ async function api(path, options = {}) {
 }
 
 function bindShell() {
+  bindApplicationChrome();
   const logout = async () => {
     const logoutRoute = state.me?.role === "admin" ? "/admin-login" : "/login";
     await api("/api/auth/logout", { method: "POST" });
@@ -3930,6 +3856,7 @@ function navigate(path, replace = false) {
   const target = href(path);
   if (replace) history.replaceState(null, "", target);
   else history.pushState(null, "", target);
+  window.scrollTo({ top: 0, left: 0, behavior: "instant" });
 }
 
 function href(path) {

@@ -21,21 +21,33 @@ Canonical URL:
 .\deploy.ps1 "Describe the change"
 ```
 
-The PowerShell deploy script:
+This command commits the application changes, pushes them to GitHub, and deploys
+that exact commit to the server. It includes the tracking-link modules/tests and
+the new interface assets. It requires Node 20+, Git, and SSH key access.
 
-- validates key files
-- ensures the GitHub remote
-- stages known app files
-- commits if needed
-- pushes to GitHub
-- ensures the remote checkout exists
-- runs the Linux deploy script remotely
+Run the local checks without publishing anything:
+
+```powershell
+.\deploy.ps1 -CheckOnly
+```
+
+The script checks the current branch and existing origin without renaming or
+changing them, then runs JavaScript checks and the tracking-link integration
+tests. Every native command is checked for failure. Only known application
+paths are staged; runtime data, local fixtures, and agent attachments are excluded.
+Unrelated changes already staged cause it to stop.
+
+After push, the script reads `deploy_linux.sh` from the exact pushed revision
+into a temporary remote file and executes it. A pre-existing remote directory
+without Git is never deleted or replaced.
 
 ## Linux Deploy Script
 
 `deploy_linux.sh` runs on the server and handles:
 
-- fetch/reset to `origin/main`
+- lock against concurrent deployments and check for modified tracked files
+- fetch the selected branch and check out the requested commit, preserving runtime data and untracked files
+- save the previous revision, production configuration, and a recovery script privately under `/root/.manager-site-deployments/`
 - production dependency install
 - production `.env` creation on first deploy
 - first admin password generation
@@ -43,8 +55,20 @@ The PowerShell deploy script:
 - Nginx route snippet creation
 - lowercase route redirect
 - Nginx reload
-- local app health check
+- local app and asset checks, public login `200`, and lowercase alias `301`
 - shared ServerMonitor analytics-key creation/preservation and PM2 environment wiring
+
+Options: `--ref FULL_COMMIT_SHA`, `--branch main`, and `--dir /root/Manager_Site`.
+Without `--ref`, it uses the selected origin branch. An explicit revision must
+belong to that branch. Existing PM2 processes are restarted with updated
+environment; `start` is used only if the process does not exist.
+
+This is an in-place deployment with a short PM2 restart, not a zero-downtime
+release system. It never runs `git clean`, deletes application directories, or
+resets runtime data. Configuration snapshots include `.env` and must stay
+private. They are not backups of the live data directory. If a later step fails,
+the script stops and reports the previous revision; code rollback is explicit.
+Invalid Nginx changes are restored before exiting without a reload.
 
 ## Production Secrets and Data
 
@@ -69,10 +93,16 @@ The first production admin password is stored once at:
 
 ## Direct Deploy Command
 
-This command has been used successfully:
+Run from a shell on the server, after the desired code has been pushed:
 
-```powershell
-ssh root@vee-app.co.il "cd /root/Manager_Site && git fetch origin main && git reset --hard origin/main && chmod +x deploy_linux.sh && ./deploy_linux.sh"
+```bash
+cd /root/Manager_Site
+git fetch origin main
+revision=$(git rev-parse origin/main)
+snapshot=$(mktemp /tmp/manager-site-deploy.XXXXXX)
+trap 'rm -f "$snapshot"' EXIT
+git show "$revision:deploy_linux.sh" > "$snapshot"
+bash "$snapshot" --ref "$revision"
 ```
 
 ## Production Verification
@@ -116,13 +146,13 @@ unset KEY
 
 ## Rollback
 
-Prefer a normal Git rollback:
+Use the backup directory printed by the deployment. Its recovery script remains
+available even if the checked-out app revision predates the new deploy script:
 
 ```bash
-cd /root/Manager_Site
-git log --oneline
-git reset --hard <known-good-commit>
-./deploy_linux.sh
+backup_dir=/root/.manager-site-deployments/REPLACE_WITH_DEPLOYMENT_DIRECTORY
+previous=$(cat "$backup_dir/previous-ref.txt")
+bash "$backup_dir/deploy-recovery.sh" --ref "$previous"
 ```
 
 Do not delete production `data/` as part of rollback.

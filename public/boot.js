@@ -5,9 +5,11 @@
   try {
     if (localStorage.getItem("manager-site-theme") === "dark") {
       document.documentElement.classList.add("theme-dark");
+    } else {
+      document.documentElement.classList.add("theme-light");
     }
   } catch (error) {
-    /* storage blocked: stay on the default light theme */
+    document.documentElement.classList.add("theme-light");
   }
 
   const app = document.querySelector("#app");

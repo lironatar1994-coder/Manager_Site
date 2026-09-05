@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "check": "node --check server.js && node --check public/app.js",
+    "check": "node --check server.js && node --check lib/tracking-links.js && node --check public/app.js && node --check public/links.js && node --check public/interface.js && node --check public/boot.js",
+    "test:links": "node --test tests/tracking-links.test.js",
     "hash-password": "node scripts/hash-password.js"
   },
   "dependencies": {

@@ -4,6 +4,7 @@ const fsp = require("fs/promises");
 const path = require("path");
 const express = require("express");
 const multer = require("multer");
+const { createTrackingLinks } = require("./lib/tracking-links");
 
 const PORT = Number(process.env.PORT || 3027);
 const BASE_PATH = normalizeBasePath(process.env.BASE_PATH || "");
@@ -79,6 +80,8 @@ const upload = multer({
 });
 
 const router = express.Router();
+const trackingLinks = createTrackingLinks({ dataDir: DATA_DIR, basePath: BASE_PATH, readStore, requireSiteAccess, requirePermission });
+trackingLinks.mount(router);
 router.use("/uploads", requireAuth, express.static(UPLOAD_ROOT, { fallthrough: false, setHeaders: setManagedImageCacheHeaders }));
 router.get(["/", "/index.html"], sendSpaShell);
 router.get(["/login/app.js", "/admin-login/app.js", "/admin/app.js", "/client/app.js", "/client/:username/app.js"], sendPublicAsset("app.js"));
@@ -683,7 +686,7 @@ router.get("/api/admin/audit", requireAdmin, async (req, res) => {
   res.json({ audit: store.audit.slice(-80).reverse() });
 });
 
-router.get(["/", "/login", "/admin-login", "/admin", "/client/:username", "/client/:username/visitors"], sendSpaShell);
+router.get(["/", "/login", "/admin-login", "/admin", "/client/:username", "/client/:username/visitors", "/client/:username/links"], sendSpaShell);
 
 app.use(BASE_PATH || "/", router);
 if (BASE_PATH) {
@@ -763,6 +766,7 @@ function formatFileSize(bytes) {
 
 async function startServer() {
   await initStore();
+  await trackingLinks.ready;
   await loadSessions();
   return app.listen(PORT, "127.0.0.1", () => {
     console.log(`Manager Site listening on http://127.0.0.1:${PORT}${BASE_PATH || ""}`);
@@ -804,7 +808,7 @@ function sendPublicAsset(fileName) {
 }
 
 function publicAssetVersion() {
-  const files = ["index.html", "boot.js", "app.js", "styles.css"];
+  const files = ["index.html", "boot.js", "app.js", "links.js", "interface.js", "styles.css", "links.css", "interface.css"];
   const latest = files.reduce((max, fileName) => {
     try {
       return Math.max(max, fs.statSync(path.join(PUBLIC_DIR, fileName)).mtimeMs);
@@ -1587,6 +1591,7 @@ function normalizePermissions(input = {}) {
     canUpload: input.canUpload !== false,
     canDelete: input.canDelete !== false,
     canEditLinks: input.canEditLinks !== false,
+    canManageTrackingLinks: input.canManageTrackingLinks !== false,
     canEditText: input.canEditText !== false,
     canPublish: input.canPublish === true,
   };

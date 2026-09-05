@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="en">
+<html lang="he" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>ניהול אתרים</title>
     <meta name="manager-site-base" content="%BASE_PATH%" />
     <!-- Light is the default; dark is opt-in via the in-app toggle, so the
@@ -10,20 +10,22 @@
     <meta name="color-scheme" content="light" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- Assistant (UI) and Frank Ruhl Libre (display) both ship full Hebrew.
-         Archivo and IBM Plex Sans did not, so Hebrew set in them fell back to
-         whatever the OS chose; both are dropped. -->
+    <!-- Heebo and Assistant include Hebrew. -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700;800&family=Frank+Ruhl+Libre:wght@500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&family=Assistant:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="%BASE_PATH%/styles.css?v=%ASSET_VERSION%" />
+    <link rel="stylesheet" href="%BASE_PATH%/links.css?v=%ASSET_VERSION%" />
+    <link rel="stylesheet" href="%BASE_PATH%/interface.css?v=%ASSET_VERSION%" />
   </head>
   <body>
     <div id="app" class="boot-screen">
-      <div class="mark">MS</div>
+      <div class="current-mark" role="status" aria-label="טוען את סביבת העבודה"><i></i><i></i><i></i><i></i></div>
     </div>
     <script src="%BASE_PATH%/boot.js?v=%ASSET_VERSION%"></script>
+    <script src="%BASE_PATH%/interface.js?v=%ASSET_VERSION%" defer></script>
+    <script src="%BASE_PATH%/links.js?v=%ASSET_VERSION%" defer></script>
     <script src="%BASE_PATH%/app.js?v=%ASSET_VERSION%" defer></script>
     <!-- Pinned: @latest let a third party change the icon set under us. -->
     <script async src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>

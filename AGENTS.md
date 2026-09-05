@@ -50,8 +50,11 @@ There is no public registration.
 
 ## Design System
 
-The visual system is "Lumen", defined entirely in the token block at the top of
+The visual system is "Current", with literal tokens at the top of
 `public/styles.css`. Read that block before changing anything visual.
+`public/interface.css` defines the mobile-first shared layout and overrides
+legacy component structure; it loads after `styles.css` and `links.css`.
+`public/interface.js` owns the shared navigation, account sheet, and login UI.
 
 - **Never hardcode a color.** Every color in the sheet is a token. If you need a
   new one, add it to both the light `:root` block and the two dark blocks.
@@ -61,19 +64,23 @@ The visual system is "Lumen", defined entirely in the token block at the top of
   theme after a toggle. This is why the old `--studio-*` / `--paper` / `--panel`
   aliases were removed.
 - **Dark theme is defined twice on purpose**: `@media (prefers-color-scheme: dark)
-  :root:not(.theme-light)` for users who never touch the control, and
-  `:root.theme-dark` for the manual toggle. Keep the two in sync.
+  :root:not(.theme-light)` as a CSS fallback, and `:root.theme-dark` for the
+  manual toggle. Keep the two in sync. Boot explicitly selects light by default;
+  a stored manual choice selects dark.
 - **Pick the right variant.** `--brand` is a text color; `--brand-solid` is the
   filled-button background. On the hero and stage bands — dark in *both* themes —
   use `--on-dark`, `--on-brand`, and `--accent-on-dark`, never `--ink` or
   `--surface`, which invert.
-- **Fonts**: `--font-sans` (Assistant) and `--font-display` (Frank Ruhl Libre)
-  both ship full Hebrew. Do not add a Latin-only face such as Archivo or IBM
+- **Fonts**: `--font-sans` and `--font-display` use Heebo, with Assistant as a
+  Hebrew-capable fallback. Do not add a Latin-only face such as Archivo or IBM
   Plex Sans — Hebrew set in those falls back silently to an OS font.
-- **Accessibility is a constraint, not a review step.** All four views pass WCAG
+- **Accessibility is a constraint, not a review step.** Maintain WCAG
   2.1 AA in both themes: 4.5:1 text, 3:1 control borders, 24x24 minimum targets
   (44x44 on coarse pointers), no horizontal overflow at 375px. Re-check after
   visual changes.
+- Mobile navigation stays at the bottom, with safe-area spacing. Dialogs sit
+  above it and prevent background scrolling. Phones open the live preview first;
+  editing is one tap away. Desktop gets a persistent right navigation rail.
 
 ## New Client Setup
 
@@ -113,11 +120,17 @@ Preferred Windows entrypoint:
 .\deploy.ps1 "Describe the change"
 ```
 
-Direct production deploy command used successfully:
+Use `-CheckOnly` to validate locally without commit, push, or deployment:
 
 ```powershell
-ssh root@vee-app.co.il "cd /root/Manager_Site && git fetch origin main && git reset --hard origin/main && chmod +x deploy_linux.sh && ./deploy_linux.sh"
+.\deploy.ps1 -CheckOnly
 ```
+
+The entrypoint pushes and deploys the same tested commit. For a server-only
+deployment, run a snapshot of `deploy_linux.sh` from the desired origin revision
+with `--ref FULL_COMMIT_SHA`; see `docs/DEPLOYMENT_AND_OPERATIONS.md`.
+Private configuration snapshots and recovery scripts are saved under
+`/root/.manager-site-deployments/`. Runtime data is never reset during recovery.
 
 After deploying, verify:
 
