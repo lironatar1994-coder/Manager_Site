@@ -102,6 +102,13 @@ Request failures must differ from empty traffic. Discard stale responses after
 range changes, navigation, or switching clients. Run `npm.cmd run test:visitors`
 when changing this workspace; both deployment entrypoints run it as well.
 
+Keep the visitor workspace visually quiet: a short title, one period selector,
+text tabs with an underline, flat sections, and metrics immediately below the
+navigation. Do not bring back marketing headlines, repeated section intros, or
+large rounded cards. Put measurement definitions and update details in the
+footer; definitions expand on demand. Engagement starts with three numbers and
+a short sample-size label, followed directly by the scroll-depth bars.
+
 Run `npm.cmd run check` after JavaScript changes and `npm.cmd run test:links`
 when tracking-link code changes. Use an already available browser for visual QA.
 

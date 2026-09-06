@@ -42,9 +42,9 @@ const CLIENT_VISITOR_BREAKDOWNS = [
   { id: "devices", label: "מכשירים", empty: "אין עדיין נתוני מכשיר" },
 ];
 const CLIENT_VISITOR_VIEWS = [
-  { id: "overview", label: "תמונת מצב", icon: "chart-no-axes-combined" },
-  { id: "engagement", label: "התנהגות באתר", icon: "mouse-pointer-2" },
-  { id: "activity", label: "יומן מבקרים", icon: "list" },
+  { id: "overview", label: "סקירה", icon: "chart-no-axes-combined" },
+  { id: "engagement", label: "התנהגות", icon: "mouse-pointer-2" },
+  { id: "activity", label: "יומן", icon: "list" },
 ];
 const BOT_REASON_LABELS = {
   "bot user agent": "זוהה לפי חתימת כלי אוטומטי",
@@ -507,8 +507,7 @@ function renderClientVisitors() {
       }
       <header class="traffic-page-head">
         <div class="traffic-title-block">
-          <span class="traffic-kicker">האתר שלך במספרים</span>
-          <h1>תנועה שמספרת סיפור.</h1>
+          <h1>נתוני האתר</h1>
           <a href="${escapeAttr(websiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i><bdi>${escapeHtml(shortUrlLabel(websiteUrl))}</bdi></a>
         </div>
         <nav class="client-area-switcher" aria-label="אזור הלקוח">
@@ -517,11 +516,7 @@ function renderClientVisitors() {
           <a href="${href(`/client/${state.clientUsername}/links`)}"><i data-lucide="link"></i><span>לינקים</span></a>
         </nav>
         <div class="traffic-head-controls">
-          <div class="traffic-range-picker" role="group" aria-label="טווח נתונים">
-            ${CLIENT_VISITOR_RANGES.map(
-              (range) => `<button class="${state.clientVisitorRangeDays === range.days ? "active" : ""}" type="button" data-traffic-range="${range.days}" aria-pressed="${state.clientVisitorRangeDays === range.days}">${range.label}</button>`
-            ).join("")}
-          </div>
+          <select class="visitor-range-select" aria-label="טווח נתונים" data-traffic-range-select>${CLIENT_VISITOR_RANGES.map((range) => `<option value="${range.days}" ${state.clientVisitorRangeDays === range.days ? "selected" : ""}>${range.label}</option>`).join("")}</select>
           <button class="traffic-refresh" type="button" data-traffic-refresh aria-label="רענון נתוני מבקרים" ${state.clientVisitorLoading ? "disabled" : ""}><i data-lucide="refresh-cw"></i><span>רענון</span></button>
         </div>
       </header>
@@ -531,6 +526,14 @@ function renderClientVisitors() {
   `;
 
   bindShell();
+  document.querySelector("[data-traffic-range-select]")?.addEventListener("change", async (event) => {
+    state.clientVisitorRangeDays = Number(event.target.value);
+    state.clientVisitorPage = 1;
+    state.clientVisitorLoading = true;
+    state.clientVisitorError = null;
+    renderClientVisitors();
+    await refreshClientVisitorDashboard();
+  });
   document.querySelectorAll("[data-traffic-range]").forEach((button) => {
     button.addEventListener("click", async () => {
       const days = Number(button.dataset.trafficRange);
@@ -664,48 +667,40 @@ function renderClientTrafficBody({ analytics, summary, comparison, visitorList, 
 
   return `
     <nav class="visitor-view-nav" aria-label="תצוגת נתוני האתר">
-      ${CLIENT_VISITOR_VIEWS.map((item) => `<button type="button" data-traffic-view="${item.id}" aria-pressed="${view === item.id}"><i data-lucide="${item.icon}"></i><span>${item.label}</span></button>`).join("")}
+      ${CLIENT_VISITOR_VIEWS.map((item) => `<button type="button" data-traffic-view="${item.id}" aria-pressed="${view === item.id}">${item.label}</button>`).join("")}
     </nav>
-    <div class="visitor-data-status" role="status">
-      <span>${state.clientVisitorLoading ? "טוען את הטווח שנבחר…" : lastUpdated ? `עודכן ${escapeHtml(lastUpdated)}` : "הטווח שנבחר"}</span>
-      <span>${CLIENT_VISITOR_RANGES.find((range) => range.days === state.clientVisitorRangeDays)?.label || ""} · שעון ישראל</span>
-    </div>
+    ${state.clientVisitorLoading ? '<div class="visitor-data-status" role="status">מעדכן נתונים…</div>' : ""}
     <div class="visitor-view-content" ${state.clientVisitorLoading ? 'inert aria-busy="true"' : ""}>
     ${view === "overview" ? `
     <section class="traffic-overview" aria-label="תמונת מצב">
       <article class="traffic-lead-stat">
         <div class="traffic-lead-copy">
-          <span>מבקרים ייחודיים · אומדן לפי IP</span>
+          <span>מבקרים <small>לפי IP</small></span>
           <strong>${formatTrafficNumber(uniqueCandidates)}</strong>
-          ${trafficDelta(comparison.unique_candidates_percent)}
+          ${trafficDelta(comparison.unique_candidates_percent, true)}
         </div>
         <div class="traffic-live-signal ${activeCandidates ? "is-active" : ""}">
           <i aria-hidden="true"></i>
-          <span><strong>${formatTrafficNumber(activeCandidates)}</strong> פעילים</span>
+          <span title="בחמש הדקות האחרונות"><strong>${formatTrafficNumber(activeCandidates)}</strong> פעילים כעת</span>
           <small>בחמש הדקות האחרונות</small>
         </div>
         <div class="visitor-audience-split"><span><b>${formatTrafficNumber(newCandidates)}</b> חדשים</span><span><b>${formatTrafficNumber(returningCandidates)}</b> חוזרים</span></div>
-        <details class="traffic-definition">
-          <summary><i data-lucide="info"></i>איך אנחנו מזהים מבקר?</summary>
-          <p>כל כתובת IP עם צפייה מוצלחת בעמוד שלא זוהתה כבוט נספרת כמבקר ייחודי. זהו אומדן מתוך הבקשות לאתר, ולא אימות של זהות אדם.</p>
-        </details>
       </article>
       <div class="traffic-ledger" role="list" aria-label="מדדי תנועה">
-        ${trafficLedgerRow("צפיות בעמודים", pageViews, "ניווטים מוצלחים בלבד", comparison.page_views_percent, "file-chart-column")}
+        ${trafficLedgerRow("צפיות", pageViews, "", comparison.page_views_percent, "file-chart-column")}
       </div>
     </section>
 
-    ${clientTrafficHighlights(analytics)}
     <section class="traffic-story-grid">
       <article class="traffic-panel traffic-chart-panel">
-        <header><div><span class="traffic-panel-index">המגמה</span><h2>צפיות לאורך זמן</h2></div><span class="visitor-chart-key"><i></i> צפיות בעמודים</span></header>
+        <header><h2>צפיות לאורך זמן</h2></header>
         ${clientTrafficChart(analytics?.series || [])}
       </article>
     </section>
+    ${clientTrafficHighlights(analytics)}
 
     <section class="traffic-panel traffic-breakdown-panel">
       <header class="traffic-panel-head-wrap">
-        <div><span class="traffic-panel-index">מבט מקרוב</span><h2>מאיפה, לאן ובאיזה מכשיר</h2></div>
         <div class="traffic-breakdown-tabs" role="group" aria-label="סוג הפירוט">
           ${CLIENT_VISITOR_BREAKDOWNS.map(
             (item) => `<button class="${state.clientVisitorBreakdown === item.id ? "active" : ""}" type="button" data-traffic-breakdown="${item.id}" aria-pressed="${state.clientVisitorBreakdown === item.id}">${item.label}</button>`
@@ -715,19 +710,18 @@ function renderClientTrafficBody({ analytics, summary, comparison, visitorList, 
       ${clientTrafficRankedList(analytics?.[breakdown.id] || [], breakdown)}
     </section>
 
-    <div class="visitor-bot-note"><i data-lucide="bot"></i><div><strong>${formatTrafficNumber(botRequests)} בקשות בוטים סוננו</strong><span>מוצגות בנפרד ואינן נכללות באומדן המבקרים.</span></div><button type="button" data-traffic-view="activity" data-traffic-bots="true" aria-label="בדיקת בקשות הבוטים"><i data-lucide="arrow-up-left"></i></button></div>
+    <div class="visitor-bot-note"><i data-lucide="bot"></i><div><strong>${formatTrafficNumber(botRequests)} בקשות בוטים סוננו</strong></div><button type="button" data-traffic-view="activity" data-traffic-bots="true" aria-label="בדיקת בקשות הבוטים"><i data-lucide="arrow-up-left"></i></button></div>
     ` : ""}
 
     ${view === "engagement" ? `
-      <div class="visitor-section-intro"><span class="traffic-kicker">מעבר לכניסה לאתר</span><h2>מה קורה בתוך העמוד?</h2><p>גלילה, שהייה ולחיצות מתוך מדגם הביקורים שנמדדו בדפדפן.</p></div>
       ${clientHotZonesPanel()}
-      <article class="traffic-panel traffic-hours-panel"><header><div><span class="traffic-panel-index">שעות פעילות</span><h2>מתי נכנסים לאתר</h2></div><small>צפיות לפי שעון ישראל</small></header>${clientTrafficHourly(analytics?.hourly || [])}</article>
+      <article class="traffic-panel traffic-hours-panel"><header><h2>שעות פעילות</h2><small>שעון ישראל</small></header>${clientTrafficHourly(analytics?.hourly || [])}</article>
     ` : ""}
 
     ${view === "activity" ? `
     <section class="traffic-panel traffic-visitors-panel">
       <header class="traffic-visitors-head">
-        <div><span class="traffic-panel-index">${formatTrafficNumber(visitorList.total)} רשומות בטווח</span><h2>${classificationMeta.title}</h2><p>${classificationMeta.description} בחרו רשומה לפתיחת ציר הפעילות.</p></div>
+        <div class="visitor-log-caption"><h2>${classificationMeta.title}</h2><small>${formatTrafficNumber(visitorList.total)} רשומות</small></div>
         <form id="trafficSearchForm" class="traffic-search" role="search">
           <i data-lucide="search"></i>
           <input name="search" value="${escapeAttr(state.clientVisitorSearch)}" placeholder="IP, עמוד, עיר..." aria-label="חיפוש ביומן המבקרים" dir="ltr" />
@@ -746,9 +740,9 @@ function renderClientTrafficBody({ analytics, summary, comparison, visitorList, 
     ` : ""}
     </div>
 
-    <footer class="traffic-method-note">
-      <i data-lucide="shield-check"></i>
-      <span><strong>הנתונים שייכים רק לאתר הזה.</strong> קבצי עיצוב, תמונות, API ובקשות שנכשלו אינם נספרים כצפיות בעמוד.</span>
+    <footer class="visitor-footnote">
+      <details><summary><i data-lucide="info"></i>על הנתונים</summary><p>מבקר הוא כתובת IP עם צפייה מוצלחת בעמוד שלא זוהתה כבוט, ולא אדם מאומת. בוטים מוצגים בנפרד. קבצים, API ובקשות שנכשלו אינם נספרים כצפיות. השינוי באחוזים הוא מול התקופה הקודמת. השעות לפי שעון ישראל.</p><p>גלילה ושהייה מבוססות על מדגם ביקורים שנמדדו בדפדפן. המדגם אינו מאמת שמדובר באדם.</p></details>
+      <small>${lastUpdated ? `עודכן ${escapeHtml(lastUpdated)}` : ""}</small>
     </footer>
   `;
 }
@@ -937,7 +931,7 @@ function clientHotZonesPanel() {
   if (!data || !data.engagement_sessions) {
     return `
     <section class="traffic-panel traffic-hotzones-panel">
-      <header><div><span class="traffic-panel-index">אזורים חמים</span><h2>עדיין אין מספיק נתונים</h2><p>האות נאסף בעזיבת העמוד. הנתונים יופיעו אחרי מספר ביקורים.</p></div></header>
+      <header><div><h2>עדיין אין מספיק נתונים</h2><p>הנתונים יופיעו לאחר ביקורים נוספים.</p></div></header>
     </section>`;
   }
   const reach = data.scroll_reach || {};
@@ -949,15 +943,12 @@ function clientHotZonesPanel() {
   const zones = data.zones || [];
   const maxTaps = zones.length ? Math.max(...zones.map((z) => z.taps)) : 0;
   return `
-    <section class="traffic-panel traffic-hotzones-panel">
-      <header>
-        <div><span class="traffic-panel-index">אזורים חמים</span><h2>עד לאן מגיעים ובמה נוגעים</h2>
-        <p>מדגם של ${formatTrafficNumber(data.engagement_sessions)} ביקורים עם אות דפדפן; אינו מאמת שמדובר באדם.</p></div>
-      </header>
-      <div class="visitor-engagement-stats"><div><strong>${formatTrafficNumber(data.average_scroll_depth)}<small>%</small></strong><span>עומק גלילה ממוצע</span></div><div><strong>${formatTrafficNumber(data.average_dwell_seconds)}<small> שנ׳</small></strong><span>שהייה ממוצעת במדגם</span></div><div><strong>${formatTrafficNumber(reach.reached_end || 0)}<small>%</small></strong><span>הגיעו לסוף העמוד</span></div></div>
+    <section class="traffic-panel traffic-hotzones-panel" aria-label="התנהגות באתר">
+      <div class="visitor-engagement-stats"><div><strong>${formatTrafficNumber(data.average_scroll_depth)}<small>%</small></strong><span>גלילה ממוצעת</span></div><div><strong>${formatTrafficNumber(data.average_dwell_seconds)}<small> שנ׳</small></strong><span>שהייה ממוצעת</span></div><div><strong>${formatTrafficNumber(reach.reached_end || 0)}<small>%</small></strong><span>הגיעו לסוף</span></div></div>
+      <p class="visitor-sample-note">מדגם: ${formatTrafficNumber(data.engagement_sessions)} ביקורים</p>
       <div class="hz-grid">
         <div class="hz-col">
-          <h3>עד לאן גוללים</h3>
+          <h3>עומק גלילה</h3>
           <ul class="hz-bars">
             ${bar("רבע מהעמוד", reach.reached_25 || 0)}
             ${bar("חצי מהעמוד", reach.reached_50 || 0)}
@@ -966,13 +957,13 @@ function clientHotZonesPanel() {
           </ul>
         </div>
         <div class="hz-col">
-          <h3>היכן עוזבים</h3>
+          <h3>נקודת עזיבה</h3>
           <ul class="hz-bars">
             ${exits.length ? exits.map((b) => bar(b.band + "% מהעמוד", b.share)).join("") : "<li class=\"hz-empty\">אין נתונים</li>"}
           </ul>
         </div>
         <div class="hz-col hz-col-wide">
-          <h3>אזורים שנלחצו <small>לחיצות (ביקורים)</small></h3>
+          <h3>לחיצות <small>סה״כ (ביקורים)</small></h3>
           <ul class="hz-zones">
             ${zones.length ? zones.map((z) => `
               <li><span class="hz-zone-name">${escapeHtml(z.zone)}</span>
