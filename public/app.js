@@ -41,6 +41,11 @@ const CLIENT_VISITOR_BREAKDOWNS = [
   { id: "referrers", label: "מקורות", empty: "רוב הכניסות היו ישירות" },
   { id: "devices", label: "מכשירים", empty: "אין עדיין נתוני מכשיר" },
 ];
+const CLIENT_VISITOR_VIEWS = [
+  { id: "overview", label: "תמונת מצב", icon: "chart-no-axes-combined" },
+  { id: "engagement", label: "התנהגות באתר", icon: "mouse-pointer-2" },
+  { id: "activity", label: "יומן מבקרים", icon: "list" },
+];
 const BOT_REASON_LABELS = {
   "bot user agent": "זוהה לפי חתימת כלי אוטומטי",
   "scanner path": "סריקה של נתיב חשוד",
@@ -82,6 +87,9 @@ const state = {
   clientVisitorSearch: "",
   clientVisitorClassification: "candidate",
   clientVisitorBreakdown: "pages",
+  clientVisitorView: "overview",
+  clientVisitorListError: false,
+  clientVisitorEngagementError: false,
   clientVisitorLoading: false,
   clientVisitorTableLoading: false,
   clientVisitorError: null,
@@ -491,7 +499,7 @@ function renderClientVisitors() {
   app.className = `app-view client-mode client-rtl traffic-mode ${isAdminPreview ? "admin-preview" : ""}`;
   app.innerHTML = `
     ${shell("visitors")}
-    <main class="workspace client-traffic-workspace" dir="rtl" lang="he">
+    <main class="workspace client-traffic-workspace visitors-workspace" dir="rtl" lang="he">
       ${
         isAdminPreview
           ? `<section class="preview-banner traffic-preview-banner"><i data-lucide="eye"></i><span>תצוגת מנהל עבור ${escapeHtml(state.clientUsername)}</span><a href="${href("/admin")}">חזרה לניהול</a></section>`
@@ -499,8 +507,8 @@ function renderClientVisitors() {
       }
       <header class="traffic-page-head">
         <div class="traffic-title-block">
-          <span class="traffic-kicker">מכירים את הקהל שלך</span>
-          <h1>מי מגיע לאתר?</h1>
+          <span class="traffic-kicker">האתר שלך במספרים</span>
+          <h1>תנועה שמספרת סיפור.</h1>
           <a href="${escapeAttr(websiteUrl)}" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i><bdi>${escapeHtml(shortUrlLabel(websiteUrl))}</bdi></a>
         </div>
         <nav class="client-area-switcher" aria-label="אזור הלקוח">
@@ -535,16 +543,44 @@ function renderClientVisitors() {
       await refreshClientVisitorDashboard();
     });
   });
-  document.querySelector("[data-traffic-refresh]")?.addEventListener("click", async () => {
+  document.querySelectorAll("[data-traffic-refresh]").forEach((button) => button.addEventListener("click", async () => {
     state.clientVisitorLoading = true;
     state.clientVisitorError = null;
     renderClientVisitors();
     await refreshClientVisitorDashboard();
+  }));
+  document.querySelectorAll("[data-traffic-view]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.clientVisitorView = button.dataset.trafficView;
+      if (button.dataset.trafficBots) {
+        state.clientVisitorClassification = "bot";
+        state.clientVisitorSearch = "";
+        state.clientVisitorPage = 1;
+        state.clientVisitorTableLoading = true;
+      }
+      renderClientVisitors();
+      document.querySelector(`[data-traffic-view="${state.clientVisitorView}"]`)?.focus({ preventScroll: true });
+      document.querySelector(".visitor-view-nav")?.scrollIntoView({ block: "nearest" });
+      if (button.dataset.trafficBots) {
+        refreshClientVisitorTable();
+      }
+    });
+  });
+  document.querySelector("#trafficChartCursor")?.addEventListener("input", (event) => {
+    updateTrafficChartCursor(Number(event.target.value));
   });
   document.querySelectorAll("[data-traffic-breakdown]").forEach((button) => {
     button.addEventListener("click", () => {
       state.clientVisitorBreakdown = button.dataset.trafficBreakdown;
       renderClientVisitors();
+      document.querySelector(`[data-traffic-breakdown="${state.clientVisitorBreakdown}"]`)?.focus({ preventScroll: true });
+    });
+  });
+  document.querySelectorAll("[data-traffic-highlight]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.clientVisitorBreakdown = button.dataset.trafficHighlight;
+      renderClientVisitors();
+      document.querySelector(`[data-traffic-breakdown="${state.clientVisitorBreakdown}"]`)?.focus();
     });
   });
   document.querySelectorAll("[data-traffic-classification]").forEach((button) => {
@@ -624,20 +660,31 @@ function renderClientTrafficBody({ analytics, summary, comparison, visitorList, 
   const returningCandidates = Number(summary.returning_candidates) || 0;
   const botRequests = Number(summary.bot_requests) || 0;
   const lastUpdated = analytics?.generated_at ? formatTrafficDateTime(analytics.generated_at) : "";
+  const view = state.clientVisitorView;
 
   return `
+    <nav class="visitor-view-nav" aria-label="תצוגת נתוני האתר">
+      ${CLIENT_VISITOR_VIEWS.map((item) => `<button type="button" data-traffic-view="${item.id}" aria-pressed="${view === item.id}"><i data-lucide="${item.icon}"></i><span>${item.label}</span></button>`).join("")}
+    </nav>
+    <div class="visitor-data-status" role="status">
+      <span>${state.clientVisitorLoading ? "טוען את הטווח שנבחר…" : lastUpdated ? `עודכן ${escapeHtml(lastUpdated)}` : "הטווח שנבחר"}</span>
+      <span>${CLIENT_VISITOR_RANGES.find((range) => range.days === state.clientVisitorRangeDays)?.label || ""} · שעון ישראל</span>
+    </div>
+    <div class="visitor-view-content" ${state.clientVisitorLoading ? 'inert aria-busy="true"' : ""}>
+    ${view === "overview" ? `
     <section class="traffic-overview" aria-label="תמונת מצב">
       <article class="traffic-lead-stat">
         <div class="traffic-lead-copy">
-          <span>מבקרים ייחודיים שלא זוהו כבוט</span>
+          <span>מבקרים ייחודיים · אומדן לפי IP</span>
           <strong>${formatTrafficNumber(uniqueCandidates)}</strong>
           ${trafficDelta(comparison.unique_candidates_percent)}
         </div>
         <div class="traffic-live-signal ${activeCandidates ? "is-active" : ""}">
           <i aria-hidden="true"></i>
-          <span><strong>${formatTrafficNumber(activeCandidates)}</strong> פעילים עכשיו</span>
+          <span><strong>${formatTrafficNumber(activeCandidates)}</strong> פעילים</span>
           <small>בחמש הדקות האחרונות</small>
         </div>
+        <div class="visitor-audience-split"><span><b>${formatTrafficNumber(newCandidates)}</b> חדשים</span><span><b>${formatTrafficNumber(returningCandidates)}</b> חוזרים</span></div>
         <details class="traffic-definition">
           <summary><i data-lucide="info"></i>איך אנחנו מזהים מבקר?</summary>
           <p>כל כתובת IP עם צפייה מוצלחת בעמוד שלא זוהתה כבוט נספרת כמבקר ייחודי. זהו אומדן מתוך הבקשות לאתר, ולא אימות של זהות אדם.</p>
@@ -645,40 +692,42 @@ function renderClientTrafficBody({ analytics, summary, comparison, visitorList, 
       </article>
       <div class="traffic-ledger" role="list" aria-label="מדדי תנועה">
         ${trafficLedgerRow("צפיות בעמודים", pageViews, "ניווטים מוצלחים בלבד", comparison.page_views_percent, "file-chart-column")}
-        ${trafficLedgerRow("מבקרים חדשים", newCandidates, "נראו לראשונה בטווח", null, "user-plus")}
-        ${trafficLedgerRow("מבקרים חוזרים", returningCandidates, "נראו גם לפני הטווח", null, "rotate-ccw")}
-        ${trafficLedgerRow("בקשות בוטים שסוננו", botRequests, "לא נספרו כמבקרים", null, "bot")}
       </div>
     </section>
 
+    ${clientTrafficHighlights(analytics)}
     <section class="traffic-story-grid">
       <article class="traffic-panel traffic-chart-panel">
-        <header><div><span class="traffic-panel-index">תנועה</span><h2>צפיות לאורך זמן</h2></div><small>${lastUpdated ? `עודכן ${escapeHtml(lastUpdated)}` : ""}</small></header>
+        <header><div><span class="traffic-panel-index">המגמה</span><h2>צפיות לאורך זמן</h2></div><span class="visitor-chart-key"><i></i> צפיות בעמודים</span></header>
         ${clientTrafficChart(analytics?.series || [])}
-      </article>
-      <article class="traffic-panel traffic-hours-panel">
-        <header><div><span class="traffic-panel-index">קצב</span><h2>מתי נכנסים</h2></div><small>שעון ישראל</small></header>
-        ${clientTrafficHourly(analytics?.hourly || [])}
       </article>
     </section>
 
     <section class="traffic-panel traffic-breakdown-panel">
       <header class="traffic-panel-head-wrap">
-        <div><span class="traffic-panel-index">פירוט</span><h2>מה מעניין את המבקרים</h2></div>
-        <div class="traffic-breakdown-tabs" role="tablist" aria-label="סוג הפירוט">
+        <div><span class="traffic-panel-index">מבט מקרוב</span><h2>מאיפה, לאן ובאיזה מכשיר</h2></div>
+        <div class="traffic-breakdown-tabs" role="group" aria-label="סוג הפירוט">
           ${CLIENT_VISITOR_BREAKDOWNS.map(
-            (item) => `<button class="${state.clientVisitorBreakdown === item.id ? "active" : ""}" type="button" data-traffic-breakdown="${item.id}" role="tab" aria-selected="${state.clientVisitorBreakdown === item.id}">${item.label}</button>`
+            (item) => `<button class="${state.clientVisitorBreakdown === item.id ? "active" : ""}" type="button" data-traffic-breakdown="${item.id}" aria-pressed="${state.clientVisitorBreakdown === item.id}">${item.label}</button>`
           ).join("")}
         </div>
       </header>
       ${clientTrafficRankedList(analytics?.[breakdown.id] || [], breakdown)}
     </section>
 
-    ${clientHotZonesPanel()}
+    <div class="visitor-bot-note"><i data-lucide="bot"></i><div><strong>${formatTrafficNumber(botRequests)} בקשות בוטים סוננו</strong><span>מוצגות בנפרד ואינן נכללות באומדן המבקרים.</span></div><button type="button" data-traffic-view="activity" data-traffic-bots="true" aria-label="בדיקת בקשות הבוטים"><i data-lucide="arrow-up-left"></i></button></div>
+    ` : ""}
 
+    ${view === "engagement" ? `
+      <div class="visitor-section-intro"><span class="traffic-kicker">מעבר לכניסה לאתר</span><h2>מה קורה בתוך העמוד?</h2><p>גלילה, שהייה ולחיצות מתוך מדגם הביקורים שנמדדו בדפדפן.</p></div>
+      ${clientHotZonesPanel()}
+      <article class="traffic-panel traffic-hours-panel"><header><div><span class="traffic-panel-index">שעות פעילות</span><h2>מתי נכנסים לאתר</h2></div><small>צפיות לפי שעון ישראל</small></header>${clientTrafficHourly(analytics?.hourly || [])}</article>
+    ` : ""}
+
+    ${view === "activity" ? `
     <section class="traffic-panel traffic-visitors-panel">
       <header class="traffic-visitors-head">
-        <div><span class="traffic-panel-index">יומן</span><h2>${classificationMeta.title}</h2><p>${classificationMeta.description}</p></div>
+        <div><span class="traffic-panel-index">${formatTrafficNumber(visitorList.total)} רשומות בטווח</span><h2>${classificationMeta.title}</h2><p>${classificationMeta.description} בחרו רשומה לפתיחת ציר הפעילות.</p></div>
         <form id="trafficSearchForm" class="traffic-search" role="search">
           <i data-lucide="search"></i>
           <input name="search" value="${escapeAttr(state.clientVisitorSearch)}" placeholder="IP, עמוד, עיר..." aria-label="חיפוש ביומן המבקרים" dir="ltr" />
@@ -686,7 +735,7 @@ function renderClientTrafficBody({ analytics, summary, comparison, visitorList, 
           <button type="submit">חיפוש</button>
         </form>
       </header>
-      <div class="traffic-classification-tabs" role="tablist" aria-label="סוג תנועה">
+      <div class="traffic-classification-tabs" role="group" aria-label="סוג תנועה">
         ${trafficClassificationButton("candidate", "מבקרים", "user-round-check")}
         ${trafficClassificationButton("bot", "בוטים", "bot")}
         ${trafficClassificationButton("all", "הכול", "rows-3")}
@@ -694,12 +743,24 @@ function renderClientTrafficBody({ analytics, summary, comparison, visitorList, 
       ${renderClientVisitorRecords(visitorList, classificationMeta)}
       ${pageCount > 1 ? renderClientVisitorPagination(pageCount, visitorList.total) : ""}
     </section>
+    ` : ""}
+    </div>
 
     <footer class="traffic-method-note">
       <i data-lucide="shield-check"></i>
       <span><strong>הנתונים שייכים רק לאתר הזה.</strong> קבצי עיצוב, תמונות, API ובקשות שנכשלו אינם נספרים כצפיות בעמוד.</span>
     </footer>
   `;
+}
+
+function clientTrafficHighlights(analytics) {
+  const leading = (items) => (items || []).filter((item) => Number(item.requests) > 0).reduce((best, item) => !best || Number(item.requests) > Number(best.requests) ? item : best, null);
+  const items = [
+    { id: "referrers", title: "המקור המוביל", icon: "signpost", item: leading(analytics?.referrers) },
+    { id: "pages", title: "העמוד הנצפה ביותר", icon: "files", item: leading(analytics?.pages) },
+    { id: "devices", title: "המכשיר המוביל", icon: "smartphone", item: leading(analytics?.devices) },
+  ];
+  return `<div class="visitor-highlights" aria-label="בולט בטווח הזה">${items.map(({ id, title, icon, item }) => `<button type="button" data-traffic-highlight="${id}"><i data-lucide="${icon}"></i><span><small>${title}</small><bdi dir="${id === "devices" ? "rtl" : "ltr"}">${item ? escapeHtml(trafficBreakdownLabel(id, item.label)) : "אין מספיק נתונים"}</bdi></span><i data-lucide="chevron-left"></i></button>`).join("")}</div>`;
 }
 
 function trafficLedgerRow(label, value, foot, delta, icon) {
@@ -714,6 +775,7 @@ function trafficLedgerRow(label, value, foot, delta, icon) {
 }
 
 function trafficDelta(value, compact = false) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return `<span class="traffic-delta unavailable">אין עדיין נתוני השוואה</span>`;
   const numeric = Number(value) || 0;
   const direction = numeric > 0.05 ? "up" : numeric < -0.05 ? "down" : "flat";
   const icon = direction === "up" ? "trending-up" : direction === "down" ? "trending-down" : "minus";
@@ -722,38 +784,47 @@ function trafficDelta(value, compact = false) {
 }
 
 function clientTrafficChart(series) {
-  const points = (series || []).map((item) => ({ bucket: item.bucket, value: Number(item.page_views) || 0 }));
+  const points = (series || []).map((item) => ({ bucket: item.bucket, value: Math.max(0, Number(item.page_views) || 0) }));
   if (!points.length || !points.some((item) => item.value > 0)) {
     return `<div class="traffic-inline-empty"><i data-lucide="activity"></i><span>אין צפיות בטווח שנבחר</span></div>`;
   }
-  const width = 760;
-  const height = 238;
-  const insetX = 18;
-  const insetTop = 18;
-  const insetBottom = 38;
-  const chartHeight = height - insetTop - insetBottom;
   const max = Math.max(...points.map((item) => item.value), 1);
-  const coordinates = points.map((item, index) => {
-    const x = points.length === 1 ? width / 2 : insetX + (index / (points.length - 1)) * (width - insetX * 2);
-    const y = insetTop + chartHeight - (item.value / max) * chartHeight;
-    return { ...item, x, y };
-  });
-  const line = coordinates.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
-  const area = `${insetX},${height - insetBottom} ${line} ${width - insetX},${height - insetBottom}`;
-  const labelIndexes = [...new Set([0, Math.floor((coordinates.length - 1) / 2), coordinates.length - 1])];
-  return `
-    <div class="traffic-chart" role="img" aria-label="גרף צפיות בעמודים לאורך הטווח שנבחר">
-      <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
-        <defs><linearGradient id="trafficAreaFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--brand)" stop-opacity="0.25"/><stop offset="1" stop-color="var(--brand)" stop-opacity="0"/></linearGradient></defs>
-        <line x1="${insetX}" y1="${insetTop + chartHeight * 0.25}" x2="${width - insetX}" y2="${insetTop + chartHeight * 0.25}" />
-        <line x1="${insetX}" y1="${insetTop + chartHeight * 0.65}" x2="${width - insetX}" y2="${insetTop + chartHeight * 0.65}" />
-        <polygon points="${area}" fill="url(#trafficAreaFill)" />
-        <polyline points="${line}" fill="none" stroke="var(--brand)" stroke-width="4" vector-effect="non-scaling-stroke" />
-        ${coordinates.map((point) => `<circle cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="3.5"><title>${formatTrafficNumber(point.value)} צפיות · ${escapeHtml(formatTrafficBucket(point.bucket))}</title></circle>`).join("")}
-        ${labelIndexes.map((index) => `<text x="${coordinates[index].x.toFixed(1)}" y="${height - 8}" text-anchor="${index === 0 ? "start" : index === coordinates.length - 1 ? "end" : "middle"}">${escapeHtml(formatTrafficBucket(coordinates[index].bucket))}</text>`).join("")}
+  const ceiling = Math.ceil(max / Math.pow(10, Math.floor(Math.log10(max)))) * Math.pow(10, Math.floor(Math.log10(max)));
+  const coordinates = points.map((item, index) => ({ ...item, x: points.length === 1 ? 380 : 8 + index / (points.length - 1) * 744, y: 180 - item.value / ceiling * 166 }));
+  const line = coordinates.map((point) => `${point.x},${point.y}`).join(' ');
+  const selected = coordinates[coordinates.length - 1];
+  return `<div class="visitor-chart-explorer">
+    <div class="visitor-chart-reading"><output id="trafficChartReading" for="trafficChartCursor"><strong>${formatTrafficNumber(selected.value)}</strong><span>צפיות · ${escapeHtml(formatTrafficBucket(selected.bucket))}</span></output><label for="trafficChartCursor">גררו לבדיקת נקודת זמן<i data-lucide="move-horizontal"></i></label></div>
+    <div class="visitor-chart-plot" role="img" aria-label="צפיות לאורך זמן. לבדיקת ערכי הגרף השתמשו במחוון שמתחתיו.">
+      <div class="visitor-chart-scale" aria-hidden="true"><span>${formatTrafficNumber(ceiling)}</span><span>${formatTrafficNumber(ceiling / 2)}</span><span>0</span></div>
+      <svg viewBox="0 0 760 190" preserveAspectRatio="none" aria-hidden="true">
+        <defs><linearGradient id="trafficAreaFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--brand)" stop-opacity="0.2"/><stop offset="1" stop-color="var(--brand)" stop-opacity="0.02"/></linearGradient></defs>
+        ${[14,97,180].map((y) => `<line class="visitor-grid-line" x1="0" y1="${y}" x2="760" y2="${y}"/>`).join('')}
+        <polygon points="${coordinates[0].x},180 ${line} ${selected.x},180" fill="url(#trafficAreaFill)"/>
+        <polyline points="${line}" fill="none" stroke="var(--brand)" stroke-width="3" vector-effect="non-scaling-stroke"/>
+        <line id="trafficChartGuide" x1="${selected.x}" x2="${selected.x}" y1="0" y2="180"/>
+        <circle id="trafficChartPoint" cx="${selected.x}" cy="${selected.y}" r="5"/>
       </svg>
     </div>
-  `;
+    <div class="visitor-chart-slider"><input id="trafficChartCursor" type="range" min="0" max="${points.length - 1}" value="${points.length - 1}" step="1" ${points.length === 1 ? 'disabled' : ''} aria-label="נקודת זמן בגרף" aria-valuetext="${escapeAttr(formatTrafficBucket(selected.bucket))}: ${formatTrafficNumber(selected.value)} צפיות" data-chart-ceiling="${ceiling}"/><div class="visitor-chart-dates"><span>${escapeHtml(formatTrafficBucket(points[0].bucket))}</span><span>${escapeHtml(formatTrafficBucket(selected.bucket))}</span></div></div>
+  </div>`;
+}
+
+function updateTrafficChartCursor(index) {
+  const series = state.clientVisitorAnalytics?.series || [];
+  const item = series[index];
+  const input = document.querySelector('#trafficChartCursor');
+  if (!item || !input) return;
+  const value = Math.max(0, Number(item.page_views) || 0);
+  const x = series.length === 1 ? 380 : 8 + index / (series.length - 1) * 744;
+  const y = 180 - value / Number(input.dataset.chartCeiling) * 166;
+  const guide = document.querySelector('#trafficChartGuide');
+  guide?.setAttribute('x1', x);
+  guide?.setAttribute('x2', x);
+  document.querySelector('#trafficChartPoint')?.setAttribute('cx', x);
+  document.querySelector('#trafficChartPoint')?.setAttribute('cy', y);
+  document.querySelector('#trafficChartReading').innerHTML = `<strong>${formatTrafficNumber(value)}</strong><span>צפיות · ${escapeHtml(formatTrafficBucket(item.bucket))}</span>`;
+  input.setAttribute('aria-valuetext', `${formatTrafficBucket(item.bucket)}: ${formatTrafficNumber(value)} צפיות`);
 }
 
 function clientTrafficHourly(hourlyItems) {
@@ -794,6 +865,8 @@ function clientTrafficRankedList(items, breakdown) {
 }
 
 function renderClientVisitorRecords(visitorList, classificationMeta) {
+  if (state.clientVisitorTableLoading) return `<div class="traffic-inline-empty" role="status" aria-busy="true"><i data-lucide="loader-circle"></i><span>טוען רשומות…</span></div>`;
+  if (state.clientVisitorListError) return `<div class="traffic-inline-empty" role="alert"><i data-lucide="cloud-off"></i><span>רשימת המבקרים לא זמינה כרגע. נסו לרענן את הנתונים.</span></div>`;
   const visitors = visitorList.visitors || [];
   if (!visitors.length) {
     const text = state.clientVisitorSearch ? "לא נמצאו תוצאות לחיפוש הזה" : classificationMeta.empty;
@@ -842,7 +915,7 @@ function renderClientVisitorPagination(pageCount, total) {
 }
 
 function trafficClassificationButton(id, label, icon) {
-  return `<button class="${state.clientVisitorClassification === id ? "active" : ""}" type="button" data-traffic-classification="${id}" role="tab" aria-selected="${state.clientVisitorClassification === id}"><i data-lucide="${icon}"></i>${label}</button>`;
+  return `<button class="${state.clientVisitorClassification === id ? "active" : ""}" type="button" data-traffic-classification="${id}" aria-pressed="${state.clientVisitorClassification === id}"><i data-lucide="${icon}"></i>${label}</button>`;
 }
 
 function clientVisitorClassificationMeta() {
@@ -859,6 +932,7 @@ function clientVisitorClassificationMeta() {
 /* אזורים חמים — עומק גלילה, נקודת עזיבה ואזורים שנלחצו.
    מבוסס על אות דפדפן ראשוני; אינו מוכיח אדם, רק ריצת JavaScript. */
 function clientHotZonesPanel() {
+  if (state.clientVisitorEngagementError) return `<section class="traffic-panel"><div class="traffic-inline-empty" role="alert"><i data-lucide="cloud-off"></i><span>נתוני ההתנהגות לא זמינים כרגע. נסו לרענן את הנתונים.</span></div></section>`;
   const data = state.clientVisitorEngagement;
   if (!data || !data.engagement_sessions) {
     return `
@@ -878,8 +952,9 @@ function clientHotZonesPanel() {
     <section class="traffic-panel traffic-hotzones-panel">
       <header>
         <div><span class="traffic-panel-index">אזורים חמים</span><h2>עד לאן מגיעים ובמה נוגעים</h2>
-        <p>מדגם של ${formatTrafficNumber(data.engagement_sessions)} ביקורים · עומק גלילה ממוצע ${formatTrafficNumber(data.average_scroll_depth)}% · שהייה ממוצעת ${formatTrafficNumber(data.average_dwell_seconds)} שניות</p></div>
+        <p>מדגם של ${formatTrafficNumber(data.engagement_sessions)} ביקורים עם אות דפדפן; אינו מאמת שמדובר באדם.</p></div>
       </header>
+      <div class="visitor-engagement-stats"><div><strong>${formatTrafficNumber(data.average_scroll_depth)}<small>%</small></strong><span>עומק גלילה ממוצע</span></div><div><strong>${formatTrafficNumber(data.average_dwell_seconds)}<small> שנ׳</small></strong><span>שהייה ממוצעת במדגם</span></div><div><strong>${formatTrafficNumber(reach.reached_end || 0)}<small>%</small></strong><span>הגיעו לסוף העמוד</span></div></div>
       <div class="hz-grid">
         <div class="hz-col">
           <h3>עד לאן גוללים</h3>
@@ -897,7 +972,7 @@ function clientHotZonesPanel() {
           </ul>
         </div>
         <div class="hz-col hz-col-wide">
-          <h3>אזורים שנלחצו</h3>
+          <h3>אזורים שנלחצו <small>לחיצות (ביקורים)</small></h3>
           <ul class="hz-zones">
             ${zones.length ? zones.map((z) => `
               <li><span class="hz-zone-name">${escapeHtml(z.zone)}</span>
@@ -909,8 +984,16 @@ function clientHotZonesPanel() {
     </section>`;
 }
 
+let clientVisitorDashboardRequest = 0;
+let clientVisitorTableRequest = 0;
+
 async function refreshClientVisitorDashboard() {
   if (!state.clientSite?.id) return;
+  const request = ++clientVisitorDashboardRequest;
+  const siteId = state.clientSite.id;
+  const username = state.clientUsername;
+  const route = location.pathname;
+  ++clientVisitorTableRequest;
   state.clientVisitorLoading = true;
   const range = clientVisitorRange();
   const common = trafficRangeQuery(range);
@@ -920,6 +1003,9 @@ async function refreshClientVisitorDashboard() {
     api(`/api/sites/${state.clientSite.id}/visitor-analytics/visitors?${visitorQuery}`),
     api(`/api/sites/${state.clientSite.id}/visitor-analytics/engagement?${common}`),
   ]);
+  if (request !== clientVisitorDashboardRequest || !state.me || siteId !== state.clientSite?.id || username !== state.clientUsername || route !== location.pathname) return;
+  state.clientVisitorEngagementError = Boolean(engagement?.error);
+  state.clientVisitorListError = Boolean(visitorList?.error);
   state.clientVisitorEngagement = engagement?.error ? null : engagement;
   if (analytics?.error) {
     state.clientVisitorError = { message: analytics.error, code: analytics.code || "analytics_unavailable" };
@@ -936,9 +1022,15 @@ async function refreshClientVisitorDashboard() {
 
 async function refreshClientVisitorTable() {
   if (!state.clientSite?.id) return;
+  const request = ++clientVisitorTableRequest;
+  const siteId = state.clientSite.id;
+  const username = state.clientUsername;
+  const route = location.pathname;
   state.clientVisitorTableLoading = true;
   const range = state.clientVisitorAnalytics?.range || clientVisitorRange();
   const visitorList = await api(`/api/sites/${state.clientSite.id}/visitor-analytics/visitors?${trafficVisitorQuery(range)}`);
+  if (request !== clientVisitorTableRequest || !state.me || siteId !== state.clientSite?.id || username !== state.clientUsername || route !== location.pathname) return;
+  state.clientVisitorListError = Boolean(visitorList?.error);
   if (!visitorList?.error) state.clientVisitorList = visitorList;
   else toast("לא ניתן לטעון את רשימת המבקרים כרגע", "error");
   state.clientVisitorTableLoading = false;
@@ -3542,6 +3634,10 @@ async function loadClient(username, { includeWorkspace = true } = {}) {
     state.clientVisitorSearch = "";
     state.clientVisitorClassification = "candidate";
     state.clientVisitorError = null;
+    state.clientVisitorEngagement = null;
+    state.clientVisitorEngagementError = false;
+    state.clientVisitorListError = false;
+    state.clientVisitorView = "overview";
   }
   const sitesResponse = await api("/api/sites");
   const sites = sitesResponse.sites || [];

@@ -92,6 +92,16 @@ to clients, activity, creation, and account. Do not add public registration.
 
 ## Verification
 
+Visitor analytics has three views: overview, on-page behavior, and the visitor
+log. Keep the log reachable without scrolling through charts. The overview
+shows IP candidates, page views, leading dimensions, and an accessible timeline
+slider. Leading dimensions use the highest count, not the service's row order.
+Keep bots separate and browser engagement explicitly described as a sample.
+Missing comparison values are unavailable, never a fabricated zero change.
+Request failures must differ from empty traffic. Discard stale responses after
+range changes, navigation, or switching clients. Run `npm.cmd run test:visitors`
+when changing this workspace; both deployment entrypoints run it as well.
+
 Run `npm.cmd run check` after JavaScript changes and `npm.cmd run test:links`
 when tracking-link code changes. Use an already available browser for visual QA.
 

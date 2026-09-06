@@ -104,6 +104,9 @@ npm run check
 if node -e 'process.exit(require("./package.json").scripts["test:links"] ? 0 : 1)'; then
   npm run test:links
 fi
+if node -e 'process.exit(require("./package.json").scripts["test:visitors"] ? 0 : 1)'; then
+  npm run test:visitors
+fi
 
 mkdir -p "${REMOTE_DIR}/data"
 chmod 700 "${REMOTE_DIR}/data"

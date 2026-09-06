@@ -61,6 +61,7 @@ try {
     Write-Host 'Checking JavaScript and tracking-link behavior...' -ForegroundColor Cyan
     Invoke-Checked npm.cmd @('run', 'check')
     Invoke-Checked npm.cmd @('run', 'test:links')
+    Invoke-Checked npm.cmd @('run', 'test:visitors')
     if ($CheckOnly) {
         Write-Host 'Checks passed. No commit, push, SSH connection or deployment was performed.' -ForegroundColor Green
         return
