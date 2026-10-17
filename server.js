@@ -5,6 +5,7 @@ const path = require("path");
 const express = require("express");
 const multer = require("multer");
 const { createTrackingLinks } = require("./lib/tracking-links");
+const { hubTokenMatches, hubSummary } = require("./lib/hub-summary");
 
 const PORT = Number(process.env.PORT || 3027);
 const BASE_PATH = normalizeBasePath(process.env.BASE_PATH || "");
@@ -688,6 +689,15 @@ router.delete(
 router.get("/api/admin/audit", requireAdmin, async (req, res) => {
   const store = await readStore();
   res.json({ audit: store.audit.slice(-80).reverse() });
+});
+
+router.get("/api/hub/summary", async (req, res) => {
+  res.setHeader("Cache-Control", "private, no-store");
+  if (!hubTokenMatches(req.headers.authorization, process.env.HUB_READ_TOKEN_SHA256)) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  res.json(hubSummary(await readStore()));
 });
 
 router.get(["/", "/login", "/admin-login", "/admin", "/client/:username", "/client/:username/visitors", "/client/:username/links"], sendSpaShell);
