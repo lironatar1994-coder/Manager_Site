@@ -1906,6 +1906,17 @@ function setManagedImageCacheHeaders(res) {
 
 async function requireAuth(req, res, next) {
   const sessionId = parseCookies(req.headers.cookie || "")[SESSION_COOKIE];
+  // Desk, the owner's hub, sends no cookie: its write key acts as the admin account.
+  if (!sessionId && hubTokenMatches(req.headers.authorization, process.env.HUB_WRITE_TOKEN_SHA256)) {
+    const admin = (await readStore()).users.find((item) => item.role === "admin" && item.active);
+    if (!admin) {
+      res.status(401).json({ error: "Login required" });
+      return;
+    }
+    req.user = admin;
+    next();
+    return;
+  }
   const session = sessionId ? sessions.get(sessionId) : null;
   if (!session || session.expiresAt < Date.now()) {
     if (sessionId) {
